@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Footer Settings{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4" x-data="footerCustomization()">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-gear"></i> Footer Settings</h2>
+        <div>
+          <button @click="previewFooter()" class="btn btn-outline-primary me-2">
+            <i class="bi bi-eye"></i> Preview
+          </button>
+          <button @click="resetToDefaults()" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise"></i> Reset to Defaults
+          </button>
+        </div>
+      </div>
+      
+      <!-- Footer Preview -->
+      <div class="card mb-4" x-show="showPreview">
+        <div class="card-header">
+          <h5 class="mb-0">Footer Preview</h5>
+        </div>
+        <div class="card-body" x-html="previewHtml">
+          <!-- Preview will be loaded here -->
+        </div>
+      </div>
+      
+      <form method="POST" @submit="saveSettings($event)">
+        <!-- General Footer Settings -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-gear"></i> General Settings</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" name="footer_enabled" 
+                         value="true" x-model="settings.footer_enabled">
+                  <label class="form-check-label">Enable Footer</label>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Footer Template</label>
+                  <select class="form-select" name="footer_template" x-model="settings.footer_template">
+                    <option value="default">Default</option>
+                    <option value="minimal">Minimal</option>
+                    <option value="detailed">Detailed</option>
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Custom Footer Text</label>
+                  <textarea class="form-control" name="footer_custom_text" rows="2" 
+                            x-model="settings.footer_custom_text" 
+                            placeholder="Thank you for your business!"></textarea>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Text Alignment</label>
+                  <select class="form-select" name="footer_alignment" x-model="settings.footer_alignment">
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Font Size</label>
+                  <select class="form-select" name="footer_font_size" x-model="settings.footer_font_size">
+                    <option value="8">8px</option>
+                    <option value="10">10px</option>
+                    <option value="12">12px</option>
+                    <option value="14">14px</option>
+                  </select>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" name="footer_show_logo" 
+                         value="true" x-model="settings.footer_show_logo">
+                  <label class="form-check-label">Show Company Logo</label>
+                </div>
+                
+                <div class="mb-3" x-show="settings.footer_show_logo">
+                  <label class="form-label">Logo Path</label>
+                  <input type="text" class="form-control" name="footer_logo_path" 
+                         x-model="settings.footer_logo_path" 
+                         placeholder="/static/images/logo.png">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Content Settings -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-card-text"></i> Content Settings</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" name="footer_show_user_name" 
+                         value="true" x-model="settings.footer_show_user_name">
+                  <label class="form-check-label">Show User Name</label>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" name="footer_show_receipt_info" 
+                         value="true" x-model="settings.footer_show_receipt_info">
+                  <label class="form-check-label">Show Receipt Info</label>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" name="footer_show_business_info" 
+                         value="true" x-model="settings.footer_show_business_info">
+                  <label class="form-check-label">Show Business Info</label>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" name="footer_multiline" 
+                         value="true" x-model="settings.footer_multiline">
+                  <label class="form-check-label">Enable Multiline Footer</label>
+                </div>
+                
+                <div x-show="settings.footer_multiline">
+                  <div class="mb-2">
+                    <label class="form-label">Line 1</label>
+                    <input type="text" class="form-control" name="footer_line1" 
+                           x-model="settings.footer_line1" placeholder="First line">
+                  </div>
+                  
+                  <div class="mb-2">
+                    <label class="form-label">Line 2</label>
+                    <input type="text" class="form-control" name="footer_line2" 
+                           x-model="settings.footer_line2" placeholder="Second line">
+                  </div>
+                  
+                  <div class="mb-2">
+                    <label class="form-label">Line 3</label>
+                    <input type="text" class="form-control" name="footer_line3" 
+                           x-model="settings.footer_line3" placeholder="Third line">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Document-Specific Settings -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-file-text"></i> Document-Specific Settings</h5>
+          </div>
+          <div class="card-body">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" name="footer_different_receipts" 
+                     value="true" x-model="settings.footer_different_receipts">
+              <label class="form-check-label">Use Different Footers for Different Documents</label>
+            </div>
+            
+            <div class="row" x-show="settings.footer_different_receipts">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Receipt Footer Template</label>
+                  <select class="form-select" name="footer_receipt_template" x-model="settings.footer_receipt_template">
+                    <option value="default">Default</option>
+                    <option value="minimal">Minimal</option>
+                    <option value="detailed">Detailed</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Invoice Footer Template</label>
+                  <select class="form-select" name="footer_invoice_template" x-model="settings.footer_invoice_template">
+                    <option value="default">Default</option>
+                    <option value="minimal">Minimal</option>
+                    <option value="detailed">Detailed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Save Button -->
+        <div class="card">
+          <div class="card-body">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg"></i> Save Footer Settings
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function footerCustomization() {
+  return {
+    settings: {
+      footer_enabled: {{ 'true' if footer_settings.get('footer_enabled') == 'true' else 'false' }},
+      footer_template: '{{ footer_settings.get("footer_template", "default") }}',
+      footer_show_user_name: {{ 'true' if footer_settings.get('footer_show_user_name') == 'true' else 'false' }},
+      footer_show_receipt_info: {{ 'true' if footer_settings.get('footer_show_receipt_info') == 'true' else 'false' }},
+      footer_show_business_info: {{ 'true' if footer_settings.get('footer_show_business_info') == 'true' else 'false' }},
+      footer_custom_text: '{{ footer_settings.get("footer_custom_text", "") }}',
+      footer_font_size: '{{ footer_settings.get("footer_font_size", "10") }}',
+      footer_alignment: '{{ footer_settings.get("footer_alignment", "center") }}',
+      footer_show_logo: {{ 'true' if footer_settings.get('footer_show_logo') == 'true' else 'false' }},
+      footer_logo_path: '{{ footer_settings.get("footer_logo_path", "") }}',
+      footer_different_receipts: {{ 'true' if footer_settings.get('footer_different_receipts') == 'true' else 'false' }},
+      footer_invoice_template: '{{ footer_settings.get("footer_invoice_template", "default") }}',
+      footer_receipt_template: '{{ footer_settings.get("footer_receipt_template", "default") }}',
+      footer_multiline: {{ 'true' if footer_settings.get('footer_multiline') == 'true' else 'false' }},
+      footer_line1: '{{ footer_settings.get("footer_line1", "") }}',
+      footer_line2: '{{ footer_settings.get("footer_line2", "") }}',
+      footer_line3: '{{ footer_settings.get("footer_line3", "") }}'
+    },
+    showPreview: false,
+    previewHtml: '',
+    
+    async previewFooter() {
+      try {
+        const response = await fetch('/footer/preview', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            document_type: 'receipt',
+            order_data: {
+              order_number: 'TEST001',
+              created_at: new Date().toISOString()
+            },
+            user_data: {
+              username: '{{ current_user.username }}'
+            }
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          this.previewHtml = data.footer_html;
+          this.showPreview = true;
+        } else {
+          console.error('Error generating preview');
+        }
+      } catch (error) {
+        console.error('Error previewing footer:', error);
+      }
+    },
+    
+    resetToDefaults() {
+      if (confirm('Are you sure you want to reset all footer settings to defaults?')) {
+        this.settings = {
+          footer_enabled: true,
+          footer_template: 'default',
+          footer_show_user_name: true,
+          footer_show_receipt_info: true,
+          footer_show_business_info: true,
+          footer_custom_text: 'Thank you for your business!',
+          footer_font_size: '10',
+          footer_alignment: 'center',
+          footer_show_logo: false,
+          footer_logo_path: '',
+          footer_different_receipts: false,
+          footer_invoice_template: 'default',
+          footer_receipt_template: 'default',
+          footer_multiline: false,
+          footer_line1: '',
+          footer_line2: '',
+          footer_line3: ''
+        };
+      }
+    },
+    
+    async saveSettings(event) {
+      event.preventDefault();
+      
+      try {
+        const response = await fetch('/api/settings/footer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(this.settings)
+        });
+        
+        if (response.ok) {
+          // Show success message
+          const alertDiv = document.createElement('div');
+          alertDiv.className = 'alert alert-success alert-dismissible fade show m-2';
+          alertDiv.innerHTML = `
+            Footer settings saved successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          `;
+          document.querySelector('.container-fluid').prepend(alertDiv);
+          
+          // Remove alert after 3 seconds
+          setTimeout(() => {
+            alertDiv.remove();
+          }, 3000);
+        } else {
+          console.error('Error saving settings');
+        }
+      } catch (error) {
+        console.error('Error saving footer settings:', error);
+      }
+    }
+  };
+}
+</script>
+{% endblock %}

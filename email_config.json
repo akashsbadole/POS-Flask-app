@@ -1,0 +1,16 @@
+{
+  "smtp_server": "",
+  "smtp_port": 587,
+  "use_tls": true,
+  "use_ssl": false,
+  "username": "",
+  "password": "",
+  "from_email": "",
+  "from_name": "POS Backup System",
+  "recipients": [],
+  "backup_notifications": false,
+  "test_emails": true,
+  "max_attachment_size_mb": 25,
+  "retry_attempts": 3,
+  "retry_delay_seconds": 5
+}

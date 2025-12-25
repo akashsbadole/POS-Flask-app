@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - {{ public_settings.get('restaurant_name', 'Restaurant POS') }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .profile-card {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-header {
+        display: flex;
+        align-items: center;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1.5rem;
+        color: white;
+        font-size: 2rem;
+        font-weight: 600;
+    }
+    
+    .profile-info h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+    
+    .profile-info .role {
+        display: inline-block;
+        background: #e5e7eb;
+        color: #374151;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .profile-info .status {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .info-item {
+        background: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: #1f2937;
+        font-weight: 500;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-start;
+    }
+    
+    .btn-change-password {
+        background: #6366f1;
+        border-color: #6366f1;
+    }
+    
+    .btn-change-password:hover {
+        background: #5558e3;
+        border-color: #5558e3;
+    }
+    
+    @media (max-width: 768px) {
+        .profile-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .profile-avatar {
+            margin-right: 0;
+            margin-bottom: 1rem;
+        }
+        
+        .profile-info {
+            text-align: center;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {{ current_user.username|first|upper }}
+            </div>
+            <div class="profile-info">
+                <h2>{{ current_user.username }}</h2>
+                <span class="role">{{ current_user.role.title() }}</span>
+                <div class="status">
+                    <i class="bi bi-circle-fill text-success"></i> Active User
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Username</div>
+                <div class="info-value">{{ current_user.username }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Email Address</div>
+                <div class="info-value">{{ current_user.email_decrypted or 'Not provided' }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Role</div>
+                <div class="info-value">{{ current_user.role.title() }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Account Status</div>
+                <div class="info-value">
+                    {% if current_user.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-danger">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Member Since</div>
+                <div class="info-value">{{ current_user.created_at.strftime('%B %d, %Y') }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Last Login</div>
+                <div class="info-value">
+                    {% if current_user.last_login %}
+                        {{ current_user.last_login.strftime('%B %d, %Y %I:%M %p') }}
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{{ url_for('auth.change_password') }}" class="btn btn-primary btn-change-password">
+                <i class="bi bi-key"></i> Change Password
+            </a>
+            
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-gear"></i> System Settings
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

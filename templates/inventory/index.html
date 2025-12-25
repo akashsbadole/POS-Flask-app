@@ -1,0 +1,1015 @@
+{% extends "base.html" %} {% block title %}Inventory Management - Restaurant POS{% endblock %} {% block extra_css %}
+<style>
+  /* Minimal Inventory Table Styles */
+  .inventory-container {
+    padding: var(--spacing-lg);
+    background: var(--gray-50);
+    min-height: 100vh;
+  }
+  
+  .inventory-header {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--gray-200);
+  }
+  
+  .inventory-header h2 {
+    margin: 0;
+    font-size: var(--font-size-2xl);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+  }
+  
+  /* Minimal Stats Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .stat-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-lg);
+    text-align: center;
+    border: 1px solid var(--gray-200);
+    transition: all var(--transition-fast);
+  }
+  
+  .stat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  
+  .stat-value {
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-primary);
+  }
+  
+  .stat-label {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .stat-card.success { border-left: 4px solid var(--success-color); }
+  .stat-card.warning { border-left: 4px solid var(--warning-color); }
+  .stat-card.danger { border-left: 4px solid var(--danger-color); }
+  .stat-card.info { border-left: 4px solid var(--info-color); }
+  
+  /* Minimal Table Design */
+  .inventory-table {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+  }
+  
+  .minimal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+  }
+  
+  .minimal-table th {
+    background: var(--gray-50);
+    padding: var(--spacing-md);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--gray-200);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .minimal-table td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--gray-100);
+    vertical-align: middle;
+  }
+  
+  .minimal-table tbody tr {
+    transition: background-color var(--transition-fast);
+  }
+  
+  .minimal-table tbody tr:hover {
+    background: var(--gray-50);
+  }
+  
+  .minimal-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  
+  /* Stock Status Color Coding */
+  .stock-low {
+    background-color: #fff8e1 !important;
+  }
+  
+  .stock-out {
+    background-color: #ffebee !important;
+  }
+  
+  .stock-status-badge {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+  }
+  
+  .status-normal {
+    background: var(--success-light);
+    color: var(--success-dark);
+  }
+  
+  .status-low {
+    background: var(--warning-light);
+    color: var(--warning-dark);
+  }
+  
+  .status-out {
+    background: var(--danger-light);
+    color: var(--danger-dark);
+  }
+  
+  /* Inline Stock Controls */
+  .stock-control {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+  
+  .stock-input {
+    width: 70px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+  }
+  
+  .stock-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+  }
+  
+  .stock-unit {
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+  }
+  
+  /* Edit Actions */
+  .edit-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+  }
+  
+  .edit-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    color: var(--text-secondary);
+  }
+  
+  .edit-btn:hover {
+    background: var(--primary-color);
+    color: var(--white);
+  }
+  
+  /* Search and Filter */
+  .search-filter-bar {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    align-items: center;
+  }
+  
+  .search-input {
+    flex: 1;
+    padding: var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+  }
+  
+  .search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+  }
+  
+  .filter-select {
+    padding: var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    background: var(--white);
+    min-width: 150px;
+  }
+  
+  /* Bulk Actions */
+  .bulk-actions {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--gray-200);
+  }
+  
+  .bulk-actions-bar {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    border: 1px solid var(--gray-200);
+  }
+  
+  /* Form Checkboxes */
+  .form-check-input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+  }
+  
+  .bulk-form {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: var(--spacing-md);
+    align-items: end;
+  }
+  
+  .bulk-select {
+    padding: var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+  }
+  
+  .bulk-input {
+    padding: var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    width: 120px;
+  }
+  
+  /* Responsive Table */
+  .table-responsive {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+  }
+  
+  @media (max-width: 768px) {
+    .inventory-container {
+      padding: var(--spacing-md);
+    }
+    
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-sm);
+    }
+    
+    .search-filter-bar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .bulk-form {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-sm);
+    }
+    
+    .bulk-actions-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--spacing-sm);
+    }
+    
+    .minimal-table {
+      font-size: var(--font-size-xs);
+    }
+    
+    .minimal-table th,
+    .minimal-table td {
+      padding: var(--spacing-sm);
+    }
+    
+    .stock-input {
+      width: 60px;
+    }
+    
+    .edit-actions {
+      flex-wrap: wrap;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .header-actions {
+      flex-direction: column;
+      width: 100%;
+    }
+    
+    .header-actions .modern-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="inventory-container" x-data="inventoryManagement()">
+  <!-- Header Section -->
+  <div class="inventory-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <h2>Inventory Management</h2>
+      <div class="header-actions">
+        <button @click="refreshData()" class="modern-btn modern-btn-outline modern-btn-sm">
+          <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button @click="exportData()" class="modern-btn modern-btn-outline modern-btn-sm modern-btn-success">
+          <i class="bi bi-download"></i> Export
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card info">
+      <div class="stat-value" x-text="stats.totalItems">0</div>
+      <div class="stat-label">Total Items</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-value" x-text="stats.inStock">0</div>
+      <div class="stat-label">In Stock</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-value" x-text="stats.lowStock">0</div>
+      <div class="stat-label">Low Stock</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-value" x-text="stats.outOfStock">0</div>
+      <div class="stat-label">Out of Stock</div>
+    </div>
+  </div>
+  
+  <!-- Bulk Stock Update -->
+  <div class="bulk-actions">
+    <h5>Bulk Stock Update</h5>
+    <div class="bulk-form">
+      <select x-model="bulkUpdate.itemId" class="bulk-select">
+        <option value="">Select Item</option>
+        <template x-for="item in items" :key="item.id">
+          <option :value="item.id" x-text="`${item.name} (${item.stock_quantity} ${item.unit})`"></option>
+        </template>
+      </select>
+      <input type="number" x-model="bulkUpdate.quantity" class="bulk-input" placeholder="Quantity to add">
+      <button @click="addBulkStock()" class="modern-btn modern-btn-primary modern-btn-sm">
+        <i class="bi bi-plus-lg"></i> Add Stock
+      </button>
+    </div>
+  </div>
+  
+  <!-- Search and Filter -->
+  <div class="search-filter-bar">
+    <input type="text" x-model="searchQuery" @input="filterItems()"
+           class="search-input" placeholder="Search items...">
+    <select x-model="filterType" @change="filterItems()" class="filter-select">
+      <option value="all">All Items</option>
+      <option value="low_stock">Low Stock</option>
+      <option value="out_of_stock">Out of Stock</option>
+    </select>
+  </div>
+  
+  <!-- Minimal Inventory Table -->
+  <div class="inventory-table">
+    <div class="table-responsive">
+      <table class="minimal-table">
+        <thead>
+          <tr>
+            <th style="width: 40px;">
+              <input type="checkbox" id="selectAllItems" @change="toggleSelectAll()" class="form-check-input">
+            </th>
+            <th>Item</th>
+            <th>Category</th>
+            <th>Stock</th>
+            <th>Unit</th>
+            <th>Status</th>
+            <th>Edit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="item in filteredItems" :key="item.id">
+            <tr :class="{'stock-low': item.is_low_stock, 'stock-out': item.is_out_of_stock}">
+              <td>
+                <input type="checkbox" :value="item.id" class="item-checkbox form-check-input">
+              </td>
+              <td>
+                <div>
+                  <strong x-text="item.name"></strong>
+                </div>
+              </td>
+              <td x-text="item.category_name || 'N/A'"></td>
+              <td>
+                <div class="stock-control">
+                  <input type="number" :value="item.stock_quantity"
+                         @change="updateStock(item.id, $event.target.value)"
+                         @input="validateStockInput($event.target, item.id)"
+                         class="stock-input" min="0">
+                  <span class="stock-unit" x-text="item.unit"></span>
+                </div>
+              </td>
+              <td x-text="item.unit"></td>
+              <td>
+                <span :class="getStockStatusClass(item)"
+                      class="stock-status-badge" x-text="getStockStatus(item)"></span>
+              </td>
+              <td>
+                <div class="edit-actions">
+                  <button @click="quickAddStock(item.id, 10)"
+                          class="edit-btn" title="Add 10">
+                    <i class="bi bi-plus"></i>
+                  </button>
+                  <button @click="quickAddStock(item.id, 50)"
+                          class="edit-btn" title="Add 50">
+                    <i class="bi bi-plus-circle"></i>
+                  </button>
+                  <button @click="viewHistory(item.id)"
+                          class="edit-btn" title="View History">
+                    <i class="bi bi-clock-history"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <!-- Pagination -->
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">
+      Showing <span x-text="displayedItems.length"></span> of <span x-text="stats.totalItems"></span> items
+    </div>
+    <nav>
+      <ul class="pagination pagination-sm">
+        <li class="page-item" :class="{'disabled': currentPage === 1}">
+          <a class="page-link" @click="currentPage > 1 && goToPage(currentPage - 1)">Previous</a>
+        </li>
+        <li class="page-item" :class="{'active': p === currentPage}"
+            x-for="p in displayedPages" :key="p">
+          <a class="page-link" @click="goToPage(p)" x-text="p"></a>
+        </li>
+        <li class="page-item" :class="{'disabled': currentPage === totalPages}">
+          <a class="page-link" @click="currentPage < totalPages && goToPage(currentPage + 1)">Next</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function inventoryManagement() {
+  return {
+    // Data
+    items: [],
+    stats: {
+      totalItems: 0,
+      inStock: 0,
+      lowStock: 0,
+      outOfStock: 0
+    },
+    
+    // Filters
+    searchQuery: '',
+    filterType: 'all',
+    currentPage: 1,
+    itemsPerPage: 20,
+    totalPages: 1,
+    displayedPages: [1],
+    displayedItems: [],
+    
+    // Bulk Update
+    bulkUpdate: {
+      itemId: '',
+      quantity: ''
+    },
+    
+    init() {
+      // Initialize with empty data to prevent undefined errors
+      try {
+        // Load initial data from server
+        this.loadInitialData().then(() => {
+          this.calculateStats();
+          this.filterItems();
+        }).catch(error => {
+          console.error('Error during initialization:', error);
+          this.showNotification('Error loading inventory data', 'error');
+        });
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+      } catch (error) {
+        console.error('Initialization error:', error);
+      }
+    },
+    
+    async loadInitialData() {
+      try {
+        const response = await fetch('/inventory/data');
+        const data = await response.json();
+        if (data.success) {
+          // Load all items initially, not just low stock
+          // We'll use the low_stock endpoint to get initial data structure
+          // In a real implementation, you might want a dedicated /data endpoint
+          this.items = data.items || [];
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      }
+    },
+    
+    get filteredItems() {
+      let items = this.items;
+      
+      // Apply search filter
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        items = items.filter(item => 
+          item.name.toLowerCase().includes(query) ||
+          item.description.toLowerCase().includes(query) ||
+          (item.category_name && item.category_name.toLowerCase().includes(query))
+        );
+      }
+      
+      // Apply status filter
+      if (this.filterType === 'low_stock') {
+        items = items.filter(item => item.is_low_stock);
+      } else if (this.filterType === 'out_of_stock') {
+        items = items.filter(item => item.is_out_of_stock);
+      }
+      
+      return items;
+    },
+    
+    updateDisplayedItems() {
+      try {
+        const start = (this.currentPage - 1) * this.itemsPerPage;
+        const end = start + this.itemsPerPage;
+        this.displayedItems = this.filteredItems.slice(start, end);
+      } catch (error) {
+        console.error('Error updating displayed items:', error);
+        this.displayedItems = [];
+      }
+    },
+    
+    updateDisplayedPages() {
+      try {
+        const totalPages = Math.ceil(this.filteredItems.length / this.itemsPerPage);
+        const pages = [];
+        
+        for (let i = 1; i <= Math.min(totalPages, 5); i++) {
+          pages.push(i);
+        }
+        
+        this.displayedPages = pages;
+      } catch (error) {
+        console.error('Error updating displayed pages:', error);
+        this.displayedPages = [1];
+      }
+    },
+    
+    updateTotalPages() {
+      try {
+        this.totalPages = Math.ceil(this.filteredItems.length / this.itemsPerPage);
+      } catch (error) {
+        console.error('Error updating total pages:', error);
+        this.totalPages = 1;
+      }
+    },
+    
+    calculateStats() {
+      this.stats.totalItems = this.items.length;
+      this.stats.inStock = this.items.filter(item => !item.is_low_stock && !item.is_out_of_stock).length;
+      this.stats.lowStock = this.items.filter(item => item.is_low_stock).length;
+      this.stats.outOfStock = this.items.filter(item => item.is_out_of_stock).length;
+    },
+    
+    filterItems() {
+      try {
+        this.currentPage = 1;
+        this.updateTotalPages();
+        this.updateDisplayedPages();
+        this.updateDisplayedItems();
+      } catch (error) {
+        console.error('Error filtering items:', error);
+      }
+    },
+    
+    goToPage(page) {
+      try {
+        if (page >= 1 && page <= this.totalPages) {
+          this.currentPage = page;
+          this.updateDisplayedItems();
+        }
+      } catch (error) {
+        console.error('Error navigating to page:', error);
+      }
+    },
+    
+    getStockBadgeClass(item) {
+      if (item.is_out_of_stock) return 'stock-out';
+      if (item.is_low_stock) return 'stock-low';
+      return 'stock-normal';
+    },
+    
+    getStockStatusClass(item) {
+      if (item.is_out_of_stock) return 'status-out';
+      if (item.is_low_stock) return 'status-low';
+      return 'status-normal';
+    },
+    
+    getStockStatus(item) {
+      if (item.is_out_of_stock) return 'Out of Stock';
+      if (item.is_low_stock) return 'Low Stock';
+      return 'In Stock';
+    },
+    
+    async updateStock(itemId, newQuantity) {
+      try {
+        const response = await fetch('/inventory/update_stock', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            item_id: itemId,
+            quantity: parseInt(newQuantity)
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const itemIndex = this.items.findIndex(item => item.id === itemId);
+          if (itemIndex !== -1) {
+            this.items[itemIndex] = data.item;
+          }
+          this.calculateStats();
+          this.showNotification(data.message, 'success');
+        } else {
+          this.showNotification(data.message, 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error updating stock', 'error');
+      }
+    },
+    
+    async quickAddStock(itemId, quantity) {
+      await this.updateStock(itemId, this.getCurrentStock(itemId) + quantity);
+    },
+    
+    getCurrentStock(itemId) {
+      const item = this.items.find(item => item.id === itemId);
+      return item ? item.stock_quantity : 0;
+    },
+    
+    async addBulkStock() {
+      if (!this.bulkUpdate.itemId || !this.bulkUpdate.quantity) {
+        this.showNotification('Please select item and quantity', 'warning');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/inventory/add_stock', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            items: [{
+              item_id: parseInt(this.bulkUpdate.itemId),
+              quantity: parseInt(this.bulkUpdate.quantity)
+            }]
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Update local items
+          data.items.forEach(update => {
+            const itemIndex = this.items.findIndex(item => item.id === update.item.id);
+            if (itemIndex !== -1) {
+              this.items[itemIndex] = update.item;
+            }
+          });
+          
+          this.calculateStats();
+          this.bulkUpdate = { itemId: '', quantity: '' };
+          this.showNotification(data.message, 'success');
+        } else {
+          this.showNotification(data.message, 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error adding stock', 'error');
+      }
+    },
+    
+    async viewHistory(itemId) {
+      try {
+        const response = await fetch(`/inventory/stock_history/${itemId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          this.showHistoryModal(data);
+        } else {
+          this.showNotification(data.message, 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error loading stock history', 'error');
+      }
+    },
+    
+    showHistoryModal(data) {
+      // Create modal element
+      const modal = document.createElement('div');
+      modal.className = 'modern-modal-overlay';
+      modal.innerHTML = `
+        <div class="modern-modal">
+          <div class="modern-modal-header">
+            <h3 class="modern-modal-title">Stock History - ${data.item_name}</h3>
+            <button class="modern-modal-close" onclick="this.closest('.modern-modal-overlay').remove()">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+          <div class="modern-modal-body">
+            <div class="table-responsive">
+              <table class="minimal-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Action</th>
+                    <th>Quantity</th>
+                    <th>Previous</th>
+                    <th>New</th>
+                    <th>User</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.history.map(item => `
+                    <tr>
+                      <td>${new Date(item.timestamp).toLocaleString()}</td>
+                      <td><span class="stock-status-badge status-${item.action}">${item.action}</span></td>
+                      <td>${item.quantity}</td>
+                      <td>${item.previous_quantity}</td>
+                      <td>${item.new_quantity}</td>
+                      <td>${item.user}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modern-modal-footer">
+            <button class="modern-btn modern-btn-ghost" onclick="this.closest('.modern-modal-overlay').remove()">
+              Close
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    },
+    
+    async bulkUpdateItems() {
+      const selectedItems = this.getSelectedItems();
+      if (selectedItems.length === 0) {
+        this.showNotification('Please select items to update', 'warning');
+        return;
+      }
+      
+      const quantity = prompt('Enter new quantity for selected items:');
+      if (!quantity) return;
+      
+      try {
+        const updates = selectedItems.map(itemId => ({
+          item_id: itemId,
+          quantity: parseInt(quantity)
+        }));
+        
+        const response = await fetch('/inventory/bulk_update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ updates })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Update local items
+          data.items.forEach(update => {
+            const itemIndex = this.items.findIndex(item => item.id === update.item.id);
+            if (itemIndex !== -1) {
+              this.items[itemIndex] = update.item;
+            }
+          });
+          
+          this.calculateStats();
+          this.clearSelection();
+          this.showNotification(data.message, 'success');
+        } else {
+          this.showNotification(data.message, 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error updating items', 'error');
+      }
+    },
+    
+    getSelectedItems() {
+      const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+      return Array.from(checkboxes).map(cb => parseInt(cb.value));
+    },
+    
+    clearSelection() {
+      document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+    },
+    
+    toggleSelectAll() {
+      const selectAllCheckbox = document.getElementById('selectAllItems');
+      const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+      
+      itemCheckboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+    },
+    
+    async refreshData() {
+      try {
+        const response = await fetch('/inventory/low_stock');
+        const data = await response.json();
+        
+        if (data.success) {
+          // Update low stock indicators
+          data.items.forEach(lowStockItem => {
+            const itemIndex = this.items.findIndex(item => item.id === lowStockItem.id);
+            if (itemIndex !== -1) {
+              this.items[itemIndex].is_low_stock = lowStockItem.is_low_stock;
+              this.items[itemIndex].is_out_of_stock = lowStockItem.is_out_of_stock;
+            }
+          });
+          
+          this.calculateStats();
+          this.showNotification('Data refreshed', 'success');
+        }
+      } catch (error) {
+        this.showNotification('Error refreshing data', 'error');
+      }
+    },
+    
+    exportData() {
+      const csvContent = this.generateCSV();
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      this.showNotification('Inventory exported successfully', 'success');
+    },
+    
+    generateCSV() {
+      const headers = ['Item Name', 'Category', 'Current Stock', 'Min Stock', 'Unit', 'Price', 'Status'];
+      const rows = this.filteredItems.map(item => [
+        item.name,
+        item.category_name || 'N/A',
+        item.stock_quantity,
+        item.min_stock_level,
+        item.unit,
+        item.price,
+        this.getStockStatus(item)
+      ]);
+      
+      return [headers, ...rows].map(row => row.join(',')).join('\n');
+    },
+    
+    validateStockInput(input, itemId) {
+      const value = parseInt(input.value);
+      const item = this.items.find(item => item.id === itemId);
+      
+      if (item && value !== undefined) {
+        // Check if value is below minimum
+        if (value < item.min_stock_level && value > 0) {
+          input.style.borderColor = 'var(--warning-color)';
+          this.showNotification(`Stock is below minimum level (${item.min_stock_level} ${item.unit})`, 'warning');
+        }
+        // Check if out of stock
+        else if (value === 0) {
+          input.style.borderColor = 'var(--danger-color)';
+          this.showNotification('Item is now out of stock', 'warning');
+        }
+        // Normal stock
+        else {
+          input.style.borderColor = 'var(--success-color)';
+        }
+      }
+    },
+    
+    // Keyboard shortcuts
+    handleKeyboardShortcuts(event) {
+      // Ctrl/Cmd + E: Export
+      if ((event.ctrlKey || event.metaKey) && event.key === 'e') {
+        event.preventDefault();
+        this.exportData();
+      }
+      // Ctrl/Cmd + R: Refresh
+      else if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+        event.preventDefault();
+        this.refreshData();
+      }
+      // Ctrl/Cmd + F: Focus search
+      else if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        event.preventDefault();
+        document.querySelector('.search-input').focus();
+      }
+    },
+    
+    showNotification(message, type) {
+      const toast = document.createElement('div');
+      toast.className = `modern-card p-3 mb-3 border-start-4 border-${type} position-fixed top-0 end-0 m-3`;
+      toast.style.zIndex = '9999';
+      toast.style.maxWidth = '300px';
+      toast.innerHTML = `
+        <div class="d-flex align-items-center">
+          <i class="bi me-2 ${
+            type === 'success' ? 'bi-check-circle text-success' :
+            type === 'error' ? 'bi-x-circle text-danger' :
+            type === 'warning' ? 'bi-exclamation-triangle text-warning' :
+            'bi-info-circle text-info'
+          }"></i>
+          <div class="flex-grow-1">${message}</div>
+          <button class="modern-btn modern-btn-ghost modern-btn-sm ms-2" onclick="this.closest('.modern-card').remove()">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 5000);
+    }
+  };
+}
+</script>
+<script>
+  // Execute the inventory manager function
+  document.addEventListener('alpine:init', () => {
+    try {
+      Alpine.data('inventoryManager', inventoryManagement);
+    } catch (error) {
+      console.error('Error initializing Alpine.js data:', error);
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,547 @@
+{% extends "base.html" %} {% block title %}Table Management - Restaurant POS{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+{% endblock %} {% block content %}
+<div class="tables-container" x-data="tableManager()">
+  <!-- Header Section -->
+  <header class="tables-header">
+    <div class="header-content">
+      <div class="header-title">
+        <h1>Table Management</h1>
+        <p>Manage restaurant tables and seating arrangements</p>
+      </div>
+      <div class="header-actions">
+        <button @click="toggleView()" class="btn btn-outline-primary">
+          <i class="fas fa-th" x-show="!showLayout"></i>
+          <i class="fas fa-list" x-show="showLayout"></i>
+          <span x-text="showLayout ? 'Grid View' : 'List View'"></span>
+        </button>
+        <button @click="showAddTableModal()" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Add Table
+        </button>
+      </div>
+    </div>
+  </header>
+  
+  <!-- Statistics Dashboard -->
+  <section class="stats-dashboard">
+    <div class="stat-card available">
+      <div class="stat-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" x-text="stats.available">0</div>
+        <div class="stat-label">Available</div>
+      </div>
+    </div>
+    
+    <div class="stat-card occupied">
+      <div class="stat-icon">
+        <i class="fas fa-users"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" x-text="stats.occupied">0</div>
+        <div class="stat-label">Occupied</div>
+      </div>
+    </div>
+    
+    <div class="stat-card reserved">
+      <div class="stat-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" x-text="stats.reserved">0</div>
+        <div class="stat-label">Reserved</div>
+      </div>
+    </div>
+    
+    <div class="stat-card total">
+      <div class="stat-icon">
+        <i class="fas fa-table"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" x-text="stats.totalTables">0</div>
+        <div class="stat-label">Total Tables</div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Filter and Search Bar -->
+  <section class="filter-section">
+    <div class="filter-controls">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" x-model="searchQuery" placeholder="Search tables..." @input="filterTables()">
+      </div>
+      <div class="filter-buttons">
+        <button @click="filterByStatus('all')" :class="activeFilter === 'all' ? 'active' : ''" class="filter-btn">
+          All
+        </button>
+        <button @click="filterByStatus('Available')" :class="activeFilter === 'Available' ? 'active' : ''" class="filter-btn">
+          Available
+        </button>
+        <button @click="filterByStatus('Occupied')" :class="activeFilter === 'Occupied' ? 'active' : ''" class="filter-btn">
+          Occupied
+        </button>
+        <button @click="filterByStatus('Reserved')" :class="activeFilter === 'Reserved' ? 'active' : ''" class="filter-btn">
+          Reserved
+        </button>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Tables Grid View -->
+  <main class="tables-main" x-show="!showLayout">
+    <div class="tables-grid">
+      <template x-for="table in filteredTables" :key="table.id">
+        <div class="table-card" 
+             :class="getTableCardClass(table)"
+             @click="selectTable(table)"
+             @dblclick="editTable(table)"
+             draggable="true"
+             @dragstart="handleDragStart($event, table)"
+             @dragend="handleDragEnd($event)">
+          
+          <!-- Table Status Indicator -->
+          <div class="table-status-indicator" :class="getStatusClass(table.status)">
+            <div class="status-dot"></div>
+          </div>
+          
+          <!-- Table Number Circle -->
+          <div class="table-number-circle">
+            <span class="table-number" x-text="table.table_number"></span>
+          </div>
+          
+          <!-- Table Details -->
+          <div class="table-details">
+            <div class="table-capacity">
+              <i class="fas fa-users"></i>
+              <span x-text="table.capacity + ' seats'"></span>
+            </div>
+            <div class="table-location" x-show="table.location">
+              <i class="fas fa-map-marker-alt"></i>
+              <span x-text="table.location"></span>
+            </div>
+          </div>
+          
+          <!-- Status Badge -->
+          <div class="status-badge" :class="getStatusBadgeClass(table.status)" x-text="table.status"></div>
+          
+          <!-- Quick Actions -->
+          <div class="table-actions">
+            <button @click.stop="toggleTableStatus(table)" 
+                    class="action-btn status-toggle"
+                    :title="table.status === 'Available' ? 'Mark Occupied' : 'Mark Available'">
+              <i :class="table.status === 'Available' ? 'fas fa-user-check' : 'fas fa-user-times'"></i>
+            </button>
+            <button @click.stop="showTableContextMenu($event, table)" 
+                    class="action-btn more-options"
+                    title="More options">
+              <i class="fas fa-ellipsis-v"></i>
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+  
+  <!-- List View -->
+  <main class="tables-list-view" x-show="showLayout">
+    <div class="list-header">
+      <div class="list-column">Table</div>
+      <div class="list-column">Status</div>
+      <div class="list-column">Capacity</div>
+      <div class="list-column">Location</div>
+      <div class="list-column">Actions</div>
+    </div>
+    <div class="list-body">
+      <template x-for="table in filteredTables" :key="table.id">
+        <div class="list-row" :class="getTableCardClass(table)">
+          <div class="list-cell table-cell">
+            <div class="table-info">
+              <div class="table-number" x-text="table.table_number"></div>
+              <div class="table-id">#<span x-text="table.id"></span></div>
+            </div>
+          </div>
+          <div class="list-cell status-cell">
+            <span class="status-badge" :class="getStatusBadgeClass(table.status)" x-text="table.status"></span>
+          </div>
+          <div class="list-cell capacity-cell">
+            <i class="fas fa-users"></i>
+            <span x-text="table.capacity"></span>
+          </div>
+          <div class="list-cell location-cell" x-text="table.location || '-'"></div>
+          <div class="list-cell actions-cell">
+            <button @click.stop="editTable(table)" class="action-btn edit-btn" title="Edit">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button @click.stop="toggleTableStatus(table)" class="action-btn status-btn" title="Toggle Status">
+              <i class="fas fa-exchange-alt"></i>
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+  
+  <!-- Context Menu -->
+  <div class="context-menu" x-show="showContextMenu" 
+       :style="`left: ${contextMenuX}px; top: ${contextMenuY}px`"
+       @click.away="hideContextMenu()">
+    <div class="context-menu-item" @click="editTable(selectedTable)">
+      <i class="fas fa-edit"></i> Edit Table
+    </div>
+    <div class="context-menu-item" @click="toggleTableStatus(selectedTable)">
+      <i class="fas fa-exchange-alt"></i> Toggle Status
+    </div>
+    <div class="context-menu-item" @click="assignOrder(selectedTable)">
+      <i class="fas fa-receipt"></i> Assign Order
+    </div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item danger" @click="deleteTable(selectedTable)">
+      <i class="fas fa-trash"></i> Delete Table
+    </div>
+  </div>
+  
+  <!-- Add/Edit Table Modal -->
+  <div class="modal-overlay" x-show="showModal" @click.self="closeModal()">
+    <div class="modal-content table-modal">
+      <div class="modal-header">
+        <h3 x-text="editingTable ? 'Edit Table' : 'Add New Table'"></h3>
+        <button @click="closeModal()" class="modal-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Table Number</label>
+          <input type="text" x-model="tableForm.table_number" 
+                 class="form-control" placeholder="e.g., T1, Table-1">
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Capacity</label>
+            <input type="number" x-model="tableForm.capacity" 
+                   class="form-control" min="1" max="20">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select x-model="tableForm.status" class="form-control">
+              <option value="Available">Available</option>
+              <option value="Occupied">Occupied</option>
+              <option value="Reserved">Reserved</option>
+              <option value="Maintenance">Maintenance</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input type="text" x-model="tableForm.location" 
+                 class="form-control" placeholder="e.g., Ground Floor, Balcony">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea x-model="tableForm.description" 
+                    class="form-control" rows="3" placeholder="Optional description"></textarea>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button @click="closeModal()" class="btn btn-secondary">Cancel</button>
+        <button @click="saveTable()" class="btn btn-primary">
+          <i class="fas fa-save"></i> <span x-text="editingTable ? 'Update' : 'Save'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function tableManager() {
+  return {
+    // Data
+    tables: JSON.parse('{{ tables | tojson | safe }}'),
+    showLayout: false,
+    showModal: false,
+    editingTable: null,
+    searchQuery: '',
+    activeFilter: 'all',
+    filteredTables: [],
+    showContextMenu: false,
+    contextMenuX: 0,
+    contextMenuY: 0,
+    selectedTable: null,
+    draggedTable: null,
+    
+    // Form Data
+    tableForm: {
+      table_number: '',
+      capacity: 4,
+      location: '',
+      description: '',
+      status: 'Available'
+    },
+    
+    init() {
+      this.calculateStats();
+      this.filterTables();
+    },
+    
+    calculateStats() {
+      this.stats = {
+        totalTables: this.tables.length,
+        available: this.tables.filter(t => t.status === 'Available').length,
+        occupied: this.tables.filter(t => t.status === 'Occupied').length,
+        reserved: this.tables.filter(t => t.status === 'Reserved').length
+      };
+    },
+    
+    filterTables() {
+      let filtered = this.tables;
+      
+      // Apply search filter
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        filtered = filtered.filter(table => 
+          table.table_number.toLowerCase().includes(query) ||
+          (table.location && table.location.toLowerCase().includes(query)) ||
+          table.status.toLowerCase().includes(query)
+        );
+      }
+      
+      // Apply status filter
+      if (this.activeFilter !== 'all') {
+        filtered = filtered.filter(table => table.status === this.activeFilter);
+      }
+      
+      this.filteredTables = filtered;
+    },
+    
+    filterByStatus(status) {
+      this.activeFilter = status;
+      this.filterTables();
+    },
+    
+    toggleView() {
+      this.showLayout = !this.showLayout;
+    },
+    
+    selectTable(table) {
+      if (table.status === 'Available') {
+        this.showNotification(`Table ${table.table_number} is available`, 'success');
+      } else {
+        this.showNotification(`Table ${table.table_number} is ${table.status.toLowerCase()}`, 'warning');
+      }
+    },
+    
+    getTableCardClass(table) {
+      return {
+        'available': table.status === 'Available',
+        'occupied': table.status === 'Occupied',
+        'reserved': table.status === 'Reserved',
+        'maintenance': table.status === 'Maintenance'
+      };
+    },
+    
+    getStatusClass(status) {
+      return {
+        'available': status === 'Available',
+        'occupied': status === 'Occupied',
+        'reserved': status === 'Reserved',
+        'maintenance': status === 'Maintenance'
+      };
+    },
+    
+    getStatusBadgeClass(status) {
+      return {
+        'available': status === 'Available',
+        'occupied': status === 'Occupied',
+        'reserved': status === 'Reserved',
+        'maintenance': status === 'Maintenance'
+      };
+    },
+    
+    handleDragStart(event, table) {
+      this.draggedTable = table;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/html', event.target.innerHTML);
+    },
+    
+    handleDragEnd(event) {
+      this.draggedTable = null;
+    },
+    
+    showTableContextMenu(event, table) {
+      event.preventDefault();
+      this.selectedTable = table;
+      this.contextMenuX = event.clientX;
+      this.contextMenuY = event.clientY;
+      this.showContextMenu = true;
+    },
+    
+    hideContextMenu() {
+      this.showContextMenu = false;
+      this.selectedTable = null;
+    },
+    
+    showAddTableModal() {
+      this.editingTable = null;
+      this.tableForm = {
+        table_number: '',
+        capacity: 4,
+        location: '',
+        description: '',
+        status: 'Available'
+      };
+      this.showModal = true;
+    },
+    
+    editTable(table) {
+      this.editingTable = table;
+      this.tableForm = {
+        table_number: table.table_number,
+        capacity: table.capacity,
+        location: table.location || '',
+        description: table.description || '',
+        status: table.status
+      };
+      this.showModal = true;
+      this.hideContextMenu();
+    },
+    
+    closeModal() {
+      this.showModal = false;
+      this.editingTable = null;
+    },
+    
+    async saveTable() {
+      if (!this.tableForm.table_number || !this.tableForm.capacity) {
+        this.showNotification('Please fill in required fields', 'warning');
+        return;
+      }
+      
+      try {
+        const url = this.editingTable ? `/tables/update/${this.editingTable.id}` : '/tables/add';
+        const method = this.editingTable ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(this.tableForm)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          if (this.editingTable) {
+            // Update existing table
+            const index = this.tables.findIndex(t => t.id === this.editingTable.id);
+            if (index !== -1) {
+              this.tables[index] = data.table;
+            }
+            this.showNotification('Table updated successfully', 'success');
+          } else {
+            // Add new table
+            this.tables.push(data.table);
+            this.showNotification('Table added successfully', 'success');
+          }
+          
+          this.calculateStats();
+          this.filterTables();
+          this.closeModal();
+        } else {
+          this.showNotification(data.message || 'Error saving table', 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error saving table', 'error');
+      }
+    },
+    
+    async toggleTableStatus(table) {
+      const newStatus = table.status === 'Available' ? 'Occupied' : 'Available';
+      
+      try {
+        const response = await fetch(`/tables/update_status/${table.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          table.status = newStatus;
+          this.calculateStats();
+          this.filterTables();
+          this.showNotification(`Table ${table.table_number} marked as ${newStatus}`, 'success');
+        } else {
+          this.showNotification(data.message || 'Error updating status', 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error updating status', 'error');
+      }
+      
+      this.hideContextMenu();
+    },
+    
+    assignOrder(table) {
+      // Redirect to order creation with table pre-selected
+      window.location.href = `/orders/new?table_id=${table.id}`;
+      this.hideContextMenu();
+    },
+    
+    async deleteTable(table) {
+      if (!confirm(`Are you sure you want to delete table ${table.table_number}?`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/tables/delete/${table.id}`, {
+          method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const index = this.tables.findIndex(t => t.id === table.id);
+          if (index !== -1) {
+            this.tables.splice(index, 1);
+          }
+          this.calculateStats();
+          this.filterTables();
+          this.showNotification('Table deleted successfully', 'success');
+        } else {
+          this.showNotification(data.message || 'Error deleting table', 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error deleting table', 'error');
+      }
+      
+      this.hideContextMenu();
+    },
+    
+    showNotification(message, type) {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+      toast.style.zIndex = '9999';
+      toast.textContent = message;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+  };
+}
+</script>
+{% endblock %}

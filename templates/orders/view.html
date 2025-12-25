@@ -1,0 +1,602 @@
+{% extends "base.html" %} {% block title %}Order Details - Restaurant POS{% endblock %} {% block extra_css %}
+<style>
+  .order-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .info-card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+  }
+  
+  .item-row {
+    border-bottom: 1px solid #e3e6f0;
+    padding: 10px 0;
+  }
+  
+  .item-row:last-child {
+    border-bottom: none;
+  }
+  
+  .totals-section {
+    background: #f8f9fc;
+    border-radius: 8px;
+    padding: 20px;
+  }
+  
+  .status-timeline {
+    position: relative;
+    padding-left: 30px;
+  }
+  
+  .status-timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e3e6f0;
+  }
+  
+  .status-item {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  
+  .status-item::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #6c757d;
+  }
+  
+  .status-item.completed::before {
+    background: #28a745;
+  }
+  
+  .status-item.active::before {
+    background: #007bff;
+  }
+  
+  .action-btn {
+    min-width: 120px;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid" x-data="orderView()">
+  <!-- Order Header -->
+  <div class="order-header" x-show="order">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h2 class="mb-1" x-text="order.order_number"></h2>
+        <p class="mb-0 opacity-75">
+          Created: <span x-text="formatDateTime(order.created_at)"></span> by 
+          <span x-text="order.created_by_username"></span>
+        </p>
+      </div>
+      <div class="col-md-4 text-end">
+        <span class="badge fs-6 p-2" 
+              :class="getStatusClass(order.status)" 
+              x-text="order.status"></span>
+        <div class="mt-2">
+          <button class="btn btn-light btn-sm me-2" @click="refreshOrder()">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </button>
+          <div class="btn-group" role="group">
+            <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="fas fa-print"></i> Print
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" @click="printOrder()">
+                <i class="fas fa-file-pdf"></i> PDF Invoice
+              </a></li>
+              <li><a class="dropdown-item" href="#" @click="printThermalBill()">
+                <i class="fas fa-receipt"></i> Thermal Bill
+              </a></li>
+              <li><a class="dropdown-item" href="#" @click="printKOT()">
+                <i class="fas fa-ticket-alt"></i> KOT
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" @click="printManagement()">
+                <i class="fas fa-cog"></i> Print Management
+              </a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Left Column - Order Details -->
+    <div class="col-lg-8">
+      <!-- Customer & Order Info -->
+      <div class="card info-card mb-3">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Order Information</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="text-muted">Customer Details</h6>
+              <p><strong>Name:</strong> <span x-text="order.customer_name || 'Walk-in Customer'"></span></p>
+              <p><strong>Mobile:</strong> <span x-text="order.customer_mobile || 'N/A'"></span></p>
+              <p><strong>Order Type:</strong> <span x-text="order.order_type"></span></p>
+              <p x-show="order.table_number"><strong>Table:</strong> <span x-text="order.table_number"></span></p>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted">Order Details</h6>
+              <p><strong>Order Number:</strong> <span x-text="order.order_number"></span></p>
+              <p><strong>Status:</strong> <span class="badge" :class="getStatusClass(order.status)" x-text="order.status"></span></p>
+              <p><strong>Items Count:</strong> <span x-text="order.item_count"></span></p>
+              <p><strong>Created:</strong> <span x-text="formatDateTime(order.created_at)"></span></p>
+              <p x-show="order.completed_at"><strong>Completed:</strong> <span x-text="formatDateTime(order.completed_at)"></span></p>
+            </div>
+          </div>
+          
+          <div x-show="order.special_instructions" class="mt-3">
+            <h6 class="text-muted">Special Instructions</h6>
+            <p class="border rounded p-2 bg-light" x-text="order.special_instructions"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Items -->
+      <div class="card info-card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">Order Items</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th class="text-center">Qty</th>
+                  <th class="text-end">Price</th>
+                  <th class="text-end">Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="item in order.items" :key="item.id">
+                  <tr class="item-row">
+                    <td>
+                      <div>
+                        <strong x-text="item.item_name"></strong>
+                        <small class="text-muted d-block" x-show="item.special_instructions" x-text="'Note: ' + item.special_instructions"></small>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <span x-text="item.quantity"></span>
+                    </td>
+                    <td class="text-end">
+                      <span x-text="'₹' + item.price.toFixed(2)"></span>
+                    </td>
+                    <td class="text-end">
+                      <strong x-text="'₹' + item.total.toFixed(2)"></strong>
+                    </td>
+                    <td>
+                      <span class="badge" :class="getItemStatusClass(item.status)" x-text="item.status"></span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column - Actions & Totals -->
+    <div class="col-lg-4">
+      <!-- Quick Actions -->
+      <div class="card info-card mb-3" x-show="canEditOrder()">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0">Quick Actions</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary action-btn" @click="editOrder()" x-show="['New', 'In Progress'].includes(order.status)">
+              <i class="fas fa-edit"></i> Edit Order
+            </button>
+            <button class="btn btn-success action-btn" @click="proceedToPayment()" x-show="['New', 'In Progress'].includes(order.status)">
+              <i class="fas fa-credit-card"></i> Process Payment
+            </button>
+            <button class="btn btn-info action-btn" @click="markReady()" x-show="order.status === 'In Progress'">
+              <i class="fas fa-check"></i> Mark Ready
+            </button>
+            <button class="btn btn-secondary action-btn" @click="printKOT()" x-show="['New', 'In Progress'].includes(order.status)">
+              <i class="fas fa-print"></i> Print KOT
+            </button>
+            <button class="btn btn-outline-secondary action-btn" @click="mergeOrder()" x-show="['New', 'In Progress'].includes(order.status)">
+              <i class="fas fa-object-group"></i> Merge Order
+            </button>
+            <button class="btn btn-danger action-btn" @click="cancelOrder()" x-show="['New', 'In Progress'].includes(order.status)">
+              <i class="fas fa-times"></i> Cancel Order
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Totals -->
+      <div class="card info-card mb-3">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">Order Totals</h5>
+        </div>
+        <div class="card-body">
+          <div class="totals-section">
+            <div class="d-flex justify-content-between mb-2">
+              <span>Subtotal:</span>
+              <span x-text="'₹' + order.subtotal.toFixed(2)"></span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>CGST (2.5%):</span>
+              <span x-text="'₹' + order.cgst_amount.toFixed(2)"></span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>SGST (2.5%):</span>
+              <span x-text="'₹' + order.sgst_amount.toFixed(2)"></span>
+            </div>
+            <div class="d-flex justify-content-between mb-2" x-show="order.discount_amount > 0">
+              <span>Discount:</span>
+              <span class="text-danger" x-text="'-₹' + order.discount_amount.toFixed(2)"></span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between h4">
+              <strong>Grand Total:</strong>
+              <strong class="text-primary" x-text="'₹' + order.grand_total.toFixed(2)"></strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Status -->
+      <div class="card info-card mb-3" x-show="payments.length > 0">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">Payment Information</h5>
+        </div>
+        <div class="card-body">
+          <template x-for="payment in payments" :key="payment.id">
+            <div class="mb-2 p-2 border rounded">
+              <div class="d-flex justify-content-between">
+                <span x-text="payment.payment_mode"></span>
+                <span class="fw-bold" x-text="'₹' + payment.amount.toFixed(2)"></span>
+              </div>
+              <small class="text-muted">
+                Paid: <span x-text="formatDateTime(payment.created_at)"></span>
+              </small>
+              <div x-show="payment.reference_number">
+                <small class="text-muted">Ref: <span x-text="payment.reference_number"></span></small>
+              </div>
+            </div>
+          </template>
+          
+          <div class="mt-2 pt-2 border-top">
+            <div class="d-flex justify-content-between fw-bold">
+              <span>Total Paid:</span>
+              <span class="text-success" x-text="'₹' + totalPaid.toFixed(2)"></span>
+            </div>
+            <div class="d-flex justify-content-between" x-show="balanceDue > 0">
+              <span>Balance Due:</span>
+              <span class="text-danger" x-text="'₹' + balanceDue.toFixed(2)"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Timeline -->
+      <div class="card info-card">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0">Order Timeline</h5>
+        </div>
+        <div class="card-body">
+          <div class="status-timeline">
+            <div class="status-item completed">
+              <div class="fw-bold">Order Created</div>
+              <small class="text-muted" x-text="formatDateTime(order.created_at)"></small>
+            </div>
+            <div class="status-item" :class="getTimelineClass('In Progress')" x-show="['In Progress', 'Ready', 'Completed'].includes(order.status)">
+              <div class="fw-bold">In Progress</div>
+              <small class="text-muted">Order being prepared</small>
+            </div>
+            <div class="status-item" :class="getTimelineClass('Ready')" x-show="['Ready', 'Completed'].includes(order.status)">
+              <div class="fw-bold">Ready</div>
+              <small class="text-muted">Order ready for serving</small>
+            </div>
+            <div class="status-item" :class="getTimelineClass('Completed')" x-show="order.status === 'Completed'">
+              <div class="fw-bold">Completed</div>
+              <small class="text-muted" x-text="formatDateTime(order.completed_at)"></small>
+            </div>
+            <div class="status-item" :class="getTimelineClass('Cancelled')" x-show="order.status === 'Cancelled'">
+              <div class="fw-bold">Cancelled</div>
+              <small class="text-muted">Order was cancelled</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Merge Order Modal -->
+  <div class="modal fade" id="mergeModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Merge Order</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Merge order <strong x-text="order?.order_number"></strong> with:</p>
+          <div class="mb-3">
+            <label class="form-label">Target Order Number</label>
+            <input type="text" x-model="mergeTargetOrder" class="form-control" placeholder="Enter order number">
+          </div>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            This action cannot be undone. Items and totals will be combined.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-warning" @click="confirmMerge()">
+            <i class="fas fa-object-group"></i> Merge Orders
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function orderView() {
+  return {
+    orderId: parseInt('{{ order_id }}'),
+    order: null,
+    payments: [],
+    mergeTargetOrder: '',
+
+    init() {
+      this.loadOrder();
+      this.setupAutoRefresh();
+    },
+
+    async loadOrder() {
+      try {
+        const response = await fetch(`/api/orders/${this.orderId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          this.order = result.order;
+          this.payments = result.payments || [];
+        } else {
+          this.showNotification('Failed to load order', 'error');
+        }
+      } catch (error) {
+        console.error('Error loading order:', error);
+        this.showNotification('Error loading order', 'error');
+      }
+    },
+
+    setupAutoRefresh() {
+      // Auto-refresh every 30 seconds for active orders
+      setInterval(() => {
+        if (this.order && ['New', 'In Progress'].includes(this.order.status)) {
+          this.loadOrder();
+        }
+      }, 30000);
+    },
+
+    refreshOrder() {
+      this.loadOrder();
+      this.showNotification('Order refreshed', 'info');
+    },
+
+    getStatusClass(status) {
+      // Use global getStatusClass function from utils.js with custom overrides
+      const globalClass = window.getStatusClass(status);
+      // Special case for In Progress to add text-dark class
+      if (status === 'In Progress') {
+        return globalClass + ' text-dark';
+      }
+      return globalClass;
+    },
+
+    getItemStatusClass(status) {
+      const classes = {
+        'Pending': 'bg-secondary',
+        'In Progress': 'bg-warning text-dark',
+        'Ready': 'bg-info',
+        'Completed': 'bg-success',
+        'Cancelled': 'bg-danger'
+      };
+      return classes[status] || 'bg-secondary';
+    },
+
+    getTimelineClass(status) {
+      if (!this.order) return '';
+      
+      const statusOrder = ['New', 'In Progress', 'Ready', 'Completed', 'Cancelled'];
+      const currentStatusIndex = statusOrder.indexOf(this.order.status);
+      const checkStatusIndex = statusOrder.indexOf(status);
+      
+      if (checkStatusIndex < currentStatusIndex) {
+        return 'completed';
+      } else if (checkStatusIndex === currentStatusIndex) {
+        return 'active';
+      }
+      return '';
+    },
+
+    formatDateTime(dateString) {
+      // Use global formatDateTime function from utils.js
+      return window.formatDateTime(dateString);
+    },
+
+    canEditOrder() {
+      return this.order && ['New', 'In Progress'].includes(this.order.status);
+    },
+
+    get totalPaid() {
+      return this.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    },
+
+    get balanceDue() {
+      return this.order ? this.order.grand_total - this.totalPaid : 0;
+    },
+
+    // Actions
+    editOrder() {
+      window.location.href = `/orders/edit/${this.orderId}`;
+    },
+
+    proceedToPayment() {
+      window.location.href = `/orders/payment/${this.orderId}`;
+    },
+
+    async markReady() {
+      try {
+        const response = await fetch('/orders/update_status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            order_id: this.orderId,
+            status: 'Ready'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          this.order.status = 'Ready';
+          this.showNotification('Order marked as ready', 'success');
+        } else {
+          this.showNotification(result.message || 'Failed to update order', 'error');
+        }
+      } catch (error) {
+        console.error('Error updating order:', error);
+        this.showNotification('Error updating order', 'error');
+      }
+    },
+
+    printKOT() {
+      window.open(`/kot/print/${this.orderId}`, '_blank');
+    },
+
+    printOrder() {
+      window.open(`/reports/invoice/${this.orderId}`, '_blank');
+    },
+    
+    printThermalBill() {
+      window.open(`/orders/print/${this.orderId}`, '_blank');
+    },
+    
+    printKOT() {
+      window.open(`/kot/print/${this.orderId}`, '_blank');
+    },
+    
+    printManagement() {
+      window.open('/orders/print-management', '_blank');
+    },
+
+    mergeOrder() {
+      const modal = new bootstrap.Modal(document.getElementById('mergeModal'));
+      modal.show();
+    },
+
+    async confirmMerge() {
+      if (!this.mergeTargetOrder.trim()) {
+        this.showNotification('Please enter target order number', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/orders/merge', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            source_order_id: this.orderId,
+            target_order_number: this.mergeTargetOrder
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          this.showNotification('Orders merged successfully', 'success');
+          setTimeout(() => {
+            window.location.href = `/orders/view/${result.merged_order_id}`;
+          }, 1500);
+        } else {
+          this.showNotification(result.message || 'Failed to merge orders', 'error');
+        }
+      } catch (error) {
+        console.error('Error merging orders:', error);
+        this.showNotification('Error merging orders', 'error');
+      }
+    },
+
+    async cancelOrder() {
+      if (!confirm(`Are you sure you want to cancel order ${this.order.order_number}? This action cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/orders/update_status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            order_id: this.orderId,
+            status: 'Cancelled'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          this.order.status = 'Cancelled';
+          this.showNotification('Order cancelled successfully', 'success');
+        } else {
+          this.showNotification(result.message || 'Failed to cancel order', 'error');
+        }
+      } catch (error) {
+        console.error('Error cancelling order:', error);
+        this.showNotification('Error cancelling order', 'error');
+      }
+    },
+
+    showNotification(message, type = 'info') {
+      // Use global showNotification function from utils.js
+      return window.showNotification(message, type);
+    }
+  };
+}
+</script>
+<script>
+  // Execute the order view function
+  document.addEventListener('alpine:init', () => {
+    try {
+      Alpine.data('orderView', orderView);
+    } catch (error) {
+      console.error('Error initializing Alpine.js data:', error);
+    }
+  });
+</script>
+{% endblock %}

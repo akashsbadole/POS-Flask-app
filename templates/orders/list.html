@@ -1,0 +1,788 @@
+{% extends "base.html" %} {% block title %}Order Management - Restaurant POS{% endblock %} {% block extra_css %}
+<style>
+  .order-card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+  }
+  
+  .order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+  
+  .status-badge {
+    font-size: 0.8em;
+    padding: 4px 8px;
+  }
+  
+  .order-filters {
+    background: #f8f9fc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .order-stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .stat-card {
+    flex: 1;
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  
+  .stat-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4e73df;
+  }
+  
+  .stat-label {
+    color: #6c757d;
+    font-size: 0.9em;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid" x-data="orderList()">
+  <!-- Page Header -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Order Management</h1>
+    <div>
+      <a href="{{ url_for('orders.new_order') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Order
+      </a>
+    </div>
+  </div>
+
+  <!-- Order Statistics -->
+  <div class="order-stats">
+    <div class="stat-card">
+      <div class="stat-number" x-text="stats.totalOrders"></div>
+      <div class="stat-label">Total Orders</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" x-text="stats.todayOrders"></div>
+      <div class="stat-label">Today's Orders</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" x-text="stats.activeOrders"></div>
+      <div class="stat-label">Active Orders</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" x-text="'₹' + stats.todayRevenue.toFixed(2)"></div>
+      <div class="stat-label">Today's Revenue</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="order-filters">
+    <div class="row">
+      <div class="col-md-3">
+        <label class="form-label">Status</label>
+        <select x-model="filters.status" @change="applyFilters()" class="form-select">
+          <option value="">All Status</option>
+          <option value="New">New</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Ready">Ready</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Date Range</label>
+        <select x-model="filters.dateRange" @change="applyFilters()" class="form-select">
+          <option value="">All Time</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="custom">Custom Range</option>
+        </select>
+      </div>
+      <div class="col-md-3" x-show="filters.dateRange === 'custom'">
+        <label class="form-label">Start Date</label>
+        <input type="date" x-model="filters.startDate" @change="applyFilters()" class="form-control">
+      </div>
+      <div class="col-md-3" x-show="filters.dateRange === 'custom'">
+        <label class="form-label">End Date</label>
+        <input type="date" x-model="filters.endDate" @change="applyFilters()" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Search</label>
+        <div class="input-group">
+          <input type="text" x-model="filters.search" @input="debounceSearch()" class="form-control" placeholder="Order #, Customer, Table...">
+          <button class="btn btn-outline-secondary" @click="clearFilters()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders List -->
+  <div class="row" x-show="loading">
+    <div class="col-12 text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" x-show="!loading">
+    <template x-for="order in filteredOrders" :key="order.id">
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card order-card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <strong x-text="order.order_number"></strong>
+              <span class="badge status-badge ms-2" 
+                    :class="getStatusClass(order.status)" 
+                    x-text="order.status"></span>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fas fa-ellipsis-v"></i>
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" :href="`/orders/view/${order.id}`">
+                  <i class="fas fa-eye"></i> View Details
+                </a></li>
+                <li><a class="dropdown-item" @click="printOrder(order)">
+                  <i class="fas fa-print"></i> Print
+                </a></li>
+                <li><a class="dropdown-item" @click="exportOrder(order)" x-show="order.status === 'Completed'">
+                  <i class="fas fa-download"></i> Export
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" @click="cancelOrder(order)" x-show="['New', 'In Progress'].includes(order.status)">
+                  <i class="fas fa-times"></i> Cancel Order
+                </a></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="card-body">
+            <div class="row mb-2">
+              <div class="col-6">
+                <small class="text-muted">Type:</small>
+                <div x-text="order.order_type"></div>
+              </div>
+              <div class="col-6">
+                <small class="text-muted">Table:</small>
+                <div x-text="order.table_number || 'N/A'"></div>
+              </div>
+            </div>
+            
+            <div class="row mb-2">
+              <div class="col-12">
+                <small class="text-muted">Customer:</small>
+                <div x-text="order.customer_name || 'Walk-in'"></div>
+              </div>
+            </div>
+            
+            <div class="row mb-2">
+              <div class="col-6">
+                <small class="text-muted">Items:</small>
+                <div x-text="order.item_count"></div>
+              </div>
+              <div class="col-6">
+                <small class="text-muted">Time:</small>
+                <div x-text="formatTime(order.created_at)"></div>
+              </div>
+            </div>
+            
+            <div class="border-top pt-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <small class="text-muted">Total:</small>
+                  <strong class="text-primary" x-text="'₹' + order.grand_total.toFixed(2)"></strong>
+                </div>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary" @click="viewOrder(order)">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-outline-success" @click="proceedToPayment(order)" x-show="['New', 'In Progress'].includes(order.status)">
+                    <i class="fas fa-credit-card"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- No Orders Found -->
+    <div class="col-12" x-show="filteredOrders.length === 0">
+      <div class="text-center py-5">
+        <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No orders found</h5>
+        <p class="text-muted">Try adjusting your filters or create a new order.</p>
+        <a href="{{ url_for('orders.new_order') }}" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Create New Order
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-between align-items-center mt-4" x-show="totalPages > 1">
+    <div class="text-muted">
+      Showing <span x-text="(currentPage - 1) * pageSize + 1"></span> to 
+      <span x-text="Math.min(currentPage * pageSize, totalCount)"></span> of 
+      <span x-text="totalCount"></span> orders
+    </div>
+    <nav>
+      <ul class="pagination mb-0">
+        <li class="page-item" :class="{disabled: currentPage === 1}">
+          <a class="page-link" @click="changePage(currentPage - 1)" href="#">
+            <i class="fas fa-chevron-left"></i>
+          </a>
+        </li>
+        <template x-for="page in displayedPages" :key="page">
+          <li class="page-item" :class="{active: page === currentPage}">
+            <a class="page-link" @click="changePage(page)" href="#" x-text="page"></a>
+          </li>
+        </template>
+        <li class="page-item" :class="{disabled: currentPage === totalPages}">
+          <a class="page-link" @click="changePage(currentPage + 1)" href="#">
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderModal" tabindex="-1" x-data="{
+  modalOrder: null,
+  
+  init() {
+    // Listen for custom event to set modal order
+    this.$el.addEventListener('setModalOrder', (event) => {
+      this.modalOrder = event.detail.order;
+    });
+  },
+  
+  printModalOrder() {
+    if (this.modalOrder && this.modalOrder.id) {
+      window.open(`/kot/print/${this.modalOrder.id}`, '_blank');
+    }
+  },
+  
+  payModalOrder() {
+    if (this.modalOrder && this.modalOrder.id) {
+      window.location.href = `/orders/payment/${this.modalOrder.id}`;
+    }
+  },
+  
+  // Wrapper methods for global functions
+  getStatusClass(status) {
+    return window.getStatusClass ? window.getStatusClass(status) : '';
+  },
+  formatTime(dateString) {
+    return window.formatTime ? window.formatTime(dateString) : '';
+  },
+  formatDateTime(dateString) {
+    return window.formatDateTime ? window.formatDateTime(dateString) : '';
+  }
+}">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Order Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" x-show="modalOrder && modalOrder.id">
+        <!-- Order Header -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>Order Number:</strong> <span x-text="modalOrder?.order_number || 'N/A'"></span>
+          </div>
+          <div class="col-md-6">
+            <strong>Status:</strong>
+            <span class="badge" :class="getStatusClass(modalOrder?.status)" x-text="modalOrder?.status || 'Unknown'"></span>
+          </div>
+        </div>
+        
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <strong>Order Type:</strong> <span x-text="modalOrder?.order_type || 'N/A'"></span>
+          </div>
+          <div class="col-md-4">
+            <strong>Table:</strong> <span x-text="modalOrder?.table_number || 'N/A'"></span>
+          </div>
+          <div class="col-md-4">
+            <strong>Created:</strong> <span x-text="formatDateTime(modalOrder?.created_at)"></span>
+          </div>
+        </div>
+
+        <!-- Customer Info -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>Customer:</strong> <span x-text="modalOrder?.customer_name || 'Walk-in'"></span>
+          </div>
+          <div class="col-md-6">
+            <strong>Mobile:</strong> <span x-text="modalOrder?.customer_mobile || 'N/A'"></span>
+          </div>
+        </div>
+
+        <!-- Order Items -->
+        <h6>Order Items</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="item in (modalOrder?.items || [])" :key="item?.id">
+                <tr>
+                  <td x-text="item?.name || 'Unknown Item'"></td>
+                  <td x-text="item?.quantity || 0"></td>
+                  <td x-text="'₹' + (item?.price || 0).toFixed(2)"></td>
+                  <td x-text="'₹' + ((item?.price || 0) * (item?.quantity || 0)).toFixed(2)"></td>
+                </tr>
+              </template>
+              <tr x-show="!modalOrder?.items || modalOrder.items.length === 0">
+                <td colspan="4" class="text-center text-muted">No items found</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Order Totals -->
+        <div class="row">
+          <div class="col-md-6 ms-auto">
+            <div class="d-flex justify-content-between">
+              <span>Subtotal:</span>
+              <span x-text="'₹' + (modalOrder?.subtotal || 0).toFixed(2)"></span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span>CGST (2.5%):</span>
+              <span x-text="'₹' + (modalOrder?.cgst_amount || 0).toFixed(2)"></span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span>SGST (2.5%):</span>
+              <span x-text="'₹' + (modalOrder?.sgst_amount || 0).toFixed(2)"></span>
+            </div>
+            <div class="d-flex justify-content-between" x-show="modalOrder?.discount_amount > 0">
+              <span>Discount:</span>
+              <span x-text="'-₹' + (modalOrder?.discount_amount || 0).toFixed(2)"></span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between h5">
+              <strong>Total:</strong>
+              <strong x-text="'₹' + (modalOrder?.grand_total || 0).toFixed(2)"></strong>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body text-center py-5" x-show="!modalOrder || !modalOrder.id">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading order details...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading order details...</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" @click="printModalOrder()" :disabled="!modalOrder || !modalOrder.id">
+          <i class="fas fa-print"></i> Print
+        </button>
+        <button type="button" class="btn btn-success" @click="payModalOrder()"
+                x-show="modalOrder && ['New', 'In Progress'].includes(modalOrder?.status)"
+                :disabled="!modalOrder || !modalOrder.id">
+          <i class="fas fa-credit-card"></i> Process Payment
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+function orderList() {
+  return {
+    orders: [],
+    filteredOrders: [],
+    stats: {
+      totalOrders: 0,
+      todayOrders: 0,
+      activeOrders: 0,
+      todayRevenue: 0
+    },
+    filters: {
+      status: '',
+      dateRange: '',
+      startDate: '',
+      endDate: '',
+      search: ''
+    },
+    loading: false,
+    currentPage: 1,
+    pageSize: 12,
+    totalCount: 0,
+    totalPages: 0,
+    selectedOrder: null,
+    searchTimeout: null,
+
+    // Wrapper methods for global functions
+    getStatusClass(status) {
+      return window.getStatusClass ? window.getStatusClass(status) : '';
+    },
+    formatTime(dateString) {
+      return window.formatTime ? window.formatTime(dateString) : '';
+    },
+    formatDateTime(dateString) {
+      return window.formatDateTime ? window.formatDateTime(dateString) : '';
+    },
+
+    init() {
+      this.loadOrders();
+      this.loadStats();
+    },
+
+    async loadOrders() {
+      this.loading = true;
+      try {
+        const params = new URLSearchParams({
+          page: this.currentPage,
+          status: this.filters.status,
+          date: this.getDateFilter(),
+          search: this.filters.search
+        });
+
+        const response = await fetch(`/orders/list?${params}`);
+        const html = await response.text();
+        
+        // Parse the HTML to extract order data (simplified for this example)
+        // In real implementation, you'd have a dedicated API endpoint
+        this.orders = await this.fetchOrdersData();
+        this.applyFilters();
+        
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        this.showNotification('Error loading orders', 'error');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchOrdersData() {
+      // Mock data - replace with actual API call
+      return [
+        {
+          id: 1,
+          order_number: 'ORD20241211001',
+          status: 'Completed',
+          order_type: 'Dine-in',
+          table_number: 'T1',
+          customer_name: 'John Doe',
+          customer_mobile: '9876543210',
+          item_count: 3,
+          subtotal: 450.00,
+          cgst_amount: 11.25,
+          sgst_amount: 11.25,
+          grand_total: 472.50,
+          created_at: new Date().toISOString(),
+          items: [
+            { id: 1, name: 'Butter Chicken', quantity: 1, price: 180.00 },
+            { id: 2, name: 'Veg Biryani', quantity: 1, price: 140.00 },
+            { id: 3, name: 'Fresh Lime Soda', quantity: 2, price: 40.00 }
+          ]
+        }
+        // Add more mock orders as needed
+      ];
+    },
+
+    async loadStats() {
+      // Mock stats - replace with actual API call
+      this.stats = {
+        totalOrders: 156,
+        todayOrders: 24,
+        activeOrders: 8,
+        todayRevenue: 12450.75
+      };
+    },
+
+    applyFilters() {
+      let filtered = [...this.orders];
+
+      // Status filter
+      if (this.filters.status) {
+        filtered = filtered.filter(order => order.status === this.filters.status);
+      }
+
+      // Date filter
+      if (this.filters.dateRange) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        filtered = filtered.filter(order => {
+          const orderDate = new Date(order.created_at);
+          
+          switch (this.filters.dateRange) {
+            case 'today':
+              return orderDate >= today;
+            case 'yesterday':
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              return orderDate >= yesterday && orderDate < today;
+            case 'week':
+              const weekAgo = new Date(today);
+              weekAgo.setDate(weekAgo.getDate() - 7);
+              return orderDate >= weekAgo;
+            case 'month':
+              const monthAgo = new Date(today);
+              monthAgo.setMonth(monthAgo.getMonth() - 1);
+              return orderDate >= monthAgo;
+            case 'custom':
+              const startDate = new Date(this.filters.startDate);
+              const endDate = new Date(this.filters.endDate);
+              endDate.setHours(23, 59, 59, 999);
+              return orderDate >= startDate && orderDate <= endDate;
+            default:
+              return true;
+          }
+        });
+      }
+
+      // Search filter
+      if (this.filters.search) {
+        const search = this.filters.search.toLowerCase();
+        filtered = filtered.filter(order => 
+          order.order_number.toLowerCase().includes(search) ||
+          (order.customer_name && order.customer_name.toLowerCase().includes(search)) ||
+          (order.table_number && order.table_number.toLowerCase().includes(search))
+        );
+      }
+
+      this.filteredOrders = filtered;
+      this.updatePagination();
+    },
+
+    updatePagination() {
+      this.totalCount = this.filteredOrders.length;
+      this.totalPages = Math.ceil(this.totalCount / this.pageSize);
+      
+      if (this.currentPage > this.totalPages) {
+        this.currentPage = 1;
+      }
+    },
+
+    get displayedPages() {
+      const pages = [];
+      const start = Math.max(1, this.currentPage - 2);
+      const end = Math.min(this.totalPages, this.currentPage + 2);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      return pages;
+    },
+
+    changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
+    },
+
+    debounceSearch() {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.applyFilters();
+      }, 300);
+    },
+
+    clearFilters() {
+      this.filters = {
+        status: '',
+        dateRange: '',
+        startDate: '',
+        endDate: '',
+        search: ''
+      };
+      this.applyFilters();
+    },
+
+    getDateFilter() {
+      // Return date string for API call
+      switch (this.filters.dateRange) {
+        case 'today':
+          return new Date().toISOString().split('T')[0];
+        case 'yesterday':
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          return yesterday.toISOString().split('T')[0];
+        default:
+          return '';
+      }
+    },
+
+    viewOrder(order) {
+      try {
+        if (!order) {
+          this.showNotification('Invalid order data', 'error');
+          return;
+        }
+        
+        // Store the order in the main component
+        this.selectedOrder = order;
+        
+        // Get the modal element
+        const modalElement = document.getElementById('orderModal');
+        if (!modalElement) {
+          this.showNotification('Modal not found', 'error');
+          return;
+        }
+        
+        // Set the modalOrder directly using Alpine's magic
+        // This approach ensures the modal's x-data is updated
+        setTimeout(() => {
+          try {
+            const modalData = Alpine.$data(modalElement);
+            if (modalData) {
+              modalData.modalOrder = { ...order };
+            }
+          } catch (err) {
+            console.error('Error setting modal order:', err);
+            // Fallback: use a custom event to communicate with the modal
+            const event = new CustomEvent('setModalOrder', { detail: { order: { ...order } } });
+            modalElement.dispatchEvent(event);
+          }
+        }, 10);
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Add event listener to clean up when modal is hidden
+        modalElement.addEventListener('hidden.bs.modal', function() {
+          try {
+            const modalData = Alpine.$data(modalElement);
+            if (modalData) {
+              modalData.modalOrder = null;
+            }
+          } catch (err) {
+            console.error('Error clearing modal order:', err);
+          }
+        }, { once: true });
+        
+      } catch (error) {
+        console.error('Error viewing order:', error);
+        this.showNotification('Error opening order details', 'error');
+      }
+    },
+
+    printOrder(order) {
+      try {
+        if (!order || !order.id) {
+          this.showNotification('Invalid order data for printing', 'error');
+          return;
+        }
+        
+        window.open(`/kot/print/${order.id}`, '_blank');
+      } catch (error) {
+        console.error('Error printing order:', error);
+        this.showNotification('Error printing order', 'error');
+      }
+    },
+
+    exportOrder(order) {
+      try {
+        if (!order || !order.id) {
+          this.showNotification('Invalid order data for export', 'error');
+          return;
+        }
+        
+        window.location.href = `/reports/export/order/${order.id}`;
+      } catch (error) {
+        console.error('Error exporting order:', error);
+        this.showNotification('Error exporting order', 'error');
+      }
+    },
+
+    proceedToPayment(order) {
+      try {
+        if (!order || !order.id) {
+          this.showNotification('Invalid order data for payment', 'error');
+          return;
+        }
+        
+        window.location.href = `/orders/payment/${order.id}`;
+      } catch (error) {
+        console.error('Error proceeding to payment:', error);
+        this.showNotification('Error processing payment', 'error');
+      }
+    },
+
+    async cancelOrder(order) {
+      if (!order || !order.id) return;
+      
+      if (!confirm(`Are you sure you want to cancel order ${order.order_number}?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/orders/update_status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            order_id: order.id,
+            status: 'Cancelled'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          this.showNotification('Order cancelled successfully', 'success');
+          order.status = 'Cancelled';
+        } else {
+          this.showNotification(result.message || 'Failed to cancel order', 'error');
+        }
+      } catch (error) {
+        console.error('Error cancelling order:', error);
+        this.showNotification('Error cancelling order', 'error');
+      }
+    },
+
+    showNotification(message, type = 'info') {
+      // Use global showNotification function from utils.js
+      return window.showNotification(message, type);
+    }
+  };
+}
+</script>
+<script>
+  // Execute the order list function
+  document.addEventListener('alpine:init', () => {
+    try {
+      // Store reference to the component for modal access
+      window.orderListComponent = null;
+      
+      Alpine.data('orderList', () => {
+        const component = orderList();
+        window.orderListComponent = component; // Store reference globally
+        return component;
+      });
+    } catch (error) {
+      console.error('Error initializing Alpine.js data:', error);
+    }
+  });
+</script>
+{% endblock %}

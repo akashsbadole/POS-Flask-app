@@ -1,0 +1,563 @@
+{% extends "base.html" %} {% block title %}GSTR-1 Report - Restaurant POS{% endblock %} {% block extra_css %}
+<style>
+  .gstr-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 30px;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  .period-selector {
+    background: #f8f9fc;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+  }
+  
+  .gstr-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .summary-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 4px solid #28a745;
+  }
+  
+  .summary-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #28a745;
+    margin-bottom: 5px;
+  }
+  
+  .summary-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+  }
+  
+  .gstr-table {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+  }
+  
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+  }
+  
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+  
+  .data-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+  }
+  
+  .data-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .data-table tbody tr:hover {
+    background: #f8f9fa;
+  }
+  
+  .text-end {
+    text-align: right;
+  }
+  
+  .text-center {
+    text-align: center;
+  }
+  
+  .export-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .alert-gstr {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .gst-compliance {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid" x-data="gstr1Report()">
+  <!-- GSTR-1 Header -->
+  <div class="gstr-header">
+    <h1 class="mb-2">GSTR-1 Report</h1>
+    <p class="mb-0 fs-5">
+      GST Return - Outward Supplies
+      <span class="ms-3 opacity-75" x-show="taxPeriod">
+        Period: <span x-text="formatPeriod(taxPeriod)"></span>
+      </span>
+    </p>
+  </div>
+
+  <!-- Period Selector -->
+  <div class="period-selector">
+    <div class="row align-items-end">
+      <div class="col-md-3">
+        <label class="form-label fw-bold">Financial Year</label>
+        <select x-model="financialYear" @change="updatePeriods()" class="form-select">
+          <option value="2024-25">2024-25</option>
+          <option value="2023-24">2023-24</option>
+          <option value="2022-23">2022-23</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">Tax Period</label>
+        <select x-model="taxPeriod" @change="loadReport()" class="form-select">
+          <template x-for="period in availablePeriods" :key="period.value">
+            <option :value="period.value" x-text="period.label"></option>
+          </template>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">Report Type</label>
+        <select x-model="reportType" @change="loadReport()" class="form-select">
+          <option value="summary">Summary</option>
+          <option value="detailed">Detailed Invoice-wise</option>
+          <option value="hsn">HSN Summary</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <div class="btn-group w-100" role="group">
+          <button type="button" @click="refreshReport()" class="btn btn-success">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </button>
+          <button type="button" @click="validateData()" class="btn btn-warning">
+            <i class="fas fa-check-circle"></i> Validate
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GST Compliance Alert -->
+  <div class="alert-gstr" x-show="reportData && reportData.compliance_notes">
+    <h6><i class="fas fa-info-circle"></i> GST Compliance Information</h6>
+    <p class="mb-0" x-text="reportData.compliance_notes"></p>
+  </div>
+
+  <!-- Loading State -->
+  <div x-show="loading" class="text-center py-5">
+    <div class="spinner-border text-success" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-3">Generating GSTR-1 report...</p>
+  </div>
+
+  <!-- Report Content -->
+  <div x-show="!loading && reportData">
+    <!-- Summary Cards -->
+    <div class="gstr-summary">
+      <div class="summary-card">
+        <div class="summary-value" x-text="(reportData.totalInvoices || 0)"></div>
+        <div class="summary-label">Total Invoices</div>
+      </div>
+      
+      <div class="summary-card" style="border-left-color: #17a2b8;">
+        <div class="summary-value" style="color: #17a2b8;">
+          ₹<span x-text="(reportData.totalTaxableValue || 0).toFixed(2)"></span>
+        </div>
+        <div class="summary-label">Total Taxable Value</div>
+      </div>
+      
+      <div class="summary-card" style="border-left-color: #6f42c1;">
+        <div class="summary-value" style="color: #6f42c1;">
+          ₹<span x-text="(reportData.totalIGST || 0).toFixed(2)"></span>
+        </div>
+        <div class="summary-label">Total IGST</div>
+      </div>
+      
+      <div class="summary-card" style="border-left-color: #fd7e14;">
+        <div class="summary-value" style="color: #fd7e14;">
+          ₹<span x-text="(reportData.totalCGST || 0).toFixed(2)"></span>
+        </div>
+        <div class="summary-label">Total CGST</div>
+      </div>
+      
+      <div class="summary-card" style="border-left-color: #e83e8c;">
+        <div class="summary-value" style="color: #e83e8c;">
+          ₹<span x-text="(reportData.totalSGST || 0).toFixed(2)"></span>
+        </div>
+        <div class="summary-label">Total SGST</div>
+      </div>
+      
+      <div class="summary-card" style="border-left-color: #20c997;">
+        <div class="summary-value" style="color: #20c997;">
+          ₹<span x-text="(reportData.totalCess || 0).toFixed(2)"></span>
+        </div>
+        <div class="summary-label">Total CESS</div>
+      </div>
+    </div>
+
+    <!-- B2B Invoices (if detailed) -->
+    <div class="gstr-table" x-show="reportType === 'detailed'">
+      <h3 class="section-title">B2B Invoices</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Invoice No</th>
+            <th>Invoice Date</th>
+            <th>Customer GSTIN</th>
+            <th>Customer Name</th>
+            <th class="text-end">Taxable Value</th>
+            <th class="text-end">IGST</th>
+            <th class="text-end">CGST</th>
+            <th class="text-end">SGST</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="invoice in reportData.b2bInvoices || []" :key="invoice.id">
+            <tr>
+              <td x-text="invoice.invoice_number"></td>
+              <td x-text="formatDate(invoice.invoice_date)"></td>
+              <td x-text="invoice.customer_gstin"></td>
+              <td x-text="invoice.customer_name"></td>
+              <td class="text-end">₹<span x-text="invoice.taxable_value.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.igst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.cgst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.sgst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.total_amount.toFixed(2)"></span></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- B2C Large Invoices (if detailed) -->
+    <div class="gstr-table" x-show="reportType === 'detailed'">
+      <h3 class="section-title">B2C Large Invoices (>₹2.5L)</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Invoice No</th>
+            <th>Invoice Date</th>
+            <th>Customer Name</th>
+            <th>Place of Supply</th>
+            <th class="text-end">Taxable Value</th>
+            <th class="text-end">IGST</th>
+            <th class="text-end">CGST</th>
+            <th class="text-end">SGST</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="invoice in reportData.b2cLargeInvoices || []" :key="invoice.id">
+            <tr>
+              <td x-text="invoice.invoice_number"></td>
+              <td x-text="formatDate(invoice.invoice_date)"></td>
+              <td x-text="invoice.customer_name"></td>
+              <td x-text="invoice.place_of_supply"></td>
+              <td class="text-end">₹<span x-text="invoice.taxable_value.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.igst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.cgst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.sgst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="invoice.total_amount.toFixed(2)"></span></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tax Summary -->
+    <div class="gstr-table">
+      <h3 class="section-title">Tax Summary</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="text-end">Taxable Value</th>
+            <th class="text-end">IGST Amount</th>
+            <th class="text-end">CGST Amount</th>
+            <th class="text-end">SGST Amount</th>
+            <th class="text-end">CESS Amount</th>
+            <th class="text-end">Total Tax</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="summary in reportData.taxSummary || []" :key="summary.description">
+            <tr>
+              <td x-text="summary.description"></td>
+              <td class="text-end">₹<span x-text="summary.taxable_value.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="summary.igst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="summary.cgst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="summary.sgst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="summary.cess_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="summary.total_tax.toFixed(2)"></span></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- HSN Summary (if HSN report) -->
+    <div class="gstr-table" x-show="reportType === 'hsn'">
+      <h3 class="section-title">HSN-wise Summary</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>HSN Code</th>
+            <th>Description</th>
+            <th class="text-end">UQC</th>
+            <th class="text-end">Quantity</th>
+            <th class="text-end">Total Value</th>
+            <th class="text-end">Tax Rate</th>
+            <th class="text-end">Taxable Value</th>
+            <th class="text-end">IGST Amount</th>
+            <th class="text-end">CGST Amount</th>
+            <th class="text-end">SGST Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="hsn in reportData.hsnSummary || []" :key="hsn.hsn_code">
+            <tr>
+              <td x-text="hsn.hsn_code"></td>
+              <td x-text="hsn.description"></td>
+              <td class="text-end" x-text="hsn.uqc"></td>
+              <td class="text-end" x-text="hsn.quantity"></td>
+              <td class="text-end">₹<span x-text="hsn.total_value.toFixed(2)"></span></td>
+              <td class="text-end"><span x-text="hsn.tax_rate"></span>%</td>
+              <td class="text-end">₹<span x-text="hsn.taxable_value.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="hsn.igst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="hsn.cgst_amount.toFixed(2)"></span></td>
+              <td class="text-end">₹<span x-text="hsn.sgst_amount.toFixed(2)"></span></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Export Actions -->
+    <div class="export-actions">
+      <button @click="exportJSON()" class="btn btn-outline-success">
+        <i class="fas fa-file-code"></i> Export JSON
+      </button>
+      <button @click="exportCSV()" class="btn btn-outline-primary">
+        <i class="fas fa-file-csv"></i> Export CSV
+      </button>
+      <button @click="exportExcel()" class="btn btn-outline-success">
+        <i class="fas fa-file-excel"></i> Export Excel
+      </button>
+      <button @click="generateGSTRJSON()" class="btn btn-outline-warning">
+        <i class="fas fa-upload"></i> Generate for GST Portal
+      </button>
+      <button @click="printReport()" class="btn btn-outline-secondary">
+        <i class="fas fa-print"></i> Print
+      </button>
+    </div>
+
+    <!-- GST Compliance Information -->
+    <div class="gst-compliance">
+      <h6><i class="fas fa-exclamation-triangle"></i> Important Notes</h6>
+      <ul class="mb-0">
+        <li>Ensure all invoice details are accurate before filing GSTR-1</li>
+        <li>Verify GSTIN numbers of all B2B customers</li>
+        <li>Reverse charge mechanism should be correctly applied where applicable</li>
+        <li>Export invoices should be correctly classified with shipping bill details</li>
+        <li>This report is generated as per GSTN format and can be uploaded directly</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- No Data Message -->
+  <div x-show="!loading && !reportData" class="text-center py-5">
+    <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">No data available for selected period</h5>
+    <p class="text-muted">Try selecting a different period or check if invoices were generated.</p>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function gstr1Report() {
+  return {
+    financialYear: '2024-25',
+    taxPeriod: '',
+    reportType: 'summary',
+    loading: false,
+    reportData: null,
+    availablePeriods: [],
+
+    init() {
+      this.updatePeriods();
+    },
+
+    updatePeriods() {
+      // Generate monthly periods for the selected financial year
+      const [startYear, endYear] = this.financialYear.split('-');
+      const periods = [];
+      
+      for (let month = 4; month <= 15; month++) {
+        let actualMonth, periodLabel, periodValue;
+        
+        if (month <= 12) {
+          actualMonth = month;
+          periodLabel = `${startYear}-${String(month).padStart(2, '0')}`;
+          periodValue = `${startYear}-${String(month).padStart(2, '0')}`;
+        } else {
+          actualMonth = month - 12;
+          periodLabel = `${endYear}-${String(actualMonth).padStart(2, '0')}`;
+          periodValue = `${endYear}-${String(actualMonth).padStart(2, '0')}`;
+        }
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        periods.push({
+          label: `${monthNames[actualMonth - 1]} ${periodLabel}`,
+          value: periodValue
+        });
+      }
+      
+      this.availablePeriods = periods;
+      
+      // Set current period as default
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      let defaultPeriod;
+      
+      if (currentMonth >= 4) {
+        defaultPeriod = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      } else {
+        defaultPeriod = `${currentYear - 1}-${String(currentMonth).padStart(2, '0')}`;
+      }
+      
+      this.taxPeriod = defaultPeriod;
+      this.loadReport();
+    },
+
+    async loadReport() {
+      if (!this.taxPeriod) return;
+      
+      this.loading = true;
+      try {
+        const params = new URLSearchParams({
+          financial_year: this.financialYear,
+          tax_period: this.taxPeriod,
+          report_type: this.reportType
+        });
+
+        const response = await fetch(`/reports/gstr1_data?${params}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          this.reportData = result.data;
+        } else {
+          this.showNotification('Failed to load GSTR-1 report', 'error');
+        }
+      } catch (error) {
+        console.error('Error loading report:', error);
+        this.showNotification('Error loading GSTR-1 report', 'error');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    refreshReport() {
+      this.loadReport();
+      this.showNotification('GSTR-1 report refreshed', 'success');
+    },
+
+    async validateData() {
+      if (!this.reportData) return;
+      
+      // Implement validation logic
+      const validationIssues = [];
+      
+      if (validationIssues.length > 0) {
+        this.showNotification('Validation issues found: ' + validationIssues.join(', '), 'warning');
+      } else {
+        this.showNotification('Data validation passed successfully', 'success');
+      }
+    },
+
+    exportJSON() {
+      const url = `/reports/export/gstr1_json?fy=${this.financialYear}&period=${this.taxPeriod}&type=${this.reportType}`;
+      window.location.href = url;
+    },
+
+    exportCSV() {
+      const url = `/reports/export/gstr1_csv?fy=${this.financialYear}&period=${this.taxPeriod}&type=${this.reportType}`;
+      window.location.href = url;
+    },
+
+    exportExcel() {
+      const url = `/reports/export/gstr1_excel?fy=${this.financialYear}&period=${this.taxPeriod}&type=${this.reportType}`;
+      window.location.href = url;
+    },
+
+    generateGSTRJSON() {
+      const url = `/reports/export/gstr1_portal_json?fy=${this.financialYear}&period=${this.taxPeriod}`;
+      window.open(url, '_blank');
+    },
+
+    printReport() {
+      window.print();
+    },
+
+    formatPeriod(period) {
+      if (!period) return '';
+      const [year, month] = period.split('-');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${monthNames[parseInt(month) - 1]} ${year}`;
+    },
+
+    formatDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN');
+    },
+
+    showNotification(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+      toast.style.zIndex = '9999';
+      toast.textContent = message;
+
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+  };
+}
+</script>
+{% endblock %}

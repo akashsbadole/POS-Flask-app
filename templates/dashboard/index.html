@@ -1,0 +1,315 @@
+{% extends "base.html" %} {% block title %}Dashboard - Restaurant POS{% endblock
+%} {% block content %}
+<div class="container-fluid" x-data="dashboardData()">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+    <div class="btn-group" role="group">
+      <button @click="refreshStats()" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <!-- Today's Orders -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-left-primary shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-primary text-uppercase mb-1"
+              >
+                Today's Orders
+              </div>
+              <div
+                class="h5 mb-0 font-weight-bold text-gray-800"
+                x-text="stats.today.orders"
+              >
+                0
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Revenue -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-left-success shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-success text-uppercase mb-1"
+              >
+                Today's Revenue
+              </div>
+              <div
+                class="h5 mb-0 font-weight-bold text-gray-800"
+                x-text="'₹' + stats.today.revenue.toFixed(2)"
+              >
+                ₹0.00
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Available Tables -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-left-info shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-info text-uppercase mb-1"
+              >
+                Available Tables
+              </div>
+              <div
+                class="h5 mb-0 font-weight-bold text-gray-800"
+                x-text="stats.tables.available"
+              >
+                0
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-table fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Low Stock Items -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-left-warning shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-warning text-uppercase mb-1"
+              >
+                Low Stock Items
+              </div>
+              <div
+                class="h5 mb-0 font-weight-bold text-gray-800"
+                x-text="stats.low_stock_count"
+              >
+                0
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card shadow">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3 mb-2">
+              <a
+                href="{{ url_for('orders.new_order') }}"
+                class="btn btn-primary btn-block"
+              >
+                <i class="fas fa-plus"></i> New Order
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a
+                href="{{ url_for('kot.index') }}"
+                class="btn btn-info btn-block"
+              >
+                <i class="fas fa-utensils"></i> Kitchen Display
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <button
+                data-kot-url="{{ url_for('kot.kot_window') }}"
+                onclick="window.open(this.getAttribute('data-kot-url'), 'kot_window', 'width=1400,height=800,scrollbars=yes,resizable=yes')"
+                class="btn btn-warning btn-block"
+              >
+                <i class="fas fa-window-restore"></i> KOT Window
+              </button>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a
+                href="{{ url_for('orders.list_orders') }}"
+                class="btn btn-success btn-block"
+              >
+                <i class="fas fa-list"></i> View Orders
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a
+                href="{{ url_for('menu.index') }}"
+                class="btn btn-warning btn-block"
+              >
+                <i class="fas fa-edit"></i> Manage Menu
+              </a>
+            </div>
+            {% if current_user.is_authenticated and current_user.role == 'admin' %}
+            <div class="col-md-3 mb-2">
+              <a
+                href="{{ url_for('footer_settings.index') }}"
+                class="btn btn-secondary btn-block"
+              >
+                <i class="bi bi-gear"></i> Footer Settings
+              </a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Orders & Low Stock Items -->
+  <div class="row">
+    <!-- Recent Orders -->
+    <div class="col-lg-8 mb-4">
+      <div class="card shadow">
+        <div
+          class="card-header py-3 d-flex justify-content-between align-items-center"
+        >
+          <h6 class="m-0 font-weight-bold text-primary">Recent Orders</h6>
+          <a
+            href="{{ url_for('orders.list_orders') }}"
+            class="btn btn-sm btn-outline-primary"
+            >View All</a
+          >
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Customer</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                  <td>{{ order.order_number }}</td>
+                  <td>{{ order.customer_name or 'N/A' }}</td>
+                  <td>
+                    <span
+                      class="badge {% if order.status == 'Completed' %}badge-success{% elif order.status == 'In Progress' %}badge-warning{% elif order.status == 'New' %}badge-info{% else %}badge-secondary{% endif %}"
+                    >
+                      {{ order.status }}
+                    </span>
+                  </td>
+                  <td>₹{{ "%.2f"|format(order.grand_total or 0) }}</td>
+                  <td>
+                    {% if order.created_at %}
+                      {{ order.created_at.strftime('%H:%M') }}
+                    {% else %}
+                      ''
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a
+                      href="{{ url_for('orders.view_order', order_id=order.id) }}"
+                      class="btn btn-sm btn-outline-primary"
+                    >
+                      <i class="fas fa-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="6" class="text-center">No recent orders</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Low Stock Items -->
+    <div class="col-lg-4 mb-4">
+      <div class="card shadow">
+        <div
+          class="card-header py-3 d-flex justify-content-between align-items-center"
+        >
+          <h6 class="m-0 font-weight-bold text-warning">Low Stock Items</h6>
+          <a
+            href="{{ url_for('inventory.index') }}"
+            class="btn btn-sm btn-outline-warning"
+            >Manage</a
+          >
+        </div>
+        <div class="card-body">
+          {% if low_stock_items %} {% for item in low_stock_items %}
+          <div class="alert alert-warning py-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ item.name }}</strong>
+                <br />
+                <small>Stock: {{ item.stock_quantity }} {{ item.unit }}</small>
+              </div>
+              <a
+                href="{{ url_for('inventory.index') }}"
+                class="btn btn-sm btn-outline-warning"
+              >
+                Update
+              </a>
+            </div>
+          </div>
+          {% endfor %} {% else %}
+          <p class="text-center text-muted">All items are adequately stocked</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<!-- Pass data from Flask to JavaScript -->
+<script type="text/template" id="dashboard-stats-template">
+{{ stats|tojson|safe }}
+</script>
+<script type="text/javascript">
+// Parse dashboard stats from template
+try {
+  const statsTemplate = document.getElementById('dashboard-stats-template');
+  if (statsTemplate) {
+    window.dashboardStats = JSON.parse(statsTemplate.textContent);
+  } else {
+    window.dashboardStats = {};
+  }
+} catch (e) {
+  window.dashboardStats = {};
+  console.error('Error parsing dashboard stats:', e);
+}
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

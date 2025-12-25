@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Email Configuration{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-envelope"></i> Email Configuration</h1>
+                <div>
+                    <a href="{{ url_for('email.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                    <a href="{{ url_for('email.providers') }}" class="btn btn-info">
+                        <i class="fas fa-globe"></i> Provider Presets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" id="emailConfigForm">
+        <div class="row">
+            <!-- SMTP Settings -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-server"></i> SMTP Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="smtp_server">SMTP Server</label>
+                            <input type="text" class="form-control" id="smtp_server" name="smtp_server" 
+                                   value="{{ config.smtp_server or '' }}" required>
+                            <small class="form-text text-muted">
+                                e.g., smtp.gmail.com, smtp.office365.com
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="smtp_port">SMTP Port</label>
+                            <input type="number" class="form-control" id="smtp_port" name="smtp_port" 
+                                   value="{{ config.smtp_port or 587 }}" min="1" max="65535" required>
+                            <small class="form-text text-muted">
+                                Common ports: 587 (TLS), 465 (SSL), 25 (None)
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_tls" name="use_tls" 
+                                       {% if config.use_tls %}checked{% endif %}>
+                                <label class="form-check-label" for="use_tls">
+                                    Use TLS Encryption
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_ssl" name="use_ssl" 
+                                       {% if config.use_ssl %}checked{% endif %}>
+                                <label class="form-check-label" for="use_ssl">
+                                    Use SSL Encryption
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                TLS is recommended for most email providers
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Authentication -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-key"></i> Authentication</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   value="{{ config.username or '' }}" required>
+                            <small class="form-text text-muted">
+                                Your email address or username
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   value="{{ config.password or '' }}" required>
+                            <small class="form-text text-muted">
+                                Use app-specific passwords for Gmail/Outlook
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="from_email">From Email</label>
+                            <input type="email" class="form-control" id="from_email" name="from_email" 
+                                   value="{{ config.from_email or '' }}" required>
+                            <small class="form-text text-muted">
+                                Email address that sends notifications
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="from_name">From Name</label>
+                            <input type="text" class="form-control" id="from_name" name="from_name" 
+                                   value="{{ config.from_name or 'POS Backup System' }}">
+                            <small class="form-text text-muted">
+                                Display name for sent emails
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <!-- Recipients -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-users"></i> Recipients</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="recipients">Email Recipients</label>
+                            <textarea class="form-control" id="recipients" name="recipients" rows="4"
+                                      placeholder="Enter email addresses separated by commas">{{ config.recipients|join(', ') }}</textarea>
+                            <small class="form-text text-muted">
+                                Separate multiple email addresses with commas
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="backup_notifications" 
+                                       name="backup_notifications" {% if config.backup_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="backup_notifications">
+                                    Enable Backup Notifications
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Send email notifications when backups are created
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="test_emails" 
+                                       name="test_emails" {% if config.test_emails %}checked{% endif %}>
+                                <label class="form-check-label" for="test_emails">
+                                    Enable Test Emails
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Allow sending test emails for verification
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Advanced Settings -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-cog"></i> Advanced Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="max_attachment_size_mb">Max Attachment Size (MB)</label>
+                            <input type="number" class="form-control" id="max_attachment_size_mb" 
+                                   name="max_attachment_size_mb" value="{{ config.max_attachment_size_mb or 25 }}" 
+                                   min="1" max="100">
+                            <small class="form-text text-muted">
+                                Maximum size for email attachments
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="retry_attempts">Retry Attempts</label>
+                            <input type="number" class="form-control" id="retry_attempts" 
+                                   name="retry_attempts" value="{{ config.retry_attempts or 3 }}" 
+                                   min="1" max="10">
+                            <small class="form-text text-muted">
+                                Number of retry attempts for failed emails
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="retry_delay_seconds">Retry Delay (seconds)</label>
+                            <input type="number" class="form-control" id="retry_delay_seconds" 
+                                   name="retry_delay_seconds" value="{{ config.retry_delay_seconds or 5 }}" 
+                                   min="1" max="300">
+                            <small class="form-text text-muted">
+                                Delay between retry attempts
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Save Configuration
+                        </button>
+                        <button type="button" class="btn btn-success btn-lg ml-2" id="testConnectionBtn">
+                            <i class="fas fa-plug"></i> Test Connection
+                        </button>
+                        <button type="button" class="btn btn-info btn-lg ml-2" id="testEmailBtn">
+                            <i class="fas fa-paper-plane"></i> Send Test Email
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- JavaScript -->
+<script>
+// Provider presets
+const providerPresets = {
+    'gmail': {
+        smtp_server: 'smtp.gmail.com',
+        smtp_port: 587,
+        use_tls: true,
+        use_ssl: false,
+        from_name: 'POS Backup System'
+    },
+    'outlook': {
+        smtp_server: 'smtp-mail.outlook.com',
+        smtp_port: 587,
+        use_tls: true,
+        use_ssl: false,
+        from_name: 'POS Backup System'
+    },
+    'yahoo': {
+        smtp_server: 'smtp.mail.yahoo.com',
+        smtp_port: 587,
+        use_tls: true,
+        use_ssl: false,
+        from_name: 'POS Backup System'
+    },
+    'office365': {
+        smtp_server: 'smtp.office365.com',
+        smtp_port: 587,
+        use_tls: true,
+        use_ssl: false,
+        from_name: 'POS Backup System'
+    }
+};
+
+// Load provider preset
+function loadProviderPreset(provider) {
+    const preset = providerPresets[provider];
+    if (preset) {
+        document.getElementById('smtp_server').value = preset.smtp_server;
+        document.getElementById('smtp_port').value = preset.smtp_port;
+        document.getElementById('use_tls').checked = preset.use_tls;
+        document.getElementById('use_ssl').checked = preset.use_ssl;
+        document.getElementById('from_name').value = preset.from_name;
+    }
+}
+
+// Test connection
+document.getElementById('testConnectionBtn').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    fetch('{{ url_for("email.test") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(new FormData(document.getElementById('emailConfigForm')))
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Connection test successful!');
+        } else {
+            alert('Connection test failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error testing connection: ' + error.message);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plug"></i> Test Connection';
+    });
+});
+
+// Send test email
+document.getElementById('testEmailBtn').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    
+    fetch('{{ url_for("email.test") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(new FormData(document.getElementById('emailConfigForm')))
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Test email sent successfully!');
+        } else {
+            alert('Test email failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error sending test email: ' + error.message);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Test Email';
+    });
+});
+
+// Add provider preset buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('emailConfigForm');
+    const presetButtons = `
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6><i class="fas fa-globe"></i> Quick Setup</h6>
+            </div>
+            <div class="card-body">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="loadProviderPreset('gmail')">
+                        Gmail
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="loadProviderPreset('outlook')">
+                        Outlook
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="loadProviderPreset('yahoo')">
+                        Yahoo
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="loadProviderPreset('office365')">
+                        Office 365
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    form.insertAdjacentHTML('beforebegin', presetButtons);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>
+      {% block title %}{{ public_settings.get('restaurant_name', 'Restaurant POS') }}{% endblock %}
+    </title>
+
+     <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    
+    <!-- Alpine.js -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    
+    <!-- Modern POS CSS Framework -->
+    <link
+      href="{{ url_for('static', filename='css/modern-pos.css') }}"
+      rel="stylesheet"
+    />
+    
+    <!-- Legacy CSS for compatibility -->
+    <link
+      href="{{ url_for('static', filename='css/pos.css') }}"
+      rel="stylesheet"
+    />
+    
+    <!-- POS Billing Screen Specific CSS -->
+    <link
+      href="{{ url_for('static', filename='css/pos-billing.css') }}"
+      rel="stylesheet"
+    />
+
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body x-data="posApp()" x-init="init()" class="modern-pos-container">
+    <!-- Modern Header -->
+    <header class="modern-header">
+      <div class="modern-header-content">
+        <!-- Left: Logo and Order Tabs -->
+        <div class="d-flex align-items-center">
+          <div class="modern-logo">
+            <i class="bi bi-shop"></i>
+            <span>{{ public_settings.get('restaurant_name', 'Restaurant POS') }}</span>
+          </div>
+          
+          <!-- Order Tabs -->
+          <div class="d-flex align-items-center ms-4">
+            <button
+              @click="createNewOrder()"
+              class="modern-btn modern-btn-success modern-btn-sm me-2"
+            >
+              <i class="bi bi-plus-lg"></i> New Order
+            </button>
+
+            <div
+              class="d-flex align-items-center gap-2"
+              x-show="activeOrders && Object.keys(activeOrders).length > 0"
+            >
+              <template
+                x-for="[orderId, order] in Object.entries(activeOrders)"
+                :key="orderId"
+              >
+                <div
+                  class="modern-badge modern-badge-primary"
+                  :class="{'modern-badge-success': currentOrderId === orderId}"
+                  @click="switchToOrder(orderId)"
+                  style="cursor: pointer;"
+                >
+                  <span x-text="order.orderNumber || 'New Order'"></span>
+                  <button
+                    @click.stop="closeOrder(orderId)"
+                    class="btn-close btn-close-white btn-close-sm ms-2"
+                  ></button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: User Info & Actions -->
+        <div class="modern-nav">
+          {% if current_user.is_authenticated %}
+          <div class="modern-user-info">
+            <i class="bi bi-person-circle"></i>
+            <span>{{ current_user.username }}</span>
+            <small>({{ current_user.role }})</small>
+          </div>
+
+          <!-- Quick Actions Dropdown -->
+          <div class="dropdown">
+            <button
+              class="modern-btn modern-btn-ghost modern-btn-sm dropdown-toggle"
+              type="button"
+              data-bs-toggle="dropdown"
+            >
+              <i class="bi bi-speedometer2"></i> Quick Actions
+            </button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('dashboard.index') }}">
+                  <i class="bi bi-house"></i> Dashboard
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('orders.new_order') }}">
+                  <i class="bi bi-cart-plus"></i> New Order
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('menu.index') }}">
+                  <i class="bi bi-list-ul"></i> Menu
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('tables.index') }}">
+                  <i class="bi bi-grid-3x3-gap"></i> Tables
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('kot.index') }}">
+                  <i class="bi bi-receipt"></i> KOT
+                </a>
+              </li>
+              {% if current_user.is_authenticated and current_user.role == 'admin' %}
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('reports.index') }}">
+                  <i class="bi bi-graph-up"></i> Reports
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('inventory.index') }}">
+                  <i class="bi bi-box-seam"></i> Inventory
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('auth.profile') }}">
+                  <i class="bi bi-gear"></i> Settings
+                </a>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+
+          <a href="{{ url_for('auth.logout') }}" class="modern-btn modern-btn-danger modern-btn-sm">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+
+    <!-- Modern Main Content Layout -->
+    <div class="modern-main-content">
+      <div class="modern-content-wrapper">
+        <!-- Modern Sidebar -->
+        <aside class="modern-sidebar" x-data="{sidebarOpen: true}" :class="{'collapsed': !sidebarOpen}">
+          <div class="modern-sidebar-header">
+            <div class="modern-logo">
+              <i class="bi bi-list"></i>
+              <span x-show="sidebarOpen">Menu</span>
+            </div>
+            <button @click="sidebarOpen = !sidebarOpen" class="modern-btn modern-btn-ghost modern-btn-sm">
+              <i class="bi" :class="sidebarOpen ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
+            </button>
+          </div>
+          
+          <nav class="modern-sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-house"></i></span>
+              <span x-show="sidebarOpen">Dashboard</span>
+            </a>
+            <a href="{{ url_for('orders.new_order') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-cart-plus"></i></span>
+              <span x-show="sidebarOpen">New Order</span>
+            </a>
+            <a href="{{ url_for('orders.list_orders') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-receipt"></i></span>
+              <span x-show="sidebarOpen">Orders</span>
+            </a>
+            <a href="{{ url_for('menu.index') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-list-ul"></i></span>
+              <span x-show="sidebarOpen">Menu Management</span>
+            </a>
+            <a href="{{ url_for('tables.index') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-grid-3x3-gap"></i></span>
+              <span x-show="sidebarOpen">Table Management</span>
+            </a>
+            <a href="{{ url_for('kot.index') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-clipboard-check"></i></span>
+              <span x-show="sidebarOpen">Kitchen Display</span>
+            </a>
+            {% if current_user.is_authenticated and current_user.role == 'admin' %}
+            <hr class="my-3">
+            <a href="{{ url_for('reports.index') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-graph-up"></i></span>
+              <span x-show="sidebarOpen">Reports</span>
+            </a>
+            <a href="{{ url_for('inventory.index') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-box-seam"></i></span>
+              <span x-show="sidebarOpen">Inventory</span>
+            </a>
+            <a href="{{ url_for('auth.profile') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-gear"></i></span>
+              <span x-show="sidebarOpen">Settings</span>
+            </a>
+            {% endif %}
+          </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="modern-workspace">
+          <!-- Modern Flash Messages -->
+          <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %} {% if
+            messages %} {% for category, message in messages %}
+            <div
+              class="modern-card p-3 mb-3 border-start-4 border-{{ category or 'info' }}"
+              :class="{
+                'border-primary': '{{ category }}' === 'info',
+                'border-success': '{{ category }}' === 'success',
+                'border-warning': '{{ category }}' === 'warning',
+                'border-danger': '{{ category }}' === 'error' || '{{ category }}' === 'danger'
+              }"
+              role="alert"
+              x-data="{show: true}"
+              x-show="show"
+              x-transition:enter="transition ease-out duration-300"
+              x-transition:enter-start="opacity-0 transform translate-x-full"
+              x-transition:enter-end="opacity-100 transform translate-x-0"
+              x-transition:leave="transition ease-in duration-200"
+              x-transition:leave-start="opacity-100 transform translate-x-0"
+              x-transition:leave-end="opacity-0 transform translate-x-full"
+            >
+              <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="bi me-2" :class="{
+                      'bi-info-circle text-primary': '{{ category }}' === 'info',
+                      'bi-check-circle text-success': '{{ category }}' === 'success',
+                      'bi-exclamation-triangle text-warning': '{{ category }}' === 'warning',
+                      'bi-x-circle text-danger': '{{ category }}' === 'error' || '{{ category }}' === 'danger'
+                    }"></i>
+                    <strong class="text-capitalize">{{ category or 'info' }}</strong>
+                  </div>
+                  <div class="ms-4">{{ message }}</div>
+                </div>
+                <button @click="show = false" class="modern-btn modern-btn-ghost modern-btn-sm ms-3">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            </div>
+            {% endfor %} {% endif %} {% endwith %}
+          </div>
+
+          <!-- Page Content -->
+          {% block content %}{% endblock %}
+        </main>
+
+        <!-- Right Panel (for POS screens) -->
+        <aside class="modern-right-panel" x-data="{rightPanelOpen: true}" x-show="rightPanelOpen">
+          <!-- Dynamic right panel content will be loaded here -->
+          <div class="p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Quick Actions</h5>
+              <button @click="rightPanelOpen = false" class="modern-btn modern-btn-ghost modern-btn-sm">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+            
+            <div class="d-grid gap-2">
+              <a href="{{ url_for('orders.new_order') }}" class="modern-btn modern-btn-primary">
+                <i class="bi bi-plus-circle"></i> New Order
+              </a>
+              <button onclick="window.open('{{ url_for('kot.kot_window') }}', 'kot_window', 'width=1400,height=800,scrollbars=yes,resizable=yes')" class="modern-btn modern-btn-warning">
+                <i class="bi bi-window"></i> KOT Window
+              </button>
+              <a href="{{ url_for('dashboard.index') }}" class="modern-btn modern-btn-info">
+                <i class="bi bi-speedometer2"></i> Dashboard
+              </a>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="text-center">
+              <small class="text-muted">System Status</small>
+              <div class="mt-2">
+                <span class="modern-badge modern-badge-success">Online</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Enhanced Footer Component -->
+    {% set footer_config = {
+        'enabled': settings.get('footer_enabled', 'true') == 'true',
+        'business_name': settings.get('footer_business_name', public_settings.get('restaurant_name', 'Restaurant POS')),
+        'address': settings.get('footer_address', ''),
+        'phone': settings.get('footer_phone', public_settings.get('restaurant_phone', '')),
+        'email': settings.get('footer_email', ''),
+        'company_logo': settings.get('footer_company_logo', ''),
+        'show_business_info': settings.get('footer_show_business_info', 'true') == 'true',
+        'show_receipt_info': settings.get('footer_show_receipt_info', 'true') == 'true',
+        'show_user_info': settings.get('footer_show_user_name', 'true') == 'true',
+        'show_user_id': settings.get('footer_show_user_id', 'false') == 'true',
+        'show_timestamp': settings.get('footer_show_timestamp', 'true') == 'true',
+        'show_page_info': settings.get('footer_show_page_info', 'true') == 'true',
+        'show_version': settings.get('footer_show_version', 'false') == 'true',
+        'custom_text': settings.get('footer_custom_text', 'Thank you for your business!'),
+        'background_color': settings.get('footer_background_color', '#2c3e50'),
+        'text_color': settings.get('footer_text_color', '#ecf0f1'),
+        'border_color': settings.get('footer_border_color', '#34495e'),
+        'border_width': settings.get('footer_border_width', '2px'),
+        'font_family': settings.get('footer_font_family', 'Arial, sans-serif'),
+        'font_size': settings.get('footer_font_size', '12px'),
+        'header_font_size': settings.get('footer_header_font_size', '14px'),
+        'header_color': settings.get('footer_header_color', '#3498db'),
+        'header_font_weight': settings.get('footer_header_font_weight', 'bold'),
+        'small_font_size': settings.get('footer_small_font_size', '10px'),
+        'padding': settings.get('footer_padding', '15px 20px'),
+        'logo_height': settings.get('footer_logo_height', '30px'),
+        'fixed_position': settings.get('footer_fixed_position', 'false') == 'true',
+        'version': settings.get('footer_version', '1.0.0'),
+        'default_user': settings.get('footer_default_user', 'Staff')
+    } %}
+    {% include 'components/footer.html' %}
+
+    <!-- Modern Loading Overlay -->
+    <div
+      class="modern-modal-overlay"
+      x-show="isLoading"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+    >
+      <div class="modern-card p-4" style="max-width: 300px;">
+        <div class="text-center">
+          <div class="modern-spinner mx-auto mb-3" style="width: 40px; height: 40px; border-width: 4px;"></div>
+          <h5 class="mb-2">Loading...</h5>
+          <p class="text-muted mb-0">Please wait while we process your request</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Global Utility Functions -->
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/pos.js') }}"></script>
+
+    {% block extra_js %}{% endblock %}
+
+    <script>
+      // Alpine.js POS Application Data
+      function posApp() {
+        return {
+          isLoading: false,
+          activeOrders: {},
+          currentOrderId: null,
+          currentOrder: {},
+
+          init() {
+            // Load orders from session storage
+            const savedOrders = sessionStorage.getItem("activeOrders");
+            if (savedOrders) {
+              this.activeOrders = JSON.parse(savedOrders);
+            }
+
+            const currentOrderId = sessionStorage.getItem("currentOrderId");
+            if (currentOrderId) {
+              this.currentOrderId = currentOrderId;
+              this.loadCurrentOrder();
+            }
+
+            // Start session keep-alive
+            setInterval(() => {
+              fetch("/auth/api/keep_alive");
+            }, 300000); // Every 5 minutes
+          },
+
+          createNewOrder() {
+            const orderId = "ORD" + Date.now();
+            this.activeOrders[orderId] = {
+              orderNumber: this.generateOrderNumber(),
+              orderType: "Dine-in",
+              customerName: "",
+              customerMobile: "",
+              tableId: null,
+              items: [],
+              subtotal: 0,
+              cgst: 0,
+              sgst: 0,
+              discount: 0,
+              total: 0,
+              status: "New",
+              createdAt: new Date().toISOString(),
+            };
+
+            this.currentOrderId = orderId;
+            this.saveToSession();
+            this.loadCurrentOrder();
+
+            // Redirect to orders page if not already there
+            if (!window.location.pathname.includes("/orders")) {
+              window.location.href = "/orders/new";
+            }
+          },
+
+          switchToOrder(orderId) {
+            // Save current order before switching
+            this.saveCurrentOrder();
+
+            this.currentOrderId = orderId;
+            this.loadCurrentOrder();
+          },
+
+          closeOrder(orderId) {
+            if (
+              confirm(
+                "Are you sure you want to close this order? Any unsaved changes will be lost."
+              )
+            ) {
+              delete this.activeOrders[orderId];
+
+              if (this.currentOrderId === orderId) {
+                // Switch to another order or create new one
+                const remainingOrders = Object.keys(this.activeOrders);
+                if (remainingOrders.length > 0) {
+                  this.currentOrderId = remainingOrders[0];
+                  this.loadCurrentOrder();
+                } else {
+                  this.createNewOrder();
+                }
+              }
+
+              this.saveToSession();
+            }
+          },
+
+          saveCurrentOrder() {
+            if (this.currentOrderId && this.activeOrders[this.currentOrderId]) {
+              this.activeOrders[this.currentOrderId] = { ...this.currentOrder };
+              this.saveToSession();
+            }
+          },
+
+          loadCurrentOrder() {
+            if (this.currentOrderId && this.activeOrders[this.currentOrderId]) {
+              this.currentOrder = { ...this.activeOrders[this.currentOrderId] };
+              this.$nextTick(() => {
+                // Trigger any Alpine.js reactivity updates
+                this.updateCalculations();
+              });
+            }
+          },
+
+          saveToSession() {
+            sessionStorage.setItem(
+              "activeOrders",
+              JSON.stringify(this.activeOrders)
+            );
+            sessionStorage.setItem("currentOrderId", this.currentOrderId);
+          },
+
+          generateOrderNumber() {
+            const now = new Date();
+            const dateStr =
+              now.getFullYear() +
+              String(now.getMonth() + 1).padStart(2, "0") +
+              String(now.getDate()).padStart(2, "0");
+            const randomStr = Math.random()
+              .toString(36)
+              .substr(2, 8)
+              .toUpperCase();
+            return "ORD" + dateStr + randomStr;
+          },
+
+          updateCalculations() {
+            // This will be overridden by specific pages
+          },
+        };
+      }
+      
+      // Footer Component
+      function footerComponent() {
+        return {
+          footerSettings: {
+            enabled: false,
+            custom_text: '',
+            show_user_name: false,
+            show_business_info: false,
+            multiline: false,
+            line1: '',
+            line2: '',
+            line3: ''
+          },
+          
+          initFooter() {
+            // Load footer settings from API or use defaults
+            this.loadFooterSettings();
+            
+            // Update time every second
+            setInterval(() => {
+              this.updateTime();
+            }, 1000);
+          },
+          
+          async loadFooterSettings() {
+            try {
+              const response = await fetch('/api/settings/footer');
+              if (response.ok) {
+                const data = await response.json();
+                this.footerSettings = {
+                  enabled: data.footer_enabled === 'true',
+                  custom_text: data.footer_custom_text || 'Thank you for your business!',
+                  show_user_name: data.footer_show_user_name === 'true',
+                  show_business_info: data.footer_show_business_info === 'true',
+                  multiline: data.footer_multiline === 'true',
+                  line1: data.footer_line1 || '',
+                  line2: data.footer_line2 || '',
+                  line3: data.footer_line3 || ''
+                };
+              }
+            } catch (error) {
+              console.error('Error loading footer settings:', error);
+              // Use defaults if API fails
+              this.footerSettings = {
+                enabled: true,
+                custom_text: 'Thank you for your business!',
+                show_user_name: true,
+                show_business_info: true,
+                multiline: false,
+                line1: '',
+                line2: '',
+                line3: ''
+              };
+            }
+          },
+          
+          getCurrentTime() {
+            return new Date().toLocaleString();
+          },
+          
+          updateTime() {
+            // This will be called by setInterval to update time displays
+          }
+        };
+      }
+    </script>
+  </body>
+</html>

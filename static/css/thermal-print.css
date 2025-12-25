@@ -1,0 +1,430 @@
+/* Thermal Printer Optimized Styles - 80mm width */
+/* This CSS is specifically designed for thermal printers with 80mm paper width */
+
+/* Base thermal printer styles */
+@media print {
+    /* Ensure proper paper width and margins */
+    body {
+        margin: 0;
+        padding: 5px;
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        line-height: 1.2;
+        color: #000;
+        background: #fff;
+        width: 80mm;
+        max-width: 80mm;
+    }
+    
+    /* Container for thermal printer content */
+    .thermal-container {
+        width: 100%;
+        max-width: 80mm;
+        margin: 0 auto;
+        background: #fff;
+        color: #000;
+    }
+    
+    /* Hide all non-print elements */
+    .no-print {
+        display: none !important;
+    }
+    
+    /* Ensure no colors are printed - black text only */
+    * {
+        color: #000 !important;
+        background: #fff !important;
+        background-image: none !important;
+        border-color: #000 !important;
+    }
+    
+    /* Remove all shadows and transitions */
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        transition: none !important;
+        animation: none !important;
+    }
+    
+    /* Header styles */
+    .thermal-header {
+        text-align: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+    }
+    
+    .restaurant-name {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+    }
+    
+    .restaurant-address {
+        font-size: 9px;
+        margin-bottom: 2px;
+    }
+    
+    .restaurant-contact {
+        font-size: 9px;
+        margin-bottom: 2px;
+    }
+    
+    .document-title {
+        font-size: 14px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin: 8px 0;
+        text-align: center;
+    }
+    
+    /* Information sections */
+    .info-section {
+        margin-bottom: 10px;
+        font-size: 9px;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2px;
+    }
+    
+    .customer-section {
+        margin-bottom: 8px;
+        font-size: 9px;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+        padding: 4px 0;
+    }
+    
+    /* Table styles */
+    .thermal-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 9px;
+    }
+    
+    .thermal-table th,
+    .thermal-table td {
+        padding: 2px 1px;
+        text-align: left;
+        border-bottom: 1px dotted #000;
+    }
+    
+    .thermal-table th {
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 8px;
+        border-bottom: 2px solid #000;
+    }
+    
+    .item-name {
+        font-weight: normal;
+    }
+    
+    .item-quantity {
+        text-align: center;
+        min-width: 20px;
+    }
+    
+    .item-price {
+        text-align: right;
+        min-width: 30px;
+    }
+    
+    .item-total {
+        text-align: right;
+        font-weight: bold;
+        min-width: 30px;
+    }
+    
+    .item-notes {
+        font-style: italic;
+        font-size: 8px;
+        margin-top: 1px;
+        padding-left: 10px;
+    }
+    
+    /* Section dividers */
+    .section-divider {
+        border-top: 1px dashed #000;
+        margin: 8px 0;
+    }
+    
+    /* Totals section */
+    .totals-section {
+        margin-bottom: 10px;
+        font-size: 9px;
+    }
+    
+    .totals-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2px;
+    }
+    
+    .grand-total-row {
+        font-weight: bold;
+        font-size: 12px;
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
+        padding: 4px 0;
+        margin-top: 4px;
+    }
+    
+    /* Payment information */
+    .payment-section {
+        margin-bottom: 10px;
+        font-size: 9px;
+        border-top: 1px dashed #000;
+        padding-top: 4px;
+    }
+    
+    .payment-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2px;
+    }
+    
+    /* Footer styles */
+    .thermal-footer {
+        text-align: center;
+        font-size: 8px;
+        margin-top: 10px;
+        border-top: 1px dashed #000;
+        padding-top: 8px;
+    }
+    
+    .footer-text {
+        margin-bottom: 2px;
+    }
+    
+    .terms {
+        font-size: 7px;
+        margin-top: 5px;
+        text-align: center;
+        font-style: italic;
+    }
+    
+    .timestamp {
+        text-align: right;
+        font-size: 8px;
+        margin-top: 5px;
+    }
+    
+    /* Special indicators for KOT */
+    .urgency-indicator {
+        display: inline-block;
+        padding: 1px 4px;
+        font-weight: bold;
+        font-size: 9px;
+        margin-left: 3px;
+        border: 1px solid #000;
+    }
+    
+    .urgency-normal {
+        border-style: solid;
+    }
+    
+    .urgency-medium {
+        border-style: dashed;
+    }
+    
+    .urgency-high {
+        border-style: double;
+    }
+    
+    .aging-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 8px 0;
+        padding: 3px;
+        font-weight: bold;
+        font-size: 10px;
+        border: 1px solid #000;
+    }
+    
+    .aging-normal {
+        border-style: solid;
+    }
+    
+    .aging-attention {
+        border-style: dashed;
+    }
+    
+    .aging-urgent {
+        border-style: double;
+    }
+    
+    .priority-badge {
+        border: 2px solid #000;
+        padding: 2px 6px;
+        font-weight: bold;
+        font-size: 9px;
+        display: inline-block;
+        margin-left: 8px;
+        text-transform: uppercase;
+    }
+    
+    .special-instructions {
+        padding: 5px;
+        border: 1px dashed #000;
+        margin: 8px 0;
+        font-size: 9px;
+    }
+    
+    /* Page break handling */
+    .avoid-page-break {
+        page-break-inside: avoid;
+    }
+    
+    .page-break-before {
+        page-break-before: always;
+    }
+    
+    .page-break-after {
+        page-break-after: always;
+    }
+}
+
+/* Screen styles for preview */
+@media screen {
+    body {
+        margin: 20px;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+    }
+    
+    .print-actions {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #fff;
+        border-radius: 5px;
+        text-align: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .preview-container {
+        max-width: 400px;
+        margin: 0 auto;
+        border: 1px solid #ddd;
+        padding: 20px;
+        background: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .thermal-preview {
+        width: 80mm;
+        margin: 0 auto;
+        border: 1px solid #ccc;
+        background: white;
+        padding: 10px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        margin: 0 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn:hover {
+        opacity: 0.8;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    @media print {
+        .thermal-table th,
+        .thermal-table td {
+            border-width: 2px;
+        }
+        
+        .section-divider,
+        .special-instructions,
+        .urgency-indicator,
+        .aging-indicator {
+            border-width: 2px;
+        }
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    @media screen {
+        .btn {
+            transition: none;
+        }
+        
+        .preview-container {
+            box-shadow: none;
+        }
+    }
+}
+
+/* Print optimization for different thermal printers */
+@media print and (max-width: 80mm) {
+    body {
+        font-size: 9px;
+    }
+    
+    .restaurant-name {
+        font-size: 14px;
+    }
+    
+    .document-title {
+        font-size: 12px;
+    }
+    
+    .grand-total-row {
+        font-size: 11px;
+    }
+}
+
+/* Print optimization for narrower thermal printers */
+@media print and (max-width: 58mm) {
+    body {
+        font-size: 8px;
+        width: 58mm;
+        max-width: 58mm;
+    }
+    
+    .thermal-container {
+        max-width: 58mm;
+    }
+    
+    .restaurant-name {
+        font-size: 12px;
+    }
+    
+    .document-title {
+        font-size: 10px;
+    }
+    
+    .thermal-table {
+        font-size: 8px;
+    }
+    
+    .grand-total-row {
+        font-size: 9px;
+    }
+}

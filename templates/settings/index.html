@@ -1,0 +1,803 @@
+{% extends "base.html" %} {% block title %}Settings - Restaurant POS{% endblock %} {% block extra_css %}
+<style>
+  .settings-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .settings-header {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .settings-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 20px;
+  }
+  
+  .settings-sidebar {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    height: fit-content;
+  }
+  
+  .settings-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .settings-nav li {
+    margin-bottom: 5px;
+  }
+  
+  .settings-nav a {
+    display: block;
+    padding: 12px 15px;
+    color: #495057;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  
+  .settings-nav a:hover {
+    background: #f8f9fa;
+    color: #007bff;
+  }
+  
+  .settings-nav a.active {
+    background: #007bff;
+    color: white;
+  }
+  
+  .settings-content {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 30px;
+  }
+  
+  .settings-section {
+    display: none;
+  }
+  
+  .settings-section.active {
+    display: block;
+  }
+  
+  .form-section {
+    margin-bottom: 30px;
+  }
+  
+  .form-section h5 {
+    margin-bottom: 20px;
+    color: #007bff;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #495057;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  
+  .form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+  }
+  
+  .form-text {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 5px;
+  }
+  
+  .btn-settings {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .btn-primary {
+    background: #007bff;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background: #0056b3;
+  }
+  
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background: #545b62;
+  }
+  
+  .settings-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+  }
+  
+  .tax-preview {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 10px;
+  }
+  
+  .tax-calculation {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-top: 10px;
+  }
+  
+  .tax-item {
+    text-align: center;
+  }
+  
+  .tax-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #28a745;
+  }
+  
+  .tax-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+  }
+  
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+  }
+  
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+  }
+  
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  
+  input:checked + .slider {
+    background-color: #007bff;
+  }
+  
+  input:checked + .slider:before {
+    transform: translateX(26px);
+  }
+  
+  .backup-section {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+  
+  .backup-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  
+  .status-success { background: #28a745; }
+  .status-warning { background: #ffc107; }
+  .status-danger { background: #dc3545; }
+</style>
+{% endblock %} {% block content %}
+<div class="settings-container" x-data="settingsManager()">
+  <!-- Header Section -->
+  <div class="settings-header">
+    <h2>System Settings</h2>
+    <div>
+      <button @click="resetToDefaults()" class="btn btn-outline-warning btn-sm">
+        <i class="fas fa-undo"></i> Reset to Defaults
+      </button>
+      <button @click="exportSettings()" class="btn btn-outline-info btn-sm me-2">
+        <i class="fas fa-download"></i> Export
+      </button>
+    </div>
+  </div>
+  
+  <div class="settings-layout">
+    <!-- Sidebar Navigation -->
+    <div class="settings-sidebar">
+      <ul class="settings-nav">
+        <li>
+          <a @click="switchTab('restaurant')" 
+             :class="{'active': activeTab === 'restaurant'}" href="#">
+            <i class="fas fa-store"></i> Restaurant
+          </a>
+        </li>
+        <li>
+          <a @click="switchTab('tax')" 
+             :class="{'active': activeTab === 'tax'}" href="#">
+            <i class="fas fa-percentage"></i> Tax Settings
+          </a>
+        </li>
+        <li>
+          <a @click="switchTab('receipt')" 
+             :class="{'active': activeTab === 'receipt'}" href="#">
+            <i class="fas fa-receipt"></i> Receipt
+          </a>
+        </li>
+        <li>
+          <a @click="switchTab('inventory')" 
+             :class="{'active': activeTab === 'inventory'}" href="#">
+            <i class="fas fa-boxes"></i> Inventory
+          </a>
+        </li>
+        <li>
+          <a @click="switchTab('backup')" 
+             :class="{'active': activeTab === 'backup'}" href="#">
+            <i class="fas fa-backup"></i> Backup
+          </a>
+        </li>
+        <li>
+          <a @click="switchTab('email')" 
+             :class="{'active': activeTab === 'email'}" href="#">
+            <i class="fas fa-envelope"></i> Email
+          </a>
+        </li>
+        <li>
+          <a @click="switchTab('system')" 
+             :class="{'active': activeTab === 'system'}" href="#">
+            <i class="fas fa-cog"></i> System
+          </a>
+        </li>
+      </ul>
+    </div>
+    
+    <!-- Settings Content -->
+    <div class="settings-content">
+      <!-- Restaurant Settings -->
+      <div x-show="activeTab === 'restaurant'" class="settings-section active">
+        <h4>Restaurant Information</h4>
+        
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Restaurant Name</label>
+              <input type="text" x-model="settings.restaurant_name" class="form-control" 
+                     placeholder="Enter restaurant name">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input type="tel" x-model="settings.restaurant_phone" class="form-control" 
+                     placeholder="+91-XXXXXXXXXX">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" x-model="settings.restaurant_email" class="form-control" 
+                     placeholder="info@restaurant.com">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">GST Number</label>
+              <input type="text" x-model="settings.gst_number" class="form-control" 
+                     placeholder="GSTINXXXXXXXXXXXX">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <textarea x-model="settings.restaurant_address" class="form-control" 
+                      rows="3" placeholder="Enter complete address"></textarea>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tax Settings -->
+      <div x-show="activeTab === 'tax'" class="settings-section">
+        <h4>Tax Configuration</h4>
+        
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Tax Rate (%)</label>
+              <input type="number" x-model="settings.tax_rate" @input="calculateTax()" 
+                     class="form-control" min="0" max="100" step="0.1">
+              <div class="form-text">Total tax percentage (CGST + SGST)</div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Enable Tax</label>
+              <label class="switch">
+                <input type="checkbox" x-model="settings.enable_tax">
+                <span class="slider"></span>
+              </label>
+              <div class="form-text">Enable tax calculation on orders</div>
+            </div>
+          </div>
+          
+          <div class="tax-preview" x-show="settings.enable_tax">
+            <h6>Tax Breakdown</h6>
+            <div class="tax-calculation">
+              <div class="tax-item">
+                <div class="tax-value" x-text="taxBreakdown.cgst + '%'"></div>
+                <div class="tax-label">CGST</div>
+              </div>
+              <div class="tax-item">
+                <div class="tax-value" x-text="taxBreakdown.sgst + '%'"></div>
+                <div class="tax-label">SGST</div>
+              </div>
+              <div class="tax-item">
+                <div class="tax-value" x-text="settings.tax_rate + '%'"></div>
+                <div class="tax-label">Total</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Receipt Settings -->
+      <div x-show="activeTab === 'receipt'" class="settings-section">
+        <h4>Receipt Configuration</h4>
+        
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Currency Symbol</label>
+              <select x-model="settings.currency_symbol" class="form-control">
+                <option value="₹">₹ (Rupee)</option>
+                <option value="$">$ (Dollar)</option>
+                <option value="€">€ (Euro)</option>
+                <option value="£">£ (Pound)</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Decimal Places</label>
+              <select x-model="settings.decimal_places" class="form-control">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Receipt Footer</label>
+            <textarea x-model="settings.receipt_footer" class="form-control" 
+                      rows="3" placeholder="Thank you for visiting!"></textarea>
+            <div class="form-text">Text to appear at the bottom of receipts</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Inventory Settings -->
+      <div x-show="activeTab === 'inventory'" class="settings-section">
+        <h4>Inventory Configuration</h4>
+        
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Low Stock Alert (%)</label>
+              <input type="number" x-model="settings.low_stock_threshold" class="form-control" 
+                     min="0" max="100" step="5">
+              <div class="form-text">Alert when stock below this percentage of minimum level</div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Auto-deduct Stock</label>
+              <label class="switch">
+                <input type="checkbox" x-model="settings.auto_deduct_stock">
+                <span class="slider"></span>
+              </label>
+              <div class="form-text">Automatically deduct stock when items are sold</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Backup Settings -->
+      <div x-show="activeTab === 'backup'" class="settings-section">
+        <h4>Backup Configuration</h4>
+        
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Auto Backup</label>
+              <label class="switch">
+                <input type="checkbox" x-model="settings.auto_backup">
+                <span class="slider"></span>
+              </label>
+              <div class="form-text">Enable automatic daily backups</div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Backup Time</label>
+              <input type="time" x-model="settings.backup_time" class="form-control">
+              <div class="form-text">Time for daily backup</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="backup-section">
+          <div class="backup-status">
+            <div class="status-indicator" :class="backupStatusClass"></div>
+            <span x-text="backupStatusText"></span>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Last Backup</label>
+              <input type="text" :value="settings.last_backup" class="form-control" readonly>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Backup Count</label>
+              <input type="number" x-model="settings.backup_retention_days" class="form-control" 
+                     min="1" max="30">
+              <div class="form-text">Days to retain backups</div>
+            </div>
+          </div>
+          
+          <div class="settings-actions">
+            <button @click="manualBackup()" class="btn-settings btn-primary">
+              <i class="fas fa-download"></i> Backup Now
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Email Settings -->
+      <div x-show="activeTab === 'email'" class="settings-section">
+        <h4>Email Configuration</h4>
+        
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">SMTP Server</label>
+              <input type="text" x-model="emailSettings.smtp_server" class="form-control" 
+                     placeholder="smtp.gmail.com">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">SMTP Port</label>
+              <input type="number" x-model="emailSettings.smtp_port" class="form-control" 
+                     placeholder="587">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input type="email" x-model="emailSettings.username" class="form-control" 
+                     placeholder="your-email@gmail.com">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" x-model="emailSettings.password" class="form-control" 
+                     placeholder="App password">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">From Email</label>
+            <input type="email" x-model="emailSettings.from_email" class="form-control" 
+                   placeholder="noreply@restaurant.com">
+          </div>
+          
+          <div class="settings-actions">
+            <button @click="testEmail()" class="btn-settings btn-secondary">
+              <i class="fas fa-paper-plane"></i> Test Email
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- System Settings -->
+      <div x-show="activeTab === 'system'" class="settings-section">
+        <h4>System Configuration</h4>
+        
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Session Timeout (hours)</label>
+              <input type="number" x-model="settings.session_timeout" class="form-control" 
+                     min="1" max="24">
+              <div class="form-text">User session duration</div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Items Per Page</label>
+              <input type="number" x-model="settings.items_per_page" class="form-control" 
+                     min="10" max="100" step="10">
+              <div class="form-text">Items to display per page</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Save Button -->
+      <div class="settings-actions">
+        <button @click="saveSettings()" class="btn-settings btn-primary">
+          <i class="fas fa-save"></i> Save Settings
+        </button>
+        <button @click="cancelEdit()" class="btn-settings btn-secondary">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function settingsManager() {
+  return {
+    activeTab: 'restaurant',
+    settings: {
+      restaurant_name: '{{ settings.restaurant_name or "" }}',
+      restaurant_address: '{{ settings.restaurant_address or "" }}',
+      restaurant_phone: '{{ settings.restaurant_phone or "" }}',
+      restaurant_email: '{{ settings.restaurant_email or "" }}',
+      gst_number: '{{ settings.gst_number or "" }}',
+      currency_symbol: '{{ settings.currency_symbol or "₹" }}',
+      tax_rate: {{ settings.tax_rate or 5.0 }},
+      enable_tax: {{ 'true' if settings.enable_tax == 'true' else 'false' }},
+      receipt_footer: '{{ settings.receipt_footer or "" }}',
+      decimal_places: '{{ settings.decimal_places or "2" }}',
+      low_stock_threshold: {{ settings.low_stock_threshold or 20 }},
+      auto_deduct_stock: {{ 'true' if settings.auto_deduct_stock == 'true' else 'false' }},
+      auto_backup: {{ 'true' if settings.auto_backup == 'true' else 'false' }},
+      backup_time: '{{ settings.backup_time or "02:00" }}',
+      last_backup: '{{ settings.last_backup or "Never" }}',
+      backup_retention_days: {{ settings.backup_retention_days or 7 }},
+      session_timeout: {{ settings.session_timeout or 8 }},
+      items_per_page: {{ settings.items_per_page or 50 }}
+    },
+    
+    emailSettings: {{ email_settings | tojson }},
+    
+    taxBreakdown: {
+      cgst: 2.5,
+      sgst: 2.5
+    },
+    
+    init() {
+      this.calculateTax();
+      this.updateBackupStatus();
+    },
+    
+    switchTab(tab) {
+      this.activeTab = tab;
+    },
+    
+    calculateTax() {
+      const totalTax = parseFloat(this.settings.tax_rate) || 0;
+      this.taxBreakdown.cgst = (totalTax / 2).toFixed(1);
+      this.taxBreakdown.sgst = (totalTax / 2).toFixed(1);
+    },
+    
+    async saveSettings() {
+      try {
+        const response = await fetch('/settings/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            settings: this.settings,
+            email_settings: this.emailSettings
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          this.showNotification('Settings saved successfully', 'success');
+        } else {
+          this.showNotification(data.message || 'Error saving settings', 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error saving settings', 'error');
+      }
+    },
+    
+    cancelEdit() {
+      // Reload page to reset settings
+      location.reload();
+    },
+    
+    async resetToDefaults() {
+      if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+        try {
+          const response = await fetch('/settings/reset', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            this.showNotification('Settings reset to defaults', 'success');
+            setTimeout(() => location.reload(), 1000);
+          } else {
+            this.showNotification(data.message || 'Error resetting settings', 'error');
+          }
+        } catch (error) {
+          this.showNotification('Error resetting settings', 'error');
+        }
+      }
+    },
+    
+    exportSettings() {
+      const settingsData = {
+        settings: this.settings,
+        email_settings: this.emailSettings,
+        export_date: new Date().toISOString()
+      };
+      
+      const blob = new Blob([JSON.stringify(settingsData, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `settings_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      this.showNotification('Settings exported successfully', 'success');
+    },
+    
+    async manualBackup() {
+      try {
+        const response = await fetch('/settings/backup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          this.settings.last_backup = data.backup_time;
+          this.updateBackupStatus();
+          this.showNotification('Backup completed successfully', 'success');
+        } else {
+          this.showNotification(data.message || 'Error creating backup', 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error creating backup', 'error');
+      }
+    },
+    
+    async testEmail() {
+      try {
+        const response = await fetch('/settings/test_email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(this.emailSettings)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          this.showNotification('Test email sent successfully', 'success');
+        } else {
+          this.showNotification(data.message || 'Error sending test email', 'error');
+        }
+      } catch (error) {
+        this.showNotification('Error sending test email', 'error');
+      }
+    },
+    
+    updateBackupStatus() {
+      if (this.settings.last_backup === 'Never') {
+        this.backupStatusClass = 'status-danger';
+        this.backupStatusText = 'No backup available';
+      } else {
+        const lastBackup = new Date(this.settings.last_backup);
+        const now = new Date();
+        const diffDays = Math.floor((now - lastBackup) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+          this.backupStatusClass = 'status-success';
+          this.backupStatusText = 'Backup up to date';
+        } else if (diffDays <= 3) {
+          this.backupStatusClass = 'status-warning';
+          this.backupStatusText = `Last backup ${diffDays} day(s) ago`;
+        } else {
+          this.backupStatusClass = 'status-danger';
+          this.backupStatusText = `Last backup ${diffDays} day(s) ago`;
+        }
+      }
+    },
+    
+    showNotification(message, type) {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+      toast.style.zIndex = '9999';
+      toast.textContent = message;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,283 @@
+{% extends "base.html" %} 
+{% block title %}Modern UI Test - Restaurant POS{% endblock %} 
+
+{% block content %}
+<div class="modern-workspace">
+  <div class="container-fluid">
+    <h1 class="text-center mb-5 text-primary">Modern POS UI Design System</h1>
+    
+    <!-- Button Showcase -->
+    <div class="modern-card mb-4">
+      <div class="modern-card-header">
+        <h2 class="modern-card-title">Button Components</h2>
+      </div>
+      <div class="modern-card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <h5 class="mb-3">Primary Buttons</h5>
+            <div class="d-grid gap-2">
+              <button class="modern-btn modern-btn-primary">Primary</button>
+              <button class="modern-btn modern-btn-primary modern-btn-sm">Small</button>
+              <button class="modern-btn modern-btn-primary modern-btn-lg">Large</button>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <h5 class="mb-3">Success Buttons</h5>
+            <div class="d-grid gap-2">
+              <button class="modern-btn modern-btn-success">Success</button>
+              <button class="modern-btn modern-btn-success modern-btn-sm">Small</button>
+              <button class="modern-btn modern-btn-success modern-btn-lg">Large</button>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <h5 class="mb-3">Warning Buttons</h5>
+            <div class="d-grid gap-2">
+              <button class="modern-btn modern-btn-warning">Warning</button>
+              <button class="modern-btn modern-btn-warning modern-btn-sm">Small</button>
+              <button class="modern-btn modern-btn-warning modern-btn-lg">Large</button>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <h5 class="mb-3">Danger Buttons</h5>
+            <div class="d-grid gap-2">
+              <button class="modern-btn modern-btn-danger">Danger</button>
+              <button class="modern-btn modern-btn-danger modern-btn-sm">Small</button>
+              <button class="modern-btn modern-btn-danger modern-btn-lg">Large</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Showcase -->
+    <div class="modern-card mb-4">
+      <div class="modern-card-header">
+        <h2 class="modern-card-title">Form Components</h2>
+      </div>
+      <div class="modern-card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="modern-form-group">
+              <label class="modern-form-label">Text Input</label>
+              <input type="text" class="modern-form-control" placeholder="Enter text here...">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="modern-form-group">
+              <label class="modern-form-label">Select Dropdown</label>
+              <select class="modern-form-select modern-form-control">
+                <option>Choose an option</option>
+                <option>Option 1</option>
+                <option>Option 2</option>
+                <option>Option 3</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="modern-form-group">
+              <label class="modern-form-label">Checkbox Options</label>
+              <div class="modern-form-checkbox">
+                <input type="checkbox" id="option1">
+                <label for="option1">Option 1</label>
+              </div>
+              <div class="modern-form-checkbox">
+                <input type="checkbox" id="option2">
+                <label for="option2">Option 2</label>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="modern-form-group">
+              <label class="modern-form-label">Radio Options</label>
+              <div class="modern-form-radio">
+                <input type="radio" id="radio1" name="radio-group">
+                <label for="radio1">Radio 1</label>
+              </div>
+              <div class="modern-form-radio">
+                <input type="radio" id="radio2" name="radio-group">
+                <label for="radio2">Radio 2</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Badge Showcase -->
+    <div class="modern-card mb-4">
+      <div class="modern-card-header">
+        <h2 class="modern-card-title">Status Badges</h2>
+      </div>
+      <div class="modern-card-body">
+        <div class="d-flex gap-2 flex-wrap">
+          <span class="modern-badge modern-badge-primary">Primary</span>
+          <span class="modern-badge modern-badge-success">Success</span>
+          <span class="modern-badge modern-badge-warning">Warning</span>
+          <span class="modern-badge modern-badge-danger">Danger</span>
+          <span class="modern-badge modern-badge-info">Info</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- POS Specific Components -->
+    <div class="modern-card mb-4">
+      <div class="modern-card-header">
+        <h2 class="modern-card-title">POS Components</h2>
+      </div>
+      <div class="modern-card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h5 class="mb-3">Menu Items</h5>
+            <div class="pos-menu-item">
+              <div class="pos-menu-item-details">
+                <div class="pos-menu-item-name">Sample Menu Item</div>
+                <div class="pos-menu-item-price">₹299.00</div>
+              </div>
+            </div>
+            <div class="pos-menu-item selected">
+              <div class="pos-menu-item-details">
+                <div class="pos-menu-item-name">Selected Item</div>
+                <div class="pos-menu-item-price">₹199.00</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <h5 class="mb-3">Order Summary</h5>
+            <div class="pos-order-summary">
+              <div class="pos-totals">
+                <div class="pos-total-row">
+                  <span>Subtotal:</span>
+                  <span>₹498.00</span>
+                </div>
+                <div class="pos-total-row">
+                  <span>CGST (2.5%):</span>
+                  <span>₹12.45</span>
+                </div>
+                <div class="pos-total-row">
+                  <span>SGST (2.5%):</span>
+                  <span>₹12.45</span>
+                </div>
+                <div class="pos-total-row grand-total">
+                  <span>Grand Total:</span>
+                  <span>₹522.90</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Showcase -->
+    <div class="modern-card mb-4">
+      <div class="modern-card-header">
+        <h2 class="modern-card-title">Modern Table</h2>
+      </div>
+      <div class="modern-card-body">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Order #</th>
+              <th>Customer</th>
+              <th>Status</th>
+              <th>Total</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ORD001</td>
+              <td>John Doe</td>
+              <td><span class="modern-badge modern-badge-success">Completed</span></td>
+              <td>₹522.90</td>
+              <td>14:30</td>
+            </tr>
+            <tr>
+              <td>ORD002</td>
+              <td>Jane Smith</td>
+              <td><span class="modern-badge modern-badge-warning">In Progress</span></td>
+              <td>₹299.00</td>
+              <td>15:45</td>
+            </tr>
+            <tr>
+              <td>ORD003</td>
+              <td>Bob Johnson</td>
+              <td><span class="modern-badge modern-badge-info">New</span></td>
+              <td>₹150.50</td>
+              <td>16:20</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal Showcase -->
+    <div class="modern-card mb-4">
+      <div class="modern-card-header">
+        <h2 class="modern-card-title">Modal Example</h2>
+      </div>
+      <div class="modern-card-body">
+        <button class="modern-btn modern-btn-primary" @click="$refs.exampleModal.show = true">
+          <i class="bi bi-window"></i> Open Modal
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Example -->
+<div class="modern-modal-overlay" x-ref="exampleModal" x-data="{show: false}" x-show="show" 
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @click.self="show = false">
+  <div class="modern-modal" @click.stop>
+    <div class="modern-modal-header">
+      <h3 class="modern-modal-title">Example Modal</h3>
+      <button @click="show = false" class="modern-modal-close">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+    <div class="modern-modal-body">
+      <p>This is a modern modal dialog with backdrop blur effect and smooth animations.</p>
+      <p>It demonstrates the modern design system components including:</p>
+      <ul>
+        <li>Clean card design with subtle shadows</li>
+        <li>Smooth animations and transitions</li>
+        <li>Touch-friendly buttons with rounded corners</li>
+        <li>Modern color palette</li>
+      </ul>
+    </div>
+    <div class="modern-modal-footer">
+      <button @click="show = false" class="modern-btn modern-btn-ghost">Cancel</button>
+      <button @click="show = false" class="modern-btn modern-btn-primary">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading State Example -->
+<div class="text-center mt-4">
+  <button class="modern-btn modern-btn-primary" @click="$refs.loadingExample.show = true">
+    <i class="bi bi-hourglass-split"></i> Show Loading State
+  </button>
+</div>
+
+<div class="modern-modal-overlay" x-ref="loadingExample" x-data="{show: false}" x-show="show" 
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+  <div class="modern-card p-4" style="max-width: 300px;">
+    <div class="text-center">
+      <div class="modern-spinner mx-auto mb-3" style="width: 40px; height: 40px; border-width: 4px;"></div>
+      <h5 class="mb-2">Processing...</h5>
+      <p class="text-muted mb-0">Please wait while we process your request</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Management - Restaurant POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .print-management-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .status-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background-color: #28a745;
+        }
+        
+        .status-offline {
+            background-color: #dc3545;
+        }
+        
+        .print-preview {
+            width: 80mm;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 20px auto;
+            background: white;
+        }
+        
+        .history-table {
+            font-size: 14px;
+        }
+        
+        .history-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .btn-print {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        
+        .btn-print:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        
+        .printer-config {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-management-container" x-data="printManagement()">
+        <h2 class="mb-4"><i class="fas fa-print"></i> Print Management</h2>
+        
+        <!-- Printer Status -->
+        <div class="card status-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-cog"></i> Printer Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <span class="status-indicator" :class="printerStatus.online ? 'status-online' : 'status-offline'"></span>
+                            <strong>Printer:</strong> <span x-text="printerStatus.printer_name"></span>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Status:</strong> <span x-text="printerStatus.status"></span>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Paper Width:</strong> <span x-text="printerStatus.paper_width"></span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <strong>Last Check:</strong> <span x-text="formatDateTime(printerStatus.last_check)"></span>
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-primary" @click="checkPrinterStatus()">
+                                <i class="fas fa-sync-alt"></i> Refresh Status
+                            </button>
+                            <button class="btn btn-sm btn-secondary" @click="configurePrinter()">
+                                <i class="fas fa-cog"></i> Configure
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Print Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-number" x-text="statistics.total_prints || 0"></div>
+                    <div class="stat-label">Total Prints</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="stat-number" x-text="statistics.successful_prints || 0"></div>
+                    <div class="stat-label">Successful</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="stat-number" x-text="statistics.success_rate || 0 + '%'"></div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="stat-number" x-text="statistics.today_prints || 0"></div>
+                    <div class="stat-label">Today's Prints</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Printer Configuration -->
+        <div class="card printer-config" x-show="showConfig">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cog"></i> Printer Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Printer Name</label>
+                            <input type="text" class="form-control" x-model="printerConfig.thermal_printer_name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Paper Width</label>
+                            <select class="form-select" x-model="printerConfig.paper_width">
+                                <option value="58mm">58mm</option>
+                                <option value="80mm">80mm (Standard)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Font Size</label>
+                            <select class="form-select" x-model="printerConfig.font_size">
+                                <option value="small">Small</option>
+                                <option value="medium">Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Auto Print</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" x-model="printerConfig.auto_print_enabled">
+                                <label class="form-check-label">Enable automatic printing</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" @click="savePrinterConfig()">
+                        <i class="fas fa-save"></i> Save Configuration
+                    </button>
+                    <button class="btn btn-secondary" @click="showConfig = false">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Print Test -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-vial"></i> Print Test</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label">Test Order</label>
+                            <select class="form-select" x-model="testOrderId">
+                                <option value="">Select a recent order...</option>
+                                <template x-for="order in recentOrders" :key="order.id">
+                                    <option :value="order.id" x-text="`${order.order_number} - ${order.customer_name || 'Walk-in'}`"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Copies</label>
+                            <input type="number" class="form-control" x-model="testCopies" min="1" max="5" value="1">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-print" @click="printTestBill()" :disabled="!testOrderId">
+                        <i class="fas fa-file-invoice"></i> Test Bill Print
+                    </button>
+                    <button class="btn btn-success" @click="printTestKOT()" :disabled="!testOrderId">
+                        <i class="fas fa-receipt"></i> Test KOT Print
+                    </button>
+                    <button class="btn btn-info" @click="printTestPDF()" :disabled="!testOrderId">
+                        <i class="fas fa-file-pdf"></i> Test PDF Invoice
+                    </button>
+                </div>
+                
+                <!-- Print Preview -->
+                <div class="print-preview" x-show="printPreview" x-html="printPreview">
+                    <!-- Preview content will be loaded here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Print History -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history"></i> Print History</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select" x-model="historyFilters.print_type">
+                            <option value="">All Types</option>
+                            <option value="bill">Bill</option>
+                            <option value="kot">KOT</option>
+                            <option value="invoice">Invoice</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" x-model="historyFilters.limit">
+                            <option value="50">Last 50</option>
+                            <option value="100">Last 100</option>
+                            <option value="200">Last 200</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-primary" @click="loadPrintHistory()">
+                            <i class="fas fa-search"></i> Refresh
+                        </button>
+                        <button class="btn btn-secondary" @click="exportPrintHistory()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped history-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Order</th>
+                                <th>Type</th>
+                                <th>Method</th>
+                                <th>Copies</th>
+                                <th>User</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="record in printHistory" :key="record.id">
+                                <tr>
+                                    <td x-text="formatDateTime(record.created_at)"></td>
+                                    <td x-text="record.order_number"></td>
+                                    <td>
+                                        <span class="badge bg-primary" x-text="record.print_type.toUpperCase()"></span>
+                                    </td>
+                                    <td x-text="record.print_method"></td>
+                                    <td x-text="record.copies"></td>
+                                    <td x-text="record.username"></td>
+                                    <td>
+                                        <span class="badge" :class="record.success ? 'bg-success' : 'bg-danger'" 
+                                              x-text="record.success ? 'Success' : 'Failed'"></span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" @click="reprintOrder(record)">
+                                            <i class="fas fa-redo"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        function printManagement() {
+            return {
+                printerStatus: {
+                    online: false,
+                    printer_name: 'Default',
+                    status: 'Unknown',
+                    paper_width: '80mm',
+                    last_check: null
+                },
+                statistics: {
+                    total_prints: 0,
+                    successful_prints: 0,
+                    success_rate: 0,
+                    today_prints: 0
+                },
+                printerConfig: {
+                    thermal_printer_name: 'Default',
+                    paper_width: '80mm',
+                    font_size: 'medium',
+                    auto_print_enabled: true
+                },
+                showConfig: false,
+                testOrderId: '',
+                testCopies: 1,
+                printPreview: null,
+                printHistory: [],
+                historyFilters: {
+                    print_type: '',
+                    limit: 50
+                },
+                recentOrders: [],
+                
+                init() {
+                    this.loadPrinterStatus();
+                    this.loadStatistics();
+                    this.loadPrintHistory();
+                    this.loadRecentOrders();
+                },
+                
+                async loadPrinterStatus() {
+                    try {
+                        const response = await fetch('/api/printer/status');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.printerStatus = data.printer_status;
+                        }
+                    } catch (error) {
+                        console.error('Error loading printer status:', error);
+                    }
+                },
+                
+                async loadStatistics() {
+                    try {
+                        const response = await fetch('/api/printer/statistics');
+                        const data = await response.json();
+                        if (data.success) {
+                            const stats = data.statistics;
+                            this.statistics.total_prints = stats.total_prints;
+                            this.statistics.successful_prints = stats.successful_prints;
+                            this.statistics.success_rate = stats.success_rate;
+                            this.statistics.today_prints = stats.today_prints || 0;
+                        }
+                    } catch (error) {
+                        console.error('Error loading statistics:', error);
+                    }
+                },
+                
+                async loadPrintHistory() {
+                    try {
+                        const response = await fetch('/api/printer/history', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.historyFilters)
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.printHistory = data.history;
+                        }
+                    } catch (error) {
+                        console.error('Error loading print history:', error);
+                    }
+                },
+                
+                async loadRecentOrders() {
+                    try {
+                        const response = await fetch('/api/orders/recent');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.recentOrders = data.orders.slice(0, 10);
+                        }
+                    } catch (error) {
+                        console.error('Error loading recent orders:', error);
+                    }
+                },
+                
+                async checkPrinterStatus() {
+                    await this.loadPrinterStatus();
+                    this.showNotification('Printer status refreshed', 'success');
+                },
+                
+                configurePrinter() {
+                    this.showConfig = true;
+                },
+                
+                async savePrinterConfig() {
+                    try {
+                        const response = await fetch('/api/printer/configure', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.printerConfig)
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.showConfig = false;
+                            this.showNotification('Printer configuration saved', 'success');
+                            await this.loadPrinterStatus();
+                        } else {
+                            this.showNotification(data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error saving printer config:', error);
+                        this.showNotification('Error saving configuration', 'error');
+                    }
+                },
+                
+                async printTestBill() {
+                    if (!this.testOrderId) return;
+                    
+                    try {
+                        const response = await fetch('/api/printer/test/bill', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                order_id: this.testOrderId,
+                                copies: this.testCopies
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.showNotification('Test bill printed successfully', 'success');
+                            window.open(data.print_url, '_blank');
+                        } else {
+                            this.showNotification(data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error printing test bill:', error);
+                        this.showNotification('Error printing test bill', 'error');
+                    }
+                },
+                
+                async printTestKOT() {
+                    if (!this.testOrderId) return;
+                    
+                    try {
+                        const response = await fetch('/api/printer/test/kot', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                order_id: this.testOrderId,
+                                copies: this.testCopies
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.showNotification('Test KOT printed successfully', 'success');
+                            window.open(data.print_url, '_blank');
+                        } else {
+                            this.showNotification(data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error printing test KOT:', error);
+                        this.showNotification('Error printing test KOT', 'error');
+                    }
+                },
+                
+                async printTestPDF() {
+                    if (!this.testOrderId) return;
+                    
+                    try {
+                        const response = await fetch('/api/printer/test/pdf', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                order_id: this.testOrderId,
+                                copies: this.testCopies
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.showNotification('Test PDF generated successfully', 'success');
+                            window.open(data.pdf_url, '_blank');
+                        } else {
+                            this.showNotification(data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error generating test PDF:', error);
+                        this.showNotification('Error generating test PDF', 'error');
+                    }
+                },
+                
+                reprintOrder(record) {
+                    if (record.print_type === 'bill') {
+                        window.open(`/orders/print/${record.order_id}`, '_blank');
+                    } else if (record.print_type === 'kot') {
+                        window.open(`/kot/print/${record.order_id}`, '_blank');
+                    } else if (record.print_type === 'invoice') {
+                        window.open(`/reports/invoice/${record.order_id}`, '_blank');
+                    }
+                },
+                
+                async exportPrintHistory() {
+                    try {
+                        const response = await fetch('/api/printer/export', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.historyFilters)
+                        });
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `print_history_${new Date().toISOString().split('T')[0]}.csv`;
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                    } catch (error) {
+                        console.error('Error exporting print history:', error);
+                        this.showNotification('Error exporting print history', 'error');
+                    }
+                },
+                
+                formatDateTime(dateString) {
+                    // Use global formatDateTime function from utils.js
+                    return window.formatDateTime(dateString, {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                },
+                
+                showNotification(message, type = 'info') {
+                    // Use global showNotification function from utils.js
+                    return window.showNotification(message, type);
+                }
+            };
+        }
+    </script>
+</body>
+</html>

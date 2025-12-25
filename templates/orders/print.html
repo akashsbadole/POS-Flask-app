@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill - {{ order.order_number }}</title>
+    <style>
+        /* Thermal Printer Optimized Styles - 80mm width */
+        @media print {
+            body {
+                margin: 0;
+                padding: 5px;
+                font-family: 'Courier New', monospace;
+                font-size: 10px;
+                line-height: 1.2;
+                color: #000;
+                background: #fff;
+                width: 80mm;
+                max-width: 80mm;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+            
+            .bill-container {
+                width: 100%;
+                max-width: 80mm;
+                margin: 0 auto;
+                background: #fff;
+                color: #000;
+            }
+            
+            .bill-header {
+                text-align: center;
+                border-bottom: 2px solid #000;
+                padding-bottom: 8px;
+                margin-bottom: 10px;
+            }
+            
+            .restaurant-name {
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 3px;
+                text-transform: uppercase;
+            }
+            
+            .restaurant-address {
+                font-size: 9px;
+                margin-bottom: 2px;
+            }
+            
+            .restaurant-contact {
+                font-size: 9px;
+                margin-bottom: 2px;
+            }
+            
+            .gst-number {
+                font-size: 9px;
+                font-weight: bold;
+            }
+            
+            .bill-title {
+                font-size: 14px;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin: 8px 0;
+                text-align: center;
+            }
+            
+            .order-info {
+                margin-bottom: 10px;
+                font-size: 9px;
+            }
+            
+            .order-info-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 2px;
+            }
+            
+            .customer-info {
+                margin-bottom: 8px;
+                font-size: 9px;
+                border-top: 1px dashed #000;
+                border-bottom: 1px dashed #000;
+                padding: 4px 0;
+            }
+            
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 10px;
+                font-size: 9px;
+            }
+            
+            .items-table th,
+            .items-table td {
+                padding: 2px 1px;
+                text-align: left;
+                border-bottom: 1px dotted #000;
+            }
+            
+            .items-table th {
+                font-weight: bold;
+                text-transform: uppercase;
+                font-size: 8px;
+                border-bottom: 2px solid #000;
+            }
+            
+            .item-name {
+                font-weight: normal;
+            }
+            
+            .item-quantity {
+                text-align: center;
+                min-width: 20px;
+            }
+            
+            .item-price {
+                text-align: right;
+                min-width: 30px;
+            }
+            
+            .item-total {
+                text-align: right;
+                font-weight: bold;
+                min-width: 30px;
+            }
+            
+            .item-notes {
+                font-style: italic;
+                font-size: 8px;
+                margin-top: 1px;
+                padding-left: 10px;
+            }
+            
+            .section-divider {
+                border-top: 1px dashed #000;
+                margin: 8px 0;
+            }
+            
+            .totals-section {
+                margin-bottom: 10px;
+                font-size: 9px;
+            }
+            
+            .totals-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 2px;
+            }
+            
+            .grand-total-row {
+                font-weight: bold;
+                font-size: 12px;
+                border-top: 2px solid #000;
+                border-bottom: 2px solid #000;
+                padding: 4px 0;
+                margin-top: 4px;
+            }
+            
+            .payment-info {
+                margin-bottom: 10px;
+                font-size: 9px;
+                border-top: 1px dashed #000;
+                padding-top: 4px;
+            }
+            
+            .payment-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 2px;
+            }
+            
+            .bill-footer {
+                text-align: center;
+                font-size: 8px;
+                margin-top: 10px;
+                border-top: 1px dashed #000;
+                padding-top: 8px;
+            }
+            
+            .footer-text {
+                margin-bottom: 2px;
+            }
+            
+            .terms {
+                font-size: 7px;
+                margin-top: 5px;
+                text-align: center;
+                font-style: italic;
+            }
+            
+            .timestamp {
+                text-align: right;
+                font-size: 8px;
+                margin-top: 5px;
+            }
+            
+            /* Ensure no colors are printed */
+            * {
+                color: #000 !important;
+                background: #fff !important;
+            }
+            
+            /* Hide all background colors and images */
+            body, .bill-container, .bill-header, .items-table, .totals-section, 
+            .payment-info, .bill-footer {
+                background: #fff !important;
+                background-image: none !important;
+            }
+        }
+        
+        @media screen {
+            body {
+                margin: 20px;
+                font-family: Arial, sans-serif;
+                background: #f5f5f5;
+            }
+            
+            .print-actions {
+                margin-bottom: 20px;
+                padding: 15px;
+                background: #fff;
+                border-radius: 5px;
+                text-align: center;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            
+            .preview-container {
+                max-width: 400px;
+                margin: 0 auto;
+                border: 1px solid #ddd;
+                padding: 20px;
+                background: white;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            
+            .btn {
+                padding: 8px 16px;
+                margin: 0 5px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                text-decoration: none;
+                display: inline-block;
+            }
+            
+            .btn-primary {
+                background: #007bff;
+                color: white;
+            }
+            
+            .btn-secondary {
+                background: #6c757d;
+                color: white;
+            }
+            
+            .btn:hover {
+                opacity: 0.8;
+            }
+            
+            .thermal-preview {
+                width: 80mm;
+                margin: 0 auto;
+                border: 1px solid #ccc;
+                background: white;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print print-actions">
+        <h3>Bill/Invoice</h3>
+        <p>Order Number: <strong>{{ order.order_number }}</strong></p>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print"></i> Print Bill
+        </button>
+        <button onclick="downloadPDF()" class="btn btn-secondary">
+            <i class="fas fa-file-pdf"></i> Download PDF
+        </button>
+        <button onclick="window.close()" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Close
+        </button>
+    </div>
+
+    <div class="thermal-preview">
+        <div class="bill-container">
+            <!-- Bill Header -->
+            <div class="bill-header">
+                <div class="restaurant-name">{{ settings.restaurant_name or 'Restaurant POS' }}</div>
+                {% if settings.restaurant_address %}
+                <div class="restaurant-address">{{ settings.restaurant_address }}</div>
+                {% endif %}
+                {% if settings.restaurant_phone %}
+                <div class="restaurant-contact">Phone: {{ settings.restaurant_phone }}</div>
+                {% endif %}
+                {% if settings.gst_number %}
+                <div class="gst-number">GSTIN: {{ settings.gst_number }}</div>
+                {% endif %}
+            </div>
+
+            <div class="bill-title">TAX INVOICE</div>
+
+            <!-- Order Information -->
+            <div class="order-info">
+                <div class="order-info-row">
+                    <span>Invoice No:</span>
+                    <span>{{ order.order_number }}</span>
+                </div>
+                <div class="order-info-row">
+                    <span>Date:</span>
+                    <span>{{ order.created_at.strftime('%d/%m/%Y') }}</span>
+                </div>
+                <div class="order-info-row">
+                    <span>Time:</span>
+                    <span>{{ order.created_at.strftime('%I:%M %p') }}</span>
+                </div>
+                <div class="order-info-row">
+                    <span>Type:</span>
+                    <span>{{ order.order_type }}</span>
+                </div>
+                {% if order.table_number %}
+                <div class="order-info-row">
+                    <span>Table:</span>
+                    <span>{{ order.table_number }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Customer Information -->
+            <div class="customer-info">
+                {% if order.customer_name %}
+                <div class="order-info-row">
+                    <span>Customer:</span>
+                    <span>{{ order.customer_name }}</span>
+                </div>
+                {% endif %}
+                {% if order.customer_mobile %}
+                <div class="order-info-row">
+                    <span>Mobile:</span>
+                    <span>{{ order.customer_mobile }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Order Items -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th width="8%">Qty</th>
+                        <th width="52%">Item</th>
+                        <th width="20%">Price</th>
+                        <th width="20%">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order_items %}
+                    <tr>
+                        <td class="item-quantity">{{ item.quantity }}</td>
+                        <td class="item-name">{{ item.item_name }}</td>
+                        <td class="item-price">{{ item.price }}</td>
+                        <td class="item-total">{{ item.price * item.quantity }}</td>
+                    </tr>
+                    {% if item.special_instructions %}
+                    <tr>
+                        <td colspan="4" class="item-notes">Note: {{ item.special_instructions }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="section-divider"></div>
+
+            <!-- Totals Section -->
+            <div class="totals-section">
+                <div class="totals-row">
+                    <span>Subtotal:</span>
+                    <span>₹{{ "%.2f"|format(order.subtotal or 0) }}</span>
+                </div>
+                <div class="totals-row">
+                    <span>CGST (2.5%):</span>
+                    <span>₹{{ "%.2f"|format(order.cgst_amount or 0) }}</span>
+                </div>
+                <div class="totals-row">
+                    <span>SGST (2.5%):</span>
+                    <span>₹{{ "%.2f"|format(order.sgst_amount or 0) }}</span>
+                </div>
+                {% if order.discount_amount and order.discount_amount > 0 %}
+                <div class="totals-row">
+                    <span>Discount:</span>
+                    <span>-₹{{ "%.2f"|format(order.discount_amount) }}</span>
+                </div>
+                {% endif %}
+                <div class="grand-total-row">
+                    <span>GRAND TOTAL:</span>
+                    <span>₹{{ "%.2f"|format(order.grand_total or 0) }}</span>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            {% if payments %}
+            <div class="payment-info">
+                <div class="order-info-row">
+                    <span><strong>Payment Details:</strong></span>
+                    <span></span>
+                </div>
+                {% for payment in payments %}
+                <div class="payment-row">
+                    <span>{{ payment.payment_mode }}</span>
+                    <span>₹{{ "%.2f"|format(payment.amount) }}</span>
+                </div>
+                {% if payment.reference_number %}
+                <div class="payment-row">
+                    <span>Ref:</span>
+                    <span>{{ payment.reference_number }}</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Special Instructions -->
+            {% if order.special_instructions %}
+            <div class="section-divider"></div>
+            <div style="font-size: 9px; margin-bottom: 8px;">
+                <strong>Special Instructions:</strong><br>
+                {{ order.special_instructions }}
+            </div>
+            {% endif %}
+
+            <!-- Bill Footer -->
+            <div class="bill-footer">
+                <div class="footer-text">{{ settings.receipt_footer or 'Thank you for visiting!' }}</div>
+                <div class="footer-text">Powered by Restaurant POS</div>
+                <div class="terms">
+                    This is a computer-generated invoice<br>
+                    Goods once sold will not be taken back
+                </div>
+            </div>
+
+            <div class="timestamp">
+                Printed: <span id="printTime">{{ moment().format('DD/MM/YYYY HH:mm:ss') }}</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update print time
+        function updatePrintTime() {
+            const printTimeElement = document.getElementById('printTime');
+            if (printTimeElement) {
+                printTimeElement.textContent = new Date().toLocaleString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+        }
+
+        // Download PDF functionality
+        function downloadPDF() {
+            // Create a temporary link to trigger PDF download
+            const link = document.createElement('a');
+            link.href = `/reports/invoice/{{ order.id }}`;
+            link.download = `invoice_{{ order.order_number }}.pdf`;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Auto-print functionality
+        window.addEventListener('load', function() {
+            updatePrintTime();
+            
+            // Check if we should auto-print (based on URL parameter)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('auto_print') === 'true') {
+                setTimeout(function() {
+                    window.print();
+                }, 500);
+            }
+        });
+
+        // Print and close functionality
+        window.addEventListener('afterprint', function() {
+            setTimeout(function() {
+                if (window.opener) {
+                    window.close();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

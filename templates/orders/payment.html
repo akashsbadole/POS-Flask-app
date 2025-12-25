@@ -1,0 +1,494 @@
+{% extends "base.html" %} {% block title %}Payment - Order {{ order.order_number
+}}{% endblock %} {% block extra_css %}
+<style>
+  .payment-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .payment-method-card {
+    border: 2px solid #e3e6f0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .payment-method-card:hover {
+    border-color: #4e73df;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .payment-method-card.selected {
+    border-color: #4e73df;
+    background-color: #f8f9fc;
+  }
+
+  .payment-icon {
+    font-size: 2rem;
+    color: #4e73df;
+    margin-bottom: 10px;
+  }
+
+  .order-summary {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .gst-breakdown {
+    font-size: 0.9rem;
+    color: #6c757d;
+  }
+
+  .total-row {
+    border-top: 2px solid #4e73df;
+    padding-top: 10px;
+    margin-top: 10px;
+  }
+
+  .payment-input {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    width: 100%;
+  }
+
+  .payment-input:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+  }
+
+  .btn-payment {
+    background: #28a745;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .btn-payment:hover {
+    background: #218838;
+  }
+
+  .btn-payment:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+  }
+
+  .loading-spinner {
+    display: none;
+  }
+
+  .loading .loading-spinner {
+    display: inline-block;
+  }
+
+  .loading .btn-payment-text {
+    display: none;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid" x-data="paymentProcessor()">
+  <div class="row">
+    <div class="col-12">
+      <!-- Page Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h3 mb-0">Process Payment</h1>
+          <p class="text-muted mb-0">
+            Order: <strong x-text="orderData.order_number"></strong>
+          </p>
+        </div>
+        <a href="{{ url_for('orders.new_order') }}" class="btn btn-outline-secondary">
+          <i class="fas fa-arrow-left"></i> Back to Orders
+        </a>
+      </div>
+
+      <div class="row">
+        <!-- Left Column - Payment Methods -->
+        <div class="col-md-7">
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-credit-card"></i> Select Payment Method
+              </h5>
+            </div>
+            <div class="card-body">
+              <!-- Payment Methods Grid -->
+              <div class="row g-3">
+                <!-- Cash -->
+                <div class="col-md-6 mb-3">
+                  <div
+                    @click="selectPaymentMethod('Cash')"
+                    :class="{selected: selectedMethod === 'Cash'}"
+                    class="payment-method-card card h-100 p-3 text-center"
+                  >
+                    <div class="payment-icon">
+                      <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h6>Cash</h6>
+                    <small class="text-muted">Pay with cash</small>
+                  </div>
+                </div>
+
+                <!-- Card -->
+                <div class="col-md-6 mb-3">
+                  <div
+                    @click="selectPaymentMethod('Card')"
+                    :class="{selected: selectedMethod === 'Card'}"
+                    class="payment-method-card card h-100 p-3 text-center"
+                  >
+                    <div class="payment-icon">
+                      <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h6>Card</h6>
+                    <small class="text-muted">Credit/Debit Card</small>
+                  </div>
+                </div>
+
+                <!-- UPI -->
+                <div class="col-md-6 mb-3">
+                  <div
+                    @click="selectPaymentMethod('UPI')"
+                    :class="{selected: selectedMethod === 'UPI'}"
+                    class="payment-method-card card h-100 p-3 text-center"
+                  >
+                    <div class="payment-icon">
+                      <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h6>UPI</h6>
+                    <small class="text-muted">Unified Payments Interface</small>
+                  </div>
+                </div>
+
+                <!-- Wallet -->
+                <div class="col-md-6 mb-3">
+                  <div
+                    @click="selectPaymentMethod('Wallet')"
+                    :class="{selected: selectedMethod === 'Wallet'}"
+                    class="payment-method-card card h-100 p-3 text-center"
+                  >
+                    <div class="payment-icon">
+                      <i class="fas fa-wallet"></i>
+                    </div>
+                    <h6>Wallet</h6>
+                    <small class="text-muted">Mobile Wallet</small>
+                  </div>
+                </div>
+
+                <!-- Credit -->
+                <div class="col-md-6 mb-3">
+                  <div
+                    @click="selectPaymentMethod('Credit')"
+                    :class="{selected: selectedMethod === 'Credit'}"
+                    class="payment-method-card card h-100 p-3 text-center"
+                  >
+                    <div class="payment-icon">
+                      <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <h6>Credit</h6>
+                    <small class="text-muted">Customer Credit</small>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payment Method Specific Fields -->
+              <div x-show="selectedMethod" class="mt-4">
+                <!-- Cash Fields -->
+                <div x-show="selectedMethod === 'Cash'" class="payment-fields">
+                  <h6 class="mb-3">Cash Payment Details</h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">Cash Received</label>
+                      <input
+                        type="number"
+                        x-model="paymentData.cash_received"
+                        @input="calculateChange()"
+                        class="payment-input"
+                        placeholder="Enter cash received"
+                        step="0.01"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Change to Return</label>
+                      <input
+                        type="number"
+                        :value="paymentData.change"
+                        readonly
+                        class="payment-input"
+                        placeholder="Change amount"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card Fields -->
+                <div x-show="selectedMethod === 'Card'" class="payment-fields">
+                  <h6 class="mb-3">Card Payment Details</h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">Card Number</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.card_number"
+                        class="payment-input"
+                        placeholder="**** **** **** ****"
+                        maxlength="19"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Expiry Date</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.expiry"
+                        class="payment-input"
+                        placeholder="MM/YY"
+                        maxlength="5"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Card Holder Name</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.card_holder"
+                        class="payment-input"
+                        placeholder="Name on card"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Transaction ID</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.transaction_id"
+                        class="payment-input"
+                        placeholder="Bank transaction ID"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- UPI Fields -->
+                <div x-show="selectedMethod === 'UPI'" class="payment-fields">
+                  <h6 class="mb-3">UPI Payment Details</h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">UPI ID</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.upi_id"
+                        class="payment-input"
+                        placeholder="username@ybl"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Transaction ID</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.upi_transaction_id"
+                        class="payment-input"
+                        placeholder="UPI transaction ID"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Wallet Fields -->
+                <div
+                  x-show="selectedMethod === 'Wallet'"
+                  class="payment-fields"
+                >
+                  <h6 class="mb-3">Wallet Payment Details</h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">Wallet Number</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.wallet_number"
+                        class="payment-input"
+                        placeholder="Mobile number"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Transaction ID</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.wallet_transaction_id"
+                        class="payment-input"
+                        placeholder="Wallet transaction ID"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Credit Fields -->
+                <div
+                  x-show="selectedMethod === 'Credit'"
+                  class="payment-fields"
+                >
+                  <h6 class="mb-3">Credit Payment Details</h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">Customer Name</label>
+                      <input
+                        type="text"
+                        x-model="paymentData.credit_customer"
+                        class="payment-input"
+                        placeholder="Customer name for credit"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Credit Period</label>
+                      <select
+                        x-model="paymentData.credit_period"
+                        class="form-select"
+                      >
+                        <option value="">Select period</option>
+                        <option value="7">7 Days</option>
+                        <option value="15">15 Days</option>
+                        <option value="30">30 Days</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - Order Summary -->
+        <div class="col-md-5">
+          <!-- Order Summary Card -->
+          <div class="order-summary">
+            <h5 class="mb-4"><i class="fas fa-receipt"></i> Order Summary</h5>
+
+            <!-- Customer Info -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-2">
+                <span>Customer:</span>
+                <strong x-text="orderData.customer_name || 'N/A'"></strong>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Order Type:</span>
+                <strong x-text="orderData.order_type"></strong>
+              </div>
+              <div
+                class="d-flex justify-content-between mb-2"
+                x-show="orderData.table_number"
+              >
+                <span>Table:</span>
+                <strong x-text="orderData.table_number"></strong>
+              </div>
+            </div>
+
+            <!-- Items Summary -->
+            <div class="mb-3">
+              <h6 class="text-muted">
+                Items (<span x-text="orderData.items.length"></span>)
+              </h6>
+              <div class="small">
+                <template x-for="item in orderData.items" :key="item.id">
+                  <div class="d-flex justify-content-between">
+                    <span x-text="`${item.quantity}x ${item.name}`"></span>
+                    <span
+                      x-text="`₹${(item.price * item.quantity).toFixed(2)}`"
+                    ></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- GST Breakdown -->
+            <div class="gst-breakdown mb-3">
+              <div class="d-flex justify-content-between mb-2">
+                <span>Subtotal:</span>
+                <span x-text="`₹${orderData.subtotal.toFixed(2)}`"></span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>CGST (2.5%):</span>
+                <span x-text="`₹${orderData.cgst_amount.toFixed(2)}`"></span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>SGST (2.5%):</span>
+                <span x-text="`₹${orderData.sgst_amount.toFixed(2)}`"></span>
+              </div>
+              <div
+                class="d-flex justify-content-between mb-2"
+                x-show="orderData.discount_amount > 0"
+              >
+                <span>Discount:</span>
+                <span
+                  class="text-danger"
+                  x-text="`-₹${orderData.discount_amount.toFixed(2)}`"
+                ></span>
+              </div>
+            </div>
+
+            <!-- Total -->
+            <div class="total-row">
+              <div class="d-flex justify-content-between">
+                <h5>Total Amount:</h5>
+                <h5
+                  class="text-primary"
+                  x-text="`₹${orderData.grand_total.toFixed(2)}`"
+                ></h5>
+              </div>
+            </div>
+
+            <!-- Payment Amount -->
+            <div x-show="selectedMethod" class="mt-4">
+              <div class="row">
+                <div class="col-md-6">
+                  <label class="form-label">Amount Paid</label>
+                  <input
+                    type="number"
+                    x-model="paymentData.amount_paid"
+                    @input="validatePayment()"
+                    class="payment-input"
+                    placeholder="Enter amount"
+                    step="0.01"
+                    :min="orderData.grand_total"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Balance</label>
+                  <input
+                    type="number"
+                    :value="paymentBalance"
+                    readonly
+                    class="payment-input"
+                    placeholder="Balance"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Process Payment Button -->
+            <div class="mt-4 text-center">
+              <button
+                @click="processPayment()"
+                :disabled="!canProcessPayment"
+                class="btn btn-payment btn-success btn-lg w-100"
+                :class="{loading: processing}"
+              >
+                <span class="loading-spinner">
+                  <i class="fas fa-spinner fa-spin"></i> Processing...
+                </span>
+                <span class="btn-payment-text">
+                  <i class="fas fa-credit-card"></i> Process Payment
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/payment-processor.js') }}"></script>
+<script>
+  // Pass order data from Flask to JavaScript
+  window.orderData = JSON.parse('{{ order.to_dict()|tojson|safe }}');
+</script>
+{% endblock %}

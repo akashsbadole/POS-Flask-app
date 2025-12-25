@@ -1,0 +1,338 @@
+{% extends "base.html" %} {% block title %}Menu Management - Restaurant POS{%
+endblock %} {% block content %}
+<div class="container-fluid" x-data="menuManagement()">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Menu Management</h1>
+    <div>
+      <button @click="showAddModal()" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Item
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="card shadow mb-4">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <label class="form-label">Search</label>
+          <input
+            type="text"
+            x-model="searchQuery"
+            @input="filterItems()"
+            class="form-control"
+            placeholder="Search items..."
+          />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Category</label>
+          <select
+            x-model="selectedCategory"
+            @change="filterItems()"
+            class="form-select"
+          >
+            <option value="">All Categories</option>
+            {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Status</label>
+          <select
+            x-model="stockFilter"
+            @change="filterItems()"
+            class="form-select"
+          >
+            <option value="all">All</option>
+            <option value="in_stock">In Stock</option>
+            <option value="low_stock">Low Stock</option>
+            <option value="out_of_stock">Out of Stock</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Actions</label>
+          <div class="btn-group w-100">
+            <button @click="exportData()" class="btn btn-outline-secondary">
+              <i class="fas fa-download"></i> Export
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Items Grid -->
+  <div class="row" id="menuItemsGrid">
+    {% for item in menu_items.items %}
+    <div
+      class="col-lg-4 col-md-6 mb-4 menu-item"
+      data-category="{{ item.category_id }}"
+      data-name="{{ item.name|lower }}"
+      data-stock="{% if item.is_out_of_stock %}out_of_stock{% elif item.is_low_stock %}low_stock{% else %}in_stock{% endif %}"
+    >
+      <div class="card h-100">
+        {% if item.image_path %}
+        <img
+          src="{{ url_for('static', filename='uploads/' + item.image_path) }}"
+          class="card-img-top"
+          style="height: 200px; object-fit: cover"
+        />
+        {% endif %}
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <h5 class="card-title">{{ item.name }}</h5>
+            <span
+              class="badge {% if item.is_out_of_stock %}bg-danger{% elif item.is_low_stock %}bg-warning{% else %}bg-success{% endif %}"
+            >
+              {% if item.is_out_of_stock %}Out of Stock{% elif item.is_low_stock
+              %}Low Stock{% else %}In Stock{% endif %}
+            </span>
+          </div>
+          <p class="card-text text-muted">{{ item.description or '' }}</p>
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="text-primary">₹{{ "%.2f"|format(item.price) }}</h6>
+            <small class="text-muted"
+              >Stock: {{ item.stock_quantity }} {{ item.unit }}</small
+            >
+          </div>
+          <div class="mt-2">
+            <small class="text-muted"
+              >Category: {{ item.category.name if item.category else 'N/A'
+              }}</small
+            >
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="btn-group w-100">
+            <button
+              @click="editItem({{ item.id }})"
+              class="btn btn-sm btn-outline-primary"
+            >
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button
+              @click="toggleStatus({{ item.id }})"
+              class="btn btn-sm {% if item.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+            >
+              <i
+                class="fas fa-{% if item.is_active %}eye-slash{% else %}eye{% endif %}"
+              ></i>
+              {% if item.is_active %}Disable{% else %}Enable{% endif %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if menu_items.pages > 1 %}
+  <nav aria-label="Menu items pagination">
+    <ul class="pagination justify-content-center">
+      {% if menu_items.has_prev %}
+      <li class="page-item">
+        <a
+          class="page-link"
+          href="{{ url_for('menu.index', page=menu_items.prev_num, search=search, category=category_filter) }}"
+          >Previous</a
+        >
+      </li>
+      {% endif %} {% for page_num in menu_items.iter_pages() %} {% if page_num
+      %}
+      <li
+        class="page-item {% if page_num == menu_items.page %}active{% endif %}"
+      >
+        <a
+          class="page-link"
+          href="{{ url_for('menu.index', page=page_num, search=search, category=category_filter) }}"
+          >{{ page_num }}</a
+        >
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">...</span>
+      </li>
+      {% endif %} {% endfor %} {% if menu_items.has_next %}
+      <li class="page-item">
+        <a
+          class="page-link"
+          href="{{ url_for('menu.index', page=menu_items.next_num, search=search, category=category_filter) }}"
+          >Next</a
+        >
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+
+<!-- Add/Edit Item Modal -->
+<div class="modal fade" id="itemModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5
+          class="modal-title"
+          x-text="editingItem ? 'Edit Item' : 'Add New Item'"
+        ></h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="itemForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Name *</label>
+              <input
+                type="text"
+                x-model="formData.name"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Category *</label>
+              <select
+                x-model="formData.category_id"
+                class="form-select"
+                required
+              >
+                <option value="">Select Category</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea
+              x-model="formData.description"
+              class="form-control"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Price *</label>
+              <input
+                type="number"
+                x-model="formData.price"
+                step="0.01"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Stock Quantity</label>
+              <input
+                type="number"
+                x-model="formData.stock_quantity"
+                class="form-control"
+              />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Unit</label>
+              <input
+                type="text"
+                x-model="formData.unit"
+                class="form-control"
+                placeholder="pcs, kg, etc."
+              />
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Image</label>
+            <input
+              type="file"
+              @change="handleImageUpload"
+              class="form-control"
+              accept="image/*"
+              id="imageInput"
+            />
+            <div x-show="imagePreview" class="mt-2">
+              <div class="d-flex align-items-center">
+                <img
+                  :src="imagePreview"
+                  class="img-thumbnail me-2"
+                  style="max-height: 100px; max-width: 150px"
+                />
+                <button
+                  type="button"
+                  @click="removeImage"
+                  class="btn btn-sm btn-outline-danger"
+                >
+                  <i class="fas fa-times"></i> Remove
+                </button>
+              </div>
+            </div>
+            <div x-show="uploading" class="mt-2">
+              <div class="progress">
+                <div
+                  class="progress-bar"
+                  role="progressbar"
+                  style="width: 100%"
+                >
+                  Uploading...
+                </div>
+              </div>
+            </div>
+            <input type="hidden" x-model="formData.image_path" />
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button type="button" @click="saveItem()" class="btn btn-primary">
+          <i class="fas fa-save"></i> Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/menu-management.js') }}"></script>
+<script>
+  // Initialize with current search and filter values
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set initial values from Flask template context
+    if (typeof Alpine !== 'undefined') {
+      // Initialize Alpine data with current values
+      document.addEventListener('alpine:init', () => {
+        Alpine.data('menuManagement', () => ({
+          searchQuery: "{{ search }}",
+          selectedCategory: "{{ category_filter }}",
+          stockFilter: "all",
+          editingItem: false,
+          imagePreview: null,
+          uploading: false,
+          formData: {
+            id: null,
+            name: "",
+            description: "",
+            category_id: "",
+            price: "",
+            stock_quantity: "",
+            unit: "",
+            image_path: "",
+          },
+          
+          // Include all methods from menu-management.js
+          ...menuManagement()
+        }));
+      });
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,1162 @@
+{% extends "base.html" %} 
+{% block title %}New Order - Restaurant POS{% endblock %} 
+
+{% block extra_css %}
+<style>
+/* Modern POS Billing Screen Styles */
+.pos-billing-container {
+  display: flex;
+  height: calc(100vh - 80px);
+  max-width: 1400px;
+  margin: 0 auto;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: var(--gray-50);
+}
+
+/* Left Panel - Menu Area */
+.pos-menu-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Category Tabs */
+.pos-category-tabs {
+  display: flex;
+  background: var(--gray-50);
+  border-bottom: 2px solid var(--gray-200);
+  overflow-x: auto;
+  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-sm);
+}
+
+.pos-category-tab {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--white);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pos-category-tab:hover {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.pos-category-tab.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Search Bar */
+.pos-menu-search {
+  padding: var(--spacing-md);
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.pos-search-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  transition: all var(--transition-fast);
+  min-height: 48px;
+}
+
+.pos-search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+/* Menu Items Grid */
+.pos-menu-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Menu Item Card */
+.pos-menu-item-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+}
+
+.pos-menu-item-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+}
+
+.pos-menu-item-card.selected {
+  border-color: var(--success-color);
+  background: var(--success-light);
+}
+
+.pos-menu-item-image {
+  width: 100%;
+  height: 120px;
+  background: var(--gray-100);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.pos-menu-item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pos-menu-item-image .placeholder-icon {
+  font-size: 48px;
+  color: var(--gray-400);
+}
+
+.pos-menu-item-name {
+  font-weight: 600;
+  font-size: var(--font-size-md);
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.pos-menu-item-price {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  color: var(--success-color);
+  margin-bottom: var(--spacing-sm);
+}
+
+.pos-menu-item-stock {
+  font-size: var(--font-size-xs);
+  color: var(--warning-color);
+  margin-bottom: var(--spacing-sm);
+}
+
+.pos-add-item-btn {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: var(--primary-color);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: auto;
+  min-height: 40px;
+}
+
+.pos-add-item-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+/* Right Panel - Order Summary */
+.pos-order-panel {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Order Header */
+.pos-order-header {
+  padding: var(--spacing-lg);
+  background: var(--gray-50);
+  border-bottom: 2px solid var(--gray-200);
+}
+
+.pos-order-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.pos-customer-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.pos-customer-info.full-width {
+  grid-template-columns: 1fr;
+}
+
+.pos-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.pos-form-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.pos-form-control {
+  padding: var(--spacing-sm);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+  min-height: 40px;
+}
+
+.pos-form-control:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+/* Order Items */
+.pos-order-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+.pos-order-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+  border: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.pos-order-item:hover {
+  border-color: var(--primary-color);
+  background: var(--white);
+}
+
+.pos-order-item-info {
+  flex: 1;
+}
+
+.pos-order-item-name {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.pos-order-item-note {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.pos-quantity-control {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: var(--white);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs);
+  margin-right: var(--spacing-md);
+}
+
+.pos-quantity-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--primary-color);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-weight: 700;
+}
+
+.pos-quantity-btn:hover {
+  background: var(--primary-dark);
+}
+
+.pos-quantity-input {
+  width: 50px;
+  text-align: center;
+  border: none;
+  font-weight: 600;
+  font-size: var(--font-size-md);
+}
+
+.pos-item-price {
+  font-weight: 700;
+  color: var(--success-color);
+  margin-right: var(--spacing-sm);
+}
+
+.pos-remove-item-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--danger-color);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.pos-remove-item-btn:hover {
+  background: var(--danger-dark);
+}
+
+/* Order Totals */
+.pos-order-totals {
+  padding: var(--spacing-lg);
+  background: var(--gray-50);
+  border-top: 2px solid var(--gray-200);
+}
+
+.pos-total-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.pos-total-row.grand-total {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--success-color);
+  padding-top: var(--spacing-md);
+  border-top: 2px solid var(--gray-300);
+  margin-top: var(--spacing-md);
+}
+
+.pos-total-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pos-total-value {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pos-total-value.discount {
+  color: var(--danger-color);
+}
+
+/* Order Actions */
+.pos-order-actions {
+  padding: var(--spacing-lg);
+  background: var(--white);
+  border-top: 2px solid var(--gray-200);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.pos-action-btn {
+  padding: var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.pos-action-btn.primary {
+  background: var(--primary-color);
+  color: var(--white);
+  grid-column: span 2;
+}
+
+.pos-action-btn.primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.pos-action-btn.success {
+  background: var(--success-color);
+  color: var(--white);
+}
+
+.pos-action-btn.success:hover {
+  background: var(--success-dark);
+  transform: translateY(-1px);
+}
+
+.pos-action-btn.warning {
+  background: var(--warning-color);
+  color: var(--gray-900);
+}
+
+.pos-action-btn.warning:hover {
+  background: var(--warning-dark);
+  transform: translateY(-1px);
+}
+
+.pos-action-btn.danger {
+  background: var(--danger-color);
+  color: var(--white);
+}
+
+.pos-action-btn.danger:hover {
+  background: var(--danger-dark);
+  transform: translateY(-1px);
+}
+
+/* Empty State */
+.pos-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  color: var(--text-secondary);
+}
+
+.pos-empty-state-icon {
+  font-size: 64px;
+  margin-bottom: var(--spacing-lg);
+  color: var(--gray-400);
+}
+
+.pos-empty-state-text {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Order Tabs */
+.pos-order-tabs {
+  display: flex;
+  background: var(--gray-50);
+  border-bottom: 2px solid var(--gray-200);
+  overflow-x: auto;
+  padding: var(--spacing-sm);
+  gap: var(--spacing-sm);
+  padding-bottom: 40px;
+}
+
+.pos-order-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--white);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+}
+
+.pos-order-tab:hover {
+  border-color: var(--primary-color);
+}
+
+.pos-order-tab.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: var(--white);
+}
+
+.pos-order-tab-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all var(--transition-fast);
+}
+
+.pos-order-tab-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.pos-add-order-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--success-color);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.pos-add-order-btn:hover {
+  background: var(--success-dark);
+  transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .pos-billing-container {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .pos-order-panel {
+    width: 100%;
+    order: -1;
+  }
+  
+  .pos-menu-items {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .pos-billing-container {
+    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+  }
+  
+  .pos-menu-items {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--spacing-sm);
+  }
+  
+  .pos-customer-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .pos-order-actions {
+    grid-template-columns: 1fr;
+  }
+  
+  .pos-action-btn.primary {
+    grid-column: span 1;
+  }
+  
+  .pos-menu-item-card {
+    min-height: 160px;
+  }
+  
+  .pos-menu-item-image {
+    height: 80px;
+  }
+}
+
+/* Touch-friendly adjustments */
+@media (pointer: coarse) {
+  .pos-category-tab,
+  .pos-add-item-btn,
+  .pos-quantity-btn,
+  .pos-remove-item-btn,
+  .pos-action-btn {
+    min-height: 52px;
+  }
+  
+  .pos-form-control {
+    min-height: 48px;
+  }
+}
+
+/* Loading Animation */
+.pos-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+}
+
+.pos-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--gray-300);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Custom Scrollbar */
+.pos-menu-items::-webkit-scrollbar,
+.pos-order-items::-webkit-scrollbar {
+  width: 8px;
+}
+
+.pos-menu-items::-webkit-scrollbar-track,
+.pos-order-items::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+}
+
+.pos-menu-items::-webkit-scrollbar-thumb,
+.pos-order-items::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: var(--radius-sm);
+}
+
+.pos-menu-items::-webkit-scrollbar-thumb:hover,
+.pos-order-items::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-billing-container" x-data="posBillingManager()">
+  <!-- Left Panel - Menu Area -->
+  <div class="pos-menu-panel">
+    <!-- Category Tabs -->
+    <div class="pos-category-tabs">
+      <button @click="selectCategory(null)" 
+              :class="{'pos-category-tab active': selectedCategory === null, 'pos-category-tab': true}">
+        All Items
+      </button>
+      <template x-for="category in categories" :key="category.id">
+        <button @click="selectCategory(category.id)" 
+                :class="{'pos-category-tab active': selectedCategory === category.id, 'pos-category-tab': true}"
+                x-text="category.name">
+        </button>
+      </template>
+    </div>
+    
+    <!-- Search Bar -->
+    <div class="pos-menu-search">
+      <input type="text" 
+             x-model="searchQuery" 
+             @input="filterMenuItems()"
+             class="pos-search-input" 
+             placeholder="Search menu items...">
+    </div>
+    
+    <!-- Menu Items Grid -->
+    <div class="pos-menu-items">
+      <template x-for="item in filteredMenuItems" :key="item.id">
+        <div class="pos-menu-item-card" 
+             @click="addToCurrentOrder(item)"
+             :class="{'selected': isInCurrentOrder(item.id)}">
+          <div class="pos-menu-item-image">
+            <template x-if="item.image_path">
+              <img :src="`/static/images/menu_items/${item.image_path}`" :alt="item.name">
+            </template>
+            <template x-if="!item.image_path">
+              <div class="placeholder-icon">
+                <i class="bi bi-image"></i>
+              </div>
+            </template>
+          </div>
+          <div class="pos-menu-item-name" x-text="item.name"></div>
+          <div class="pos-menu-item-price">₹<span x-text="item.price.toFixed(2)"></span></div>
+          <div class="pos-menu-item-stock" x-show="item.stock_quantity <= item.min_stock_level">
+            <i class="bi bi-exclamation-triangle"></i> Low Stock: <span x-text="item.stock_quantity"></span>
+          </div>
+          <button class="pos-add-item-btn" @click.stop="addToCurrentOrder(item)">
+            <i class="bi bi-plus-lg"></i> Add
+          </button>
+        </div>
+      </template>
+      
+      <!-- Empty State -->
+      <div class="pos-empty-state" x-show="filteredMenuItems.length === 0">
+        <div class="pos-empty-state-icon">
+          <i class="bi bi-search"></i>
+        </div>
+        <div class="pos-empty-state-text">No items found</div>
+        <div>Try adjusting your search or category filter</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Right Panel - Order Summary -->
+  <div class="pos-order-panel">
+    <!-- Order Tabs -->
+    <div class="pos-order-tabs">
+      <button @click="addNewOrder()" class="pos-add-order-btn">
+        <i class="bi bi-plus-lg"></i> New Order
+      </button>
+      
+      <template x-for="order in activeOrders" :key="order.id">
+        <div @click="switchToOrder(order.id)" 
+             :class="{'pos-order-tab active': currentOrderId === order.id, 'pos-order-tab': true}">
+          <span x-text="order.orderNumber || 'New Order'"></span>
+          <button @click.stop="closeOrder(order.id)" 
+                  class="pos-order-tab-close"
+                  x-show="order.items.length === 0">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </template>
+    </div>
+    
+    <!-- Order Content -->
+    <div x-show="currentOrder">
+      <!-- Order Header -->
+      <div class="pos-order-header">
+        <div class="pos-order-title">Order Details</div>
+        
+        <div class="pos-customer-info">
+          <div class="pos-form-group">
+            <label class="pos-form-label">Order Type</label>
+            <select x-model="currentOrder.orderType" class="pos-form-control">
+              <option value="Dine-in">Dine-in</option>
+              <option value="Takeaway">Takeaway</option>
+              <option value="Delivery">Delivery</option>
+            </select>
+          </div>
+          
+          <div class="pos-form-group" x-show="currentOrder.orderType === 'Dine-in'">
+            <label class="pos-form-label">Table</label>
+            <select x-model="currentOrder.tableId" class="pos-form-control">
+              <option value="">Select Table</option>
+              <template x-for="table in availableTables" :key="table.id">
+                <option :value="table.id" x-text="table.table_number"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+        
+        <div class="pos-customer-info full-width">
+          <div class="pos-form-group">
+            <label class="pos-form-label">Customer Name</label>
+            <input type="text" x-model="currentOrder.customerName" class="pos-form-control" placeholder="Walk-in Customer">
+          </div>
+          
+          <div class="pos-form-group">
+            <label class="pos-form-label">Mobile</label>
+            <input type="tel" x-model="currentOrder.customerMobile" class="pos-form-control" placeholder="Optional">
+          </div>
+        </div>
+        
+        <div class="pos-customer-info full-width">
+          <div class="pos-form-group">
+            <label class="pos-form-label">Special Instructions</label>
+            <textarea x-model="currentOrder.specialInstructions" class="pos-form-control" rows="2" placeholder="Any special requests..."></textarea>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Order Items -->
+      <div class="pos-order-items">
+        <template x-for="(item, index) in currentOrder.items" :key="index">
+          <div class="pos-order-item">
+            <div class="pos-order-item-info">
+              <div class="pos-order-item-name" x-text="item.name"></div>
+              <div class="pos-order-item-note" x-show="item.specialInstructions" x-text="'Note: ' + item.specialInstructions"></div>
+            </div>
+            
+            <div class="pos-quantity-control">
+              <button @click="updateItemQuantity(index, item.quantity - 1)" class="pos-quantity-btn">-</button>
+              <input type="number" x-model="item.quantity" @change="recalculateTotals()" class="pos-quantity-input" min="1">
+              <button @click="updateItemQuantity(index, item.quantity + 1)" class="pos-quantity-btn">+</button>
+            </div>
+            
+            <div class="pos-item-price">₹<span x-text="(item.price * item.quantity).toFixed(2)"></span></div>
+            
+            <button @click="removeFromOrder(index)" class="pos-remove-item-btn">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </template>
+        
+        <!-- Empty State -->
+        <div class="pos-empty-state" x-show="currentOrder.items.length === 0">
+          <div class="pos-empty-state-icon">
+            <i class="bi bi-cart"></i>
+          </div>
+          <div class="pos-empty-state-text">No items in order</div>
+          <div>Add items from the menu to get started</div>
+        </div>
+      </div>
+      
+      <!-- Order Totals -->
+      <div class="pos-order-totals">
+        <div class="pos-total-row">
+          <span class="pos-total-label">Subtotal:</span>
+          <span class="pos-total-value">₹<span x-text="currentOrder.subtotal.toFixed(2)"></span></span>
+        </div>
+        <div class="pos-total-row">
+          <span class="pos-total-label">CGST (2.5%):</span>
+          <span class="pos-total-value">₹<span x-text="currentOrder.cgst.toFixed(2)"></span></span>
+        </div>
+        <div class="pos-total-row">
+          <span class="pos-total-label">SGST (2.5%):</span>
+          <span class="pos-total-value">₹<span x-text="currentOrder.sgst.toFixed(2)"></span></span>
+        </div>
+        <div class="pos-total-row" x-show="currentOrder.discount > 0">
+          <span class="pos-total-label">Discount:</span>
+          <span class="pos-total-value discount">-₹<span x-text="currentOrder.discount.toFixed(2)"></span></span>
+        </div>
+        <div class="pos-total-row grand-total">
+          <span class="pos-total-label">Grand Total:</span>
+          <span class="pos-total-value">₹<span x-text="currentOrder.grandTotal.toFixed(2)"></span></span>
+        </div>
+      </div>
+      
+      <!-- Order Actions -->
+      <div class="pos-order-actions">
+        <button @click="saveOrder()" class="pos-action-btn success">
+          <i class="bi bi-save"></i> Save Order
+        </button>
+        <button @click="printKOT()" class="pos-action-btn warning">
+          <i class="bi bi-printer"></i> Print KOT
+        </button>
+        <button @click="proceedToPayment()" class="pos-action-btn primary">
+          <i class="bi bi-credit-card"></i> Pay Bill
+        </button>
+        <button @click="clearOrder()" class="pos-action-btn danger">
+          <i class="bi bi-x-lg"></i> Clear Order
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function posBillingManager() {
+  return {
+    // Data
+    activeOrders: {},
+    currentOrderId: null,
+    categories: {{ categories | tojson }},
+    menuItems: {{ menu_items | tojson }},
+    tables: {{ tables | tojson }},
+    
+    // Filters
+    searchQuery: '',
+    selectedCategory: null,
+    
+    // Settings
+    nextOrderId: 1,
+    
+    init() {
+      // Create first order
+      this.addNewOrder();
+    },
+    
+    // Computed Properties
+    get currentOrder() {
+      return this.activeOrders[this.currentOrderId];
+    },
+    
+    get availableTables() {
+      return this.tables.filter(table => table.is_available);
+    },
+    
+    get filteredMenuItems() {
+      let items = this.menuItems;
+      
+      // Filter by category
+      if (this.selectedCategory !== null) {
+        items = items.filter(item => item.category_id === this.selectedCategory);
+      }
+      
+      // Filter by search query
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        items = items.filter(item => 
+          item.name.toLowerCase().includes(query) ||
+          item.description.toLowerCase().includes(query)
+        );
+      }
+      
+      return items;
+    },
+    
+    // Order Management
+    addNewOrder() {
+      const orderId = 'order_' + this.nextOrderId++;
+      this.activeOrders[orderId] = {
+        id: orderId,
+        orderNumber: this.generateOrderNumber(),
+        orderType: 'Dine-in',
+        tableId: null,
+        customerName: '',
+        customerMobile: '',
+        specialInstructions: '',
+        items: [],
+        subtotal: 0,
+        cgst: 0,
+        sgst: 0,
+        discount: 0,
+        grandTotal: 0
+      };
+      
+      this.currentOrderId = orderId;
+    },
+    
+    switchToOrder(orderId) {
+      this.currentOrderId = orderId;
+    },
+    
+    closeOrder(orderId) {
+      if (this.currentOrderId === orderId) {
+        // Switch to another order if available
+        const remainingOrders = Object.keys(this.activeOrders);
+        if (remainingOrders.length > 1) {
+          const otherOrderId = remainingOrders.find(id => id !== orderId);
+          if (otherOrderId) {
+            this.currentOrderId = otherOrderId;
+          }
+        } else {
+          // Create new order if this was the only one
+          this.addNewOrder();
+        }
+      }
+      
+      // Remove order
+      delete this.activeOrders[orderId];
+    },
+    
+    generateOrderNumber() {
+      const timestamp = new Date().toISOString().replace(/[-T:.]/g, '').slice(0, -1);
+      const random = Math.floor(Math.random() * 1000);
+      return 'ORD' + timestamp + random;
+    },
+    
+    // Menu Management
+    selectCategory(categoryId) {
+      this.selectedCategory = categoryId;
+    },
+    
+    filterMenuItems() {
+      // Filter is handled by computed property
+    },
+    
+    addToCurrentOrder(menuItem) {
+      if (!this.currentOrder) return;
+      
+      const currentOrder = this.currentOrder;
+      
+      // Check if item already exists
+      const existingItemIndex = currentOrder.items.findIndex(item => item.menuItemId === menuItem.id);
+      
+      if (existingItemIndex !== -1) {
+        // Update quantity
+        currentOrder.items[existingItemIndex].quantity += 1;
+      } else {
+        // Add new item
+        currentOrder.items.push({
+          menuItemId: menuItem.id,
+          name: menuItem.name,
+          price: menuItem.price,
+          quantity: 1,
+          specialInstructions: ''
+        });
+      }
+      
+      this.recalculateTotals();
+      this.showNotification(menuItem.name + ' added to order', 'success');
+    },
+    
+    isInCurrentOrder(menuItemId) {
+      if (!this.currentOrder) return false;
+      return this.currentOrder.items.some(item => item.menuItemId === menuItemId);
+    },
+    
+    removeFromOrder(itemIndex) {
+      if (!this.currentOrder) return;
+      
+      const currentOrder = this.currentOrder;
+      const item = currentOrder.items[itemIndex];
+      
+      currentOrder.items.splice(itemIndex, 1);
+      this.recalculateTotals();
+      this.showNotification(item.name + ' removed from order', 'info');
+    },
+    
+    updateItemQuantity(itemIndex, newQuantity) {
+      if (!this.currentOrder || newQuantity < 1) return;
+      
+      const currentOrder = this.currentOrder;
+      currentOrder.items[itemIndex].quantity = newQuantity;
+      this.recalculateTotals();
+    },
+    
+    recalculateTotals() {
+      if (!this.currentOrder) return;
+      
+      const currentOrder = this.currentOrder;
+      let subtotal = 0;
+      
+      currentOrder.items.forEach(item => {
+        subtotal += item.price * item.quantity;
+      });
+      
+      currentOrder.subtotal = subtotal;
+      currentOrder.cgst = subtotal * 0.025; // 2.5%
+      currentOrder.sgst = subtotal * 0.025; // 2.5%
+      currentOrder.grandTotal = subtotal + currentOrder.cgst + currentOrder.sgst - currentOrder.discount;
+    },
+    
+    // Order Actions
+    saveOrder() {
+      if (!this.currentOrder || this.currentOrder.items.length === 0) {
+        this.showNotification('No items to save', 'error');
+        return;
+      }
+      
+      // Save order to server
+      fetch('/orders/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          order_type: this.currentOrder.orderType,
+          table_id: this.currentOrder.tableId,
+          customer_name: this.currentOrder.customerName,
+          customer_mobile: this.currentOrder.customerMobile,
+          special_instructions: this.currentOrder.specialInstructions,
+          items: this.currentOrder.items.map(item => ({
+            menu_item_id: item.menuItemId,
+            quantity: item.quantity,
+            special_instructions: item.specialInstructions
+          })),
+          discount_amount: this.currentOrder.discount
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          this.showNotification('Order saved successfully', 'success');
+          this.updateOrderInTab(data.order_id, data.order_number);
+        } else {
+          this.showNotification(data.message || 'Failed to save order', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error saving order:', error);
+        this.showNotification('Error saving order', 'error');
+      });
+    },
+    
+    updateOrderInTab(orderId, orderNumber) {
+      const order = this.activeOrders[this.currentOrderId];
+      if (order) {
+        order.id = orderId;
+        order.orderNumber = orderNumber;
+        order.saved = true;
+      }
+    },
+    
+    printKOT() {
+      if (!this.currentOrder || this.currentOrder.items.length === 0) {
+        this.showNotification('No items to print', 'error');
+        return;
+      }
+      
+      // Print KOT
+      const printWindow = window.open('/kot/print/' + this.currentOrder.id, '_blank');
+      if (printWindow) {
+        printWindow.onload = function() {
+          printWindow.print();
+        };
+      }
+    },
+    
+    proceedToPayment() {
+      if (!this.currentOrder || this.currentOrder.items.length === 0) {
+        this.showNotification('No items to process', 'error');
+        return;
+      }
+      
+      // Navigate to payment page
+      window.location.href = '/orders/payment/' + this.currentOrderId;
+    },
+    
+    clearOrder() {
+      if (!this.currentOrder) return;
+      
+      if (confirm('Are you sure you want to clear this order?')) {
+        const currentOrder = this.currentOrder;
+        currentOrder.items = [];
+        currentOrder.subtotal = 0;
+        currentOrder.cgst = 0;
+        currentOrder.sgst = 0;
+        currentOrder.grandTotal = 0;
+        currentOrder.customerName = '';
+        currentOrder.customerMobile = '';
+        currentOrder.specialInstructions = '';
+        
+        this.showNotification('Order cleared', 'info');
+      }
+    },
+    
+    // Notifications
+    showNotification(message, type) {
+      type = type || 'info';
+      const toast = document.createElement('div');
+      toast.className = 'alert alert-' + type + ' position-fixed top-0 end-0 m-3';
+      toast.style.zIndex = '9999';
+      toast.textContent = message;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+  };
+}
+</script>
+{% endblock %}

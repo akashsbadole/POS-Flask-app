@@ -1,0 +1,236 @@
+<!-- Footer Component -->
+<div id="app-footer" class="app-footer {% if footer_config.get('fixed_position', False) %}fixed-footer{% endif %}">
+    <div class="footer-container">
+        <div class="footer-sections">
+            <!-- Business Information Section -->
+            {% if footer_config.get('show_business_info', True) %}
+            <div class="footer-section business-info">
+                {% if footer_config.get('company_logo', '') %}
+                <div class="footer-logo">
+                    <img src="{{ footer_config.company_logo }}" alt="Company Logo" 
+                         style="max-height: {{ footer_config.get('logo_height', '30px') }};">
+                </div>
+                {% endif %}
+                <div class="business-details">
+                    <h4>{{ footer_config.get('business_name', 'Restaurant POS') }}</h4>
+                    {% if footer_config.get('address', '') %}
+                    <p class="footer-address">{{ footer_config.address }}</p>
+                    {% endif %}
+                    {% if footer_config.get('phone', '') %}
+                    <p class="footer-phone">📞 {{ footer_config.phone }}</p>
+                    {% endif %}
+                    {% if footer_config.get('email', '') %}
+                    <p class="footer-email">✉️ {{ footer_config.email }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Receipt Information Section -->
+            {% if footer_config.get('show_receipt_info', True) and current_receipt %}
+            <div class="footer-section receipt-info">
+                <h4>Receipt Details</h4>
+                <p class="receipt-number">Receipt #: {{ current_receipt.order_id }}</p>
+                <p class="receipt-date">Date: {{ current_receipt.order_date }}</p>
+                <p class="receipt-time">Time: {{ current_receipt.order_time }}</p>
+                {% if current_receipt.table_name %}
+                <p class="receipt-table">Table: {{ current_receipt.table_name }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- User Information Section -->
+            {% if footer_config.get('show_user_info', True) %}
+            <div class="footer-section user-info">
+                <h4>Staff Information</h4>
+                <p class="user-name">Served by: {{ current_user.name if current_user else footer_config.get('default_user', 'Staff') }}</p>
+                {% if footer_config.get('show_user_id', False) and current_user %}
+                <p class="user-id">ID: {{ current_user.id }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Custom Text Section -->
+            {% if footer_config.get('custom_text', '') %}
+            <div class="footer-section custom-text">
+                <p class="custom-message">{{ footer_config.custom_text | safe }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Footer Bottom Bar -->
+        <div class="footer-bottom">
+            <div class="footer-left">
+                {% if footer_config.get('show_timestamp', True) %}
+                <span class="timestamp" id="footer-timestamp"></span>
+                {% endif %}
+            </div>
+            <div class="footer-center">
+                {% if footer_config.get('show_page_info', True) %}
+                <span class="page-info">{{ page_title or 'Restaurant POS System' }}</span>
+                {% endif %}
+            </div>
+            <div class="footer-right">
+                {% if footer_config.get('show_version', False) %}
+                <span class="version">v{{ footer_config.get('version', '1.0.0') }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.app-footer {
+    background-color: {{ footer_config.get('background_color', '#2c3e50') }};
+    color: {{ footer_config.get('text_color', '#ecf0f1') }};
+    padding: {{ footer_config.get('padding', '15px 20px') }};
+    border-top: {{ footer_config.get('border_width', '2px') }} solid {{ footer_config.get('border_color', '#34495e') }};
+    font-family: {{ footer_config.get('font_family', 'Arial, sans-serif') }};
+    font-size: {{ footer_config.get('font_size', '12px') }};
+    margin-top: auto;
+    width: 100%;
+}
+
+.app-footer.fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.footer-container {
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.footer-sections {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.footer-section {
+    flex: 1;
+    min-width: 200px;
+}
+
+.footer-section h4 {
+    margin: 0 0 5px 0;
+    font-size: {{ footer_config.get('header_font_size', '14px') }};
+    color: {{ footer_config.get('header_color', '#3498db') }};
+    font-weight: {{ footer_config.get('header_font_weight', 'bold') }};
+}
+
+.footer-section p {
+    margin: 2px 0;
+    line-height: 1.4;
+}
+
+.footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid {{ footer_config.get('border_color', '#34495e') }};
+    padding-top: 8px;
+    margin-top: 8px;
+    font-size: {{ footer_config.get('small_font_size', '10px') }};
+    opacity: 0.8;
+}
+
+.footer-left, .footer-center, .footer-right {
+    flex: 1;
+}
+
+.footer-center {
+    text-align: center;
+}
+
+.footer-right {
+    text-align: right;
+}
+
+.footer-logo img {
+    margin-bottom: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .footer-sections {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .footer-section {
+        min-width: 100%;
+    }
+    
+    .footer-bottom {
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+    }
+    
+    .footer-left, .footer-center, .footer-right {
+        text-align: center;
+        flex: none;
+    }
+}
+
+@media print {
+    .app-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        page-break-inside: avoid;
+    }
+}
+</style>
+
+<script>
+// Update timestamp in footer
+function updateFooterTimestamp() {
+    const timestampElement = document.getElementById('footer-timestamp');
+    if (timestampElement) {
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+        timestampElement.textContent = timestamp;
+    }
+}
+
+// Update timestamp every minute
+setInterval(updateFooterTimestamp, 60000);
+updateFooterTimestamp(); // Initial update
+
+// Dynamic footer content updates
+function updateFooterContent(receiptData = null, userData = null) {
+    const receiptInfo = document.querySelector('.receipt-info');
+    const userInfo = document.querySelector('.user-info');
+    
+    if (receiptData && receiptInfo) {
+        const receiptNumber = receiptInfo.querySelector('.receipt-number');
+        const receiptDate = receiptInfo.querySelector('.receipt-date');
+        const receiptTime = receiptInfo.querySelector('.receipt-time');
+        const receiptTable = receiptInfo.querySelector('.receipt-table');
+        
+        if (receiptNumber) receiptNumber.textContent = `Receipt #: ${receiptData.order_id}`;
+        if (receiptDate) receiptDate.textContent = `Date: ${receiptData.order_date}`;
+        if (receiptTime) receiptTime.textContent = `Time: ${receiptData.order_time}`;
+        if (receiptTable && receiptData.table_name) receiptTable.textContent = `Table: ${receiptData.table_name}`;
+    }
+    
+    if (userData && userInfo) {
+        const userName = userInfo.querySelector('.user-name');
+        const userId = userInfo.querySelector('.user-id');
+        
+        if (userName) userName.textContent = `Served by: ${userData.name}`;
+        if (userId) userId.textContent = `ID: ${userData.id}`;
+    }
+}
+
+// Export functions for global access
+window.updateFooterContent = updateFooterContent;
+window.updateFooterTimestamp = updateFooterTimestamp;
+</script>

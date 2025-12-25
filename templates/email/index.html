@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Email Configuration{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-envelope"></i> Email Configuration</h1>
+                <div>
+                    <a href="{{ url_for('email.config') }}" class="btn btn-primary">
+                        <i class="fas fa-cog"></i> Configure
+                    </a>
+                    <a href="{{ url_for('email.history') }}" class="btn btn-info">
+                        <i class="fas fa-history"></i> History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ queue_status.total_sent }}</h4>
+                            <p class="card-text">Emails Sent</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-paper-plane fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ queue_status.total_failed }}</h4>
+                            <p class="card-text">Emails Failed</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ queue_status.queue_size }}</h4>
+                            <p class="card-text">Queue Size</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">
+                                {% if queue_status.queue_running %}
+                                    <i class="fas fa-circle text-success"></i> Running
+                                {% else %}
+                                    <i class="fas fa-circle text-danger"></i> Stopped
+                                {% endif %}
+                            </h4>
+                            <p class="card-text">Queue Status</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-cogs fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Configuration Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>SMTP Server:</strong></td>
+                                    <td>{{ config.smtp_server or 'Not configured' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Port:</strong></td>
+                                    <td>{{ config.smtp_port }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Encryption:</strong></td>
+                                    <td>
+                                        {% if config.use_tls %}TLS{% elif config.use_ssl %}SSL{% else %}None{% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>From Email:</strong></td>
+                                    <td>{{ config.from_email or 'Not configured' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Recipients:</strong></td>
+                                    <td>{{ config.recipients|length }} configured</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Backup Notifications:</strong></td>
+                                    <td>
+                                        {% if config.backup_notifications %}
+                                            <span class="badge badge-success">Enabled</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">Disabled</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Max Attachment Size:</strong></td>
+                                    <td>{{ config.max_attachment_size_mb }} MB</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Retry Attempts:</strong></td>
+                                    <td>{{ config.retry_attempts }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Email History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-history"></i> Recent Email History</h5>
+                    <a href="{{ url_for('email.history') }}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if email_history %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Recipients</th>
+                                        <th>Status</th>
+                                        <th>Sent At</th>
+                                        <th>Attachments</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for email in email_history[:10] %}
+                                    <tr>
+                                        <td>{{ email.subject }}</td>
+                                        <td>{{ email.recipients|join(', ') }}</td>
+                                        <td>
+                                            {% if email.status == 'sent' %}
+                                                <span class="badge badge-success">Sent</span>
+                                            {% elif email.status == 'failed' %}
+                                                <span class="badge badge-danger">Failed</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ email.sent_at }}</td>
+                                        <td>{{ email.attachment_count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No email history</h5>
+                            <p class="text-muted">Emails will appear here once you start sending notifications.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-refresh for queue status -->
+<script>
+function updateQueueStatus() {
+    fetch('{{ url_for("email.queue_status") }}')
+        .then(response => response.json())
+        .then(data => {
+            // Update queue status cards
+            document.querySelector('.bg-primary .card-title').textContent = data.total_sent;
+            document.querySelector('.bg-danger .card-title').textContent = data.total_failed;
+            document.querySelector('.bg-warning .card-title').textContent = data.queue_size;
+            
+            const statusElement = document.querySelector('.bg-success .card-title');
+            if (data.queue_running) {
+                statusElement.innerHTML = '<i class="fas fa-circle text-success"></i> Running';
+            } else {
+                statusElement.innerHTML = '<i class="fas fa-circle text-danger"></i> Stopped';
+            }
+        })
+        .catch(error => console.error('Error updating queue status:', error));
+}
+
+// Update queue status every 30 seconds
+setInterval(updateQueueStatus, 30000);
+
+// Initial update
+updateQueueStatus();
+</script>
+{% endblock %}

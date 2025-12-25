@@ -1,0 +1,287 @@
+{% extends "base.html" %} 
+{% block title %}Dashboard - Restaurant POS{% endblock %} 
+
+{% block content %}
+<div class="modern-workspace" x-data="dashboardData()">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-primary">Dashboard</h1>
+    <div class="modern-btn-group">
+      <button @click="refreshStats()" class="modern-btn modern-btn-primary modern-btn-sm">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Modern Stats Cards -->
+  <div class="row mb-4">
+    <!-- Today's Orders -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="modern-card h-100">
+        <div class="modern-card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <div class="modern-badge modern-badge-primary mb-2">
+                <i class="bi bi-cart3 me-1"></i> Today's Orders
+              </div>
+              <div class="h4 mb-0 fw-bold text-primary" x-text="stats.today.orders">
+                0
+              </div>
+            </div>
+            <div class="ms-3">
+              <i class="bi bi-cart3 fs-1 text-primary opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Revenue -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="modern-card h-100">
+        <div class="modern-card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <div class="modern-badge modern-badge-success mb-2">
+                <i class="bi bi-currency-rupee me-1"></i> Today's Revenue
+              </div>
+              <div class="h4 mb-0 fw-bold text-success" x-text="'₹' + stats.today.revenue.toFixed(2)">
+                ₹0.00
+              </div>
+            </div>
+            <div class="ms-3">
+              <i class="bi bi-currency-rupee fs-1 text-success opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Available Tables -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="modern-card h-100">
+        <div class="modern-card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <div class="modern-badge modern-badge-info mb-2">
+                <i class="bi bi-grid-3x3-gap me-1"></i> Available Tables
+              </div>
+              <div class="h4 mb-0 fw-bold text-info" x-text="stats.tables.available">
+                0
+              </div>
+            </div>
+            <div class="ms-3">
+              <i class="bi bi-grid-3x3-gap fs-1 text-info opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Low Stock Items -->
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="modern-card h-100">
+        <div class="modern-card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <div class="modern-badge modern-badge-warning mb-2">
+                <i class="bi bi-exclamation-triangle me-1"></i> Low Stock Items
+              </div>
+              <div class="h4 mb-0 fw-bold text-warning" x-text="stats.low_stock_count">
+                0
+              </div>
+            </div>
+            <div class="ms-3">
+              <i class="bi bi-exclamation-triangle fs-1 text-warning opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modern Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="modern-card">
+        <div class="modern-card-header">
+          <h6 class="mb-0 fw-bold text-primary">Quick Actions</h6>
+        </div>
+        <div class="modern-card-body">
+          <div class="row">
+            <div class="col-md-3 mb-2">
+              <a href="{{ url_for('orders.new_order') }}" class="modern-btn modern-btn-primary w-100">
+                <i class="bi bi-plus-circle"></i> New Order
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a href="{{ url_for('kot.index') }}" class="modern-btn modern-btn-info w-100">
+                <i class="bi bi-utensils"></i> Kitchen Display
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <button onclick="window.open('{{ url_for('kot.kot_window') }}', 'kot_window', 'width=1400,height=800,scrollbars=yes,resizable=yes')" class="modern-btn modern-btn-warning w-100">
+                <i class="bi bi-window-stack"></i> KOT Window
+              </button>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a href="{{ url_for('orders.list_orders') }}" class="modern-btn modern-btn-success w-100">
+                <i class="bi bi-list-ul"></i> View Orders
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a href="{{ url_for('menu.index') }}" class="modern-btn modern-btn-warning w-100">
+                <i class="bi bi-pencil-square"></i> Manage Menu
+              </a>
+            </div>
+            {% if current_user.is_admin() %}
+            <div class="col-md-3 mb-2">
+              <a href="{{ url_for('footer_settings.index') }}" class="modern-btn modern-btn-ghost w-100">
+                <i class="bi bi-gear"></i> Footer Settings
+              </a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Orders & Low Stock Items -->
+  <div class="row">
+    <!-- Recent Orders -->
+    <div class="col-lg-8 mb-4">
+      <div class="modern-card">
+        <div class="modern-card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-primary">Recent Orders</h6>
+          <a href="{{ url_for('orders.list_orders') }}" class="modern-btn modern-btn-outline modern-btn-sm">
+            View All
+          </a>
+        </div>
+        <div class="modern-card-body">
+          <div class="table-responsive">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Customer</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                  <td>{{ order.order_number }}</td>
+                  <td>{{ order.customer_name or 'N/A' }}</td>
+                  <td>
+                    <span class="modern-badge" :class="{
+                      'modern-badge-success': '{{ order.status }}' === 'Completed',
+                      'modern-badge-warning': '{{ order.status }}' === 'In Progress',
+                      'modern-badge-info': '{{ order.status }}' === 'New',
+                      'modern-badge-secondary': '{{ order.status }}' !== 'Completed' && '{{ order.status }}' !== 'In Progress' && '{{ order.status }}' !== 'New'
+                    }">
+                      {{ order.status }}
+                    </span>
+                  </td>
+                  <td>₹{{ "%.2f"|format(order.grand_total or 0) }}</td>
+                  <td>
+                    {% if order.created_at %}
+                      {{ order.created_at.strftime('%H:%M') }}
+                    {% else %}
+                      ''
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="modern-btn modern-btn-primary modern-btn-sm">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="6" class="text-center text-muted">No recent orders</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Low Stock Items -->
+    <div class="col-lg-4 mb-4">
+      <div class="modern-card">
+        <div class="modern-card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-warning">Low Stock Items</h6>
+          <a href="{{ url_for('inventory.index') }}" class="modern-btn modern-btn-outline modern-btn-sm">
+            Manage
+          </a>
+        </div>
+        <div class="modern-card-body">
+          {% if low_stock_items %} 
+          {% for item in low_stock_items %}
+          <div class="modern-card p-3 mb-2 border-start-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ item.name }}</strong>
+                <br />
+                <small class="text-muted">Stock: {{ item.stock_quantity }} {{ item.unit }}</small>
+              </div>
+              <a href="{{ url_for('inventory.index') }}" class="modern-btn modern-btn-warning modern-btn-sm">
+                Update
+              </a>
+            </div>
+          </div>
+          {% endfor %} 
+          {% else %}
+          <p class="text-center text-muted">All items are adequately stocked</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alpine.js Dashboard Data -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function dashboardData() {
+  return {
+    stats: {
+      today: {
+        orders: 0,
+        revenue: 0
+      },
+      tables: {
+        available: 0
+      },
+      low_stock_count: 0
+    },
+    
+    init() {
+      this.loadStats();
+    },
+    
+    async loadStats() {
+      try {
+        const response = await fetch('/api/dashboard/stats');
+        if (response.ok) {
+          const data = await response.json();
+          this.stats = data;
+        }
+      } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+      }
+    },
+    
+    refreshStats() {
+      this.loadStats();
+    }
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,632 @@
+/* Modern Reports Dashboard CSS */
+/* Neutral color palette with cool-toned cards and clean design */
+
+/* ===== Reports Specific CSS Variables ===== */
+:root {
+  /* Reports Color Palette - Cool Toned Neutral */
+  --reports-primary: #4A5568;
+  --reports-primary-light: #F7FAFC;
+  --reports-primary-dark: #2D3748;
+  
+  --reports-secondary: #718096;
+  --reports-secondary-light: #EDF2F7;
+  --reports-secondary-dark: #4A5568;
+  
+  --reports-accent: #667EEA;
+  --reports-accent-light: #EBF4FF;
+  --reports-accent-dark: #5A67D8;
+  
+  /* Neutral Colors for Cards */
+  --reports-card-bg: #FFFFFF;
+  --reports-card-border: #E2E8F0;
+  --reports-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --reports-card-hover-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  
+  /* Chart Colors */
+  --chart-color-1: #667EEA;
+  --chart-color-2: #48BB78;
+  --chart-color-3: #ED8936;
+  --chart-color-4: #9F7AEA;
+  --chart-color-5: #38B2AC;
+  --chart-color-6: #F56565;
+  --chart-color-7: #4299E1;
+  --chart-color-8: #ECC94B;
+  
+  /* Stats Card Colors */
+  --stats-sales-bg: #EBF8FF;
+  --stats-sales-border: #BEE3F8;
+  --stats-sales-text: #2C5282;
+  
+  --stats-orders-bg: #F0FFF4;
+  --stats-orders-border: #9AE6B4;
+  --stats-orders-text: #22543D;
+  
+  --stats-cancelled-bg: #FFF5F5;
+  --stats-cancelled-border: #FC8181;
+  --stats-cancelled-text: #742A2A;
+  
+  --stats-revenue-bg: #FFFAF0;
+  --stats-revenue-border: #FBD38D;
+  --stats-revenue-text: #744210;
+}
+
+/* ===== Reports Dashboard Layout ===== */
+.reports-dashboard {
+  background: linear-gradient(135deg, #F7FAFC 0%, #EDF2F7 100%);
+  min-height: 100vh;
+  padding: var(--spacing-lg);
+}
+
+.reports-header {
+  background: var(--reports-card-bg);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--reports-card-shadow);
+}
+
+.reports-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--reports-primary-dark);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.reports-title i {
+  color: var(--reports-accent);
+}
+
+/* ===== Stats Cards ===== */
+.reports-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.reports-stat-card {
+  background: var(--reports-card-bg);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--reports-card-shadow);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.reports-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--reports-accent), var(--reports-accent-dark));
+  transform: scaleX(0);
+  transition: transform var(--transition-normal);
+}
+
+.reports-stat-card:hover {
+  box-shadow: var(--reports-card-hover-shadow);
+  transform: translateY(-2px);
+}
+
+.reports-stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+.reports-stat-card.sales {
+  background: var(--stats-sales-bg);
+  border-color: var(--stats-sales-border);
+}
+
+.reports-stat-card.orders {
+  background: var(--stats-orders-bg);
+  border-color: var(--stats-orders-border);
+}
+
+.reports-stat-card.cancelled {
+  background: var(--stats-cancelled-bg);
+  border-color: var(--stats-cancelled-border);
+}
+
+.reports-stat-card.revenue {
+  background: var(--stats-revenue-bg);
+  border-color: var(--stats-revenue-border);
+}
+
+.reports-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--spacing-md);
+}
+
+.reports-stat-card.sales .reports-stat-icon {
+  background: var(--stats-sales-border);
+  color: var(--stats-sales-text);
+}
+
+.reports-stat-card.orders .reports-stat-icon {
+  background: var(--stats-orders-border);
+  color: var(--stats-orders-text);
+}
+
+.reports-stat-card.cancelled .reports-stat-icon {
+  background: var(--stats-cancelled-border);
+  color: var(--stats-cancelled-text);
+}
+
+.reports-stat-card.revenue .reports-stat-icon {
+  background: var(--stats-revenue-border);
+  color: var(--stats-revenue-text);
+}
+
+.reports-stat-value {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  color: var(--reports-primary-dark);
+  margin-bottom: var(--spacing-xs);
+  line-height: 1;
+}
+
+.reports-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--reports-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.reports-stat-change {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+}
+
+.reports-stat-change.positive {
+  background: var(--success-light);
+  color: var(--success-color);
+}
+
+.reports-stat-change.negative {
+  background: var(--danger-light);
+  color: var(--danger-color);
+}
+
+/* ===== Chart Containers ===== */
+.reports-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.reports-chart-container {
+  background: var(--reports-card-bg);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--reports-card-shadow);
+  transition: all var(--transition-normal);
+}
+
+.reports-chart-container:hover {
+  box-shadow: var(--reports-card-hover-shadow);
+}
+
+.reports-chart-container.full-width {
+  grid-column: 1 / -1;
+}
+
+.reports-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--reports-card-border);
+}
+
+.reports-chart-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--reports-primary-dark);
+  margin: 0;
+}
+
+.reports-chart-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.reports-chart-action {
+  background: var(--reports-secondary-light);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--reports-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reports-chart-action:hover {
+  background: var(--reports-accent-light);
+  color: var(--reports-accent);
+  border-color: var(--reports-accent);
+}
+
+.reports-chart-canvas {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+.reports-chart-canvas.large {
+  height: 400px;
+}
+
+/* ===== Filters Section ===== */
+.reports-filters {
+  background: var(--reports-card-bg);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--reports-card-shadow);
+}
+
+.reports-filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.reports-filters-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--reports-primary-dark);
+  margin: 0;
+}
+
+.reports-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.reports-filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-filter-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--reports-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.reports-filter-control {
+  padding: var(--spacing-md);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-md);
+  background: var(--reports-card-bg);
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+}
+
+.reports-filter-control:focus {
+  outline: none;
+  border-color: var(--reports-accent);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.reports-filter-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+.reports-filter-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.reports-filter-btn.primary {
+  background: var(--reports-accent);
+  color: white;
+}
+
+.reports-filter-btn.primary:hover {
+  background: var(--reports-accent-dark);
+}
+
+.reports-filter-btn.secondary {
+  background: var(--reports-secondary-light);
+  color: var(--reports-secondary);
+  border: 1px solid var(--reports-card-border);
+}
+
+.reports-filter-btn.secondary:hover {
+  background: var(--reports-card-border);
+}
+
+/* ===== Data Tables ===== */
+.reports-data-table {
+  background: var(--reports-card-bg);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--reports-card-shadow);
+}
+
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.reports-table th,
+.reports-table td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--reports-card-border);
+}
+
+.reports-table th {
+  background: var(--reports-secondary-light);
+  font-weight: 600;
+  color: var(--reports-primary-dark);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.reports-table tbody tr:hover {
+  background: var(--reports-primary-light);
+}
+
+.reports-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ===== Export Options ===== */
+.reports-export-section {
+  background: var(--reports-card-bg);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--reports-card-shadow);
+}
+
+.reports-export-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--reports-primary-dark);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.reports-export-options {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.reports-export-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--reports-card-border);
+  border-radius: var(--radius-md);
+  background: var(--reports-card-bg);
+  color: var(--reports-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.reports-export-btn:hover {
+  background: var(--reports-accent);
+  color: white;
+  border-color: var(--reports-accent);
+}
+
+/* ===== Loading States ===== */
+.reports-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  color: var(--reports-secondary);
+}
+
+.reports-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--reports-card-border);
+  border-top: 3px solid var(--reports-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-md);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===== Empty States ===== */
+.reports-empty {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--reports-secondary);
+}
+
+.reports-empty-icon {
+  font-size: var(--font-size-3xl);
+  color: var(--reports-card-border);
+  margin-bottom: var(--spacing-md);
+}
+
+.reports-empty-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--reports-primary-dark);
+  margin-bottom: var(--spacing-sm);
+}
+
+.reports-empty-text {
+  font-size: var(--font-size-sm);
+  color: var(--reports-secondary);
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 1200px) {
+  .reports-charts-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .reports-dashboard {
+    padding: var(--spacing-md);
+  }
+  
+  .reports-stats-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+  
+  .reports-charts-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+  
+  .reports-filters-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+  
+  .reports-filter-actions {
+    flex-direction: column;
+  }
+  
+  .reports-export-options {
+    flex-direction: column;
+  }
+  
+  .reports-chart-canvas {
+    height: 250px;
+  }
+  
+  .reports-chart-canvas.large {
+    height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .reports-header {
+    padding: var(--spacing-md);
+  }
+  
+  .reports-title {
+    font-size: var(--font-size-xl);
+  }
+  
+  .reports-stat-value {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .reports-chart-container {
+    padding: var(--spacing-md);
+  }
+  
+  .reports-table th,
+  .reports-table td {
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+}
+
+/* ===== Print Styles ===== */
+@media print {
+  .reports-dashboard {
+    background: white;
+    padding: 0;
+  }
+  
+  .reports-filters,
+  .reports-export-section,
+  .reports-chart-actions,
+  .no-print {
+    display: none !important;
+  }
+  
+  .reports-stat-card,
+  .reports-chart-container,
+  .reports-data-table {
+    box-shadow: none;
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+  
+  .reports-chart-canvas {
+    height: 300px !important;
+  }
+}
+
+/* ===== Accessibility ===== */
+.reports-stat-card:focus-within,
+.reports-chart-container:focus-within,
+.reports-filter-control:focus {
+  outline: 2px solid var(--reports-accent);
+  outline-offset: 2px;
+}
+
+/* ===== Animation Utilities ===== */
+.reports-fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reports-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Order Notification{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-receipt"></i> 
+                        Order #{{ order.order_number or order.order_id }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Restaurant Header -->
+                    <div class="text-center mb-4">
+                        <h4>{{ public_settings.restaurant_name }}</h4>
+                        {% if public_settings.restaurant_address %}
+                        <p class="text-muted">{{ public_settings.restaurant_address }}</p>
+                        {% endif %}
+                        {% if public_settings.restaurant_phone %}
+                        <p class="text-muted">Phone: {{ public_settings.restaurant_phone }}</p>
+                        {% endif %}
+                        {% if public_settings.gst_number %}
+                        <p class="text-muted">GST: {{ public_settings.gst_number }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Order Details -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Order Number:</strong> {{ order.order_number or order.order_id }}
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <strong>Date:</strong> {{ order.created_at|date }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Order Type:</strong> {{ order.order_type }}
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <strong>Status:</strong> 
+                            <span class="badge badge-{{ 
+                                'success' if order.status == 'Completed' else 
+                                'warning' if order.status == 'In Progress' else 
+                                'info' if order.status == 'New' else 
+                                'secondary' 
+                            }}">
+                                {{ order.status }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    {% if order.order_type == 'Dine-in' and order.table_number %}
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <strong>Table:</strong> {{ order.table_number }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.order_type == 'Takeaway' %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Customer:</strong> {{ order.customer_name or 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Mobile:</strong> {{ order.customer_mobile or 'N/A' }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <!-- Items Table -->
+                    <h6 class="mb-3">Order Items</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th class="text-center">Quantity</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items %}
+                                <tr>
+                                    <td>{{ item.name }}</td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">₹{{ "%.2f"|format(item.price) }}</td>
+                                    <td class="text-end">₹{{ "%.2f"|format(item.total) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Order Summary -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Order Summary</h6>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Subtotal:</span>
+                                        <strong>₹{{ "%.2f"|format(order.subtotal or 0) }}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Tax ({{ order.tax_rate or 5 }}%):</span>
+                                        <strong>₹{{ "%.2f"|format(order.tax or 0) }}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Discount:</span>
+                                        <strong>₹{{ "%.2f"|format(order.discount or 0) }}</strong>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <h5>Total:</h5>
+                                        <h5 class="text-primary">₹{{ "%.2f"|format(order.total or 0) }}</h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Payment Information -->
+                        {% if order.payments %}
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Payment Details</h6>
+                                    {% for payment in order.payments %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>{{ payment.payment_mode }}:</span>
+                                        <strong>₹{{ "%.2f"|format(payment.amount) }}</strong>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <small>{{ payment.created_at|datetime }}</small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Footer Section -->
+                    {% if settings.footer_enabled == 'true' %}
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="text-center small text-muted">
+                            <!-- Custom Footer Text -->
+                            {% if settings.footer_custom_text %}
+                            <p class="mb-2">
+                                {{ settings.footer_custom_text|replace('{{user_name}}', current_user.username|default('Staff'))|replace('{{date}}', moment().format('YYYY-MM-DD'))|replace('{{time}}', moment().format('HH:mm:ss'))|replace('{{restaurant_name}}', public_settings.restaurant_name) }}
+                            </p>
+                            {% endif %}
+                            
+                            <!-- User Information -->
+                            {% if settings.footer_show_user_name == 'true' %}
+                            <p class="mb-1">
+                                <strong>Processed by:</strong> {{ current_user.username|default('Staff') }}
+                                {% if settings.footer_show_user_id == 'true' and current_user.id %}
+                                (ID: {{ current_user.id }})
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                            
+                            <!-- Receipt Information -->
+                            {% if settings.footer_show_receipt_info == 'true' %}
+                            <p class="mb-1">
+                                <strong>Receipt #:</strong> {{ order.order_number or order.order_id }}
+                                <strong>Date:</strong> {{ order.created_at|date }}
+                                <strong>Time:</strong> {{ order.created_at|time }}
+                            </p>
+                            {% endif %}
+                            
+                            <!-- Business Information -->
+                            {% if settings.footer_show_business_info == 'true' %}
+                            <p class="mb-1">
+                                <strong>{{ public_settings.restaurant_name }}</strong>
+                                {% if public_settings.restaurant_phone %}
+                                | {{ public_settings.restaurant_phone }}
+                                {% endif %}
+                                {% if public_settings.gst_number %}
+                                | GST: {{ public_settings.gst_number }}
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                            
+                            <!-- Multiline Footer -->
+                            {% if settings.footer_multiline == 'true' %}
+                            <div class="mb-1">
+                                {% if settings.footer_line1 %}
+                                <p>{{ settings.footer_line1 }}</p>
+                                {% endif %}
+                                {% if settings.footer_line2 %}
+                                <p>{{ settings.footer_line2 }}</p>
+                                {% endif %}
+                                {% if settings.footer_line3 %}
+                                <p>{{ settings.footer_line3 }}</p>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Default Terms -->
+                            <hr>
+                            <div class="mt-2">
+                                <p class="small text-muted mb-1">This is a computer generated email.</p>
+                                <p class="small text-muted mb-1">Goods once sold will not be taken back.</p>
+                                <p class="small text-muted mb-0">All disputes are subject to local jurisdiction.</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Footer Styling -->
+<style>
+.footer-section {
+    background-color: {{ settings.footer_background_color or '#f8f9fa' }};
+    color: {{ settings.footer_text_color or '#6c757d' }};
+    padding: 15px;
+    margin-top: 20px;
+    border-top: 1px solid {{ settings.footer_border_color or '#dee2e6' }};
+    font-size: {{ settings.footer_font_size or '12' }}px;
+    text-align: {{ settings.footer_alignment or 'center' }};
+}
+
+.footer-section p {
+    margin-bottom: 5px;
+}
+
+.footer-section strong {
+    color: inherit;
+}
+
+@media print {
+    .footer-section {
+        page-break-inside: avoid;
+        position: relative;
+        bottom: 0;
+    }
+}
+</style>
+{% endblock %}

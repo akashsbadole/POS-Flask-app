@@ -1,0 +1,301 @@
+{% extends "base.html" %} 
+{% block title %}Reports Dashboard - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports-modern.css') }}">
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Date Range Picker -->
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat/dayjs.customParseFormat.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="reports-dashboard" x-data="reportsDashboard()">
+  <!-- Reports Header -->
+  <div class="reports-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <h1 class="reports-title">
+        <i class="bi bi-graph-up"></i>
+        Reports Dashboard
+      </h1>
+      <div class="reports-header-actions">
+        <button @click="refreshAllData()" class="modern-btn modern-btn-primary modern-btn-sm">
+          <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button @click="printReport()" class="modern-btn modern-btn-ghost modern-btn-sm no-print">
+          <i class="bi bi-printer"></i> Print
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Stats Cards -->
+  <div class="reports-stats-grid">
+    <div class="reports-stat-card sales reports-fade-in">
+      <div class="reports-stat-icon">
+        <i class="bi bi-currency-rupee"></i>
+      </div>
+      <div class="reports-stat-value" x-text="formatCurrency(stats.totalSales)">₹0</div>
+      <div class="reports-stat-label">Total Sales</div>
+      <div class="reports-stat-change positive">
+        <i class="bi bi-arrow-up"></i>
+        <span x-text="stats.salesGrowth + '%'">+12%</span>
+      </div>
+    </div>
+
+    <div class="reports-stat-card orders reports-fade-in">
+      <div class="reports-stat-icon">
+        <i class="bi bi-bag-check"></i>
+      </div>
+      <div class="reports-stat-value" x-text="stats.totalOrders">0</div>
+      <div class="reports-stat-label">Total Orders</div>
+      <div class="reports-stat-change positive">
+        <i class="bi bi-arrow-up"></i>
+        <span x-text="stats.ordersGrowth + '%'">+8%</span>
+      </div>
+    </div>
+
+    <div class="reports-stat-card cancelled reports-fade-in">
+      <div class="reports-stat-icon">
+        <i class="bi bi-x-circle"></i>
+      </div>
+      <div class="reports-stat-value" x-text="stats.cancelledOrders">0</div>
+      <div class="reports-stat-label">Cancelled Orders</div>
+      <div class="reports-stat-change negative">
+        <i class="bi bi-arrow-down"></i>
+        <span x-text="stats.cancelledGrowth + '%'">-3%</span>
+      </div>
+    </div>
+
+    <div class="reports-stat-card revenue reports-fade-in">
+      <div class="reports-stat-icon">
+        <i class="bi bi-graph-up-arrow"></i>
+      </div>
+      <div class="reports-stat-value" x-text="formatCurrency(stats.averageOrderValue)">₹0</div>
+      <div class="reports-stat-label">Avg Order Value</div>
+      <div class="reports-stat-change positive">
+        <i class="bi bi-arrow-up"></i>
+        <span x-text="stats.aovGrowth + '%'">+5%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="reports-filters">
+    <div class="reports-filters-header">
+      <h3 class="reports-filters-title">Report Filters</h3>
+    </div>
+    <div class="reports-filters-grid">
+      <div class="reports-filter-group">
+        <label class="reports-filter-label">Report Type</label>
+        <select x-model="filters.reportType" @change="updateReportType()" class="reports-filter-control">
+          <option value="dashboard">Dashboard Overview</option>
+          <option value="daily">Daily Sales</option>
+          <option value="monthly">Monthly Sales</option>
+          <option value="gstr1">GSTR-1</option>
+          <option value="gstr3b">GSTR-3B</option>
+          <option value="itemwise">Item-wise Sales</option>
+          <option value="categorywise">Category-wise Sales</option>
+        </select>
+      </div>
+      <div class="reports-filter-group">
+        <label class="reports-filter-label">From Date</label>
+        <input type="date" x-model="filters.fromDate" @change="loadReportData()" class="reports-filter-control">
+      </div>
+      <div class="reports-filter-group">
+        <label class="reports-filter-label">To Date</label>
+        <input type="date" x-model="filters.toDate" @change="loadReportData()" class="reports-filter-control">
+      </div>
+      <div class="reports-filter-group">
+        <label class="reports-filter-label">Comparison</label>
+        <select x-model="filters.comparison" @change="loadReportData()" class="reports-filter-control">
+          <option value="none">None</option>
+          <option value="previousPeriod">Previous Period</option>
+          <option value="lastYear">Last Year</option>
+        </select>
+      </div>
+    </div>
+    <div class="reports-filter-actions">
+      <button @click="loadReportData()" class="reports-filter-btn primary">
+        <i class="bi bi-search"></i> Apply Filters
+      </button>
+      <button @click="resetFilters()" class="reports-filter-btn secondary">
+        <i class="bi bi-arrow-clockwise"></i> Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="reports-charts-grid">
+    <!-- Daily Orders Bar Chart -->
+    <div class="reports-chart-container full-width reports-slide-up">
+      <div class="reports-chart-header">
+        <h3 class="reports-chart-title">Daily Orders Trend</h3>
+        <div class="reports-chart-actions">
+          <button @click="exportChart('dailyOrdersChart')" class="reports-chart-action">
+            <i class="bi bi-download"></i> Export
+          </button>
+          <button @click="toggleChartType('dailyOrdersChart')" class="reports-chart-action">
+            <i class="bi bi-bar-chart"></i>
+          </button>
+        </div>
+      </div>
+      <div class="reports-chart-canvas large">
+        <canvas id="dailyOrdersChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Categories Pie Chart -->
+    <div class="reports-chart-container reports-slide-up">
+      <div class="reports-chart-header">
+        <h3 class="reports-chart-title">Sales by Category</h3>
+        <div class="reports-chart-actions">
+          <button @click="exportChart('categoriesChart')" class="reports-chart-action">
+            <i class="bi bi-download"></i> Export
+          </button>
+        </div>
+      </div>
+      <div class="reports-chart-canvas">
+        <canvas id="categoriesChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Payment Methods Chart -->
+    <div class="reports-chart-container reports-slide-up">
+      <div class="reports-chart-header">
+        <h3 class="reports-chart-title">Payment Methods</h3>
+        <div class="reports-chart-actions">
+          <button @click="exportChart('paymentMethodsChart')" class="reports-chart-action">
+            <i class="bi bi-download"></i> Export
+          </button>
+        </div>
+      </div>
+      <div class="reports-chart-canvas">
+        <canvas id="paymentMethodsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Sales Trend -->
+  <div class="reports-charts-grid">
+    <div class="reports-chart-container full-width reports-slide-up">
+      <div class="reports-chart-header">
+        <h3 class="reports-chart-title">Monthly Sales Trend</h3>
+        <div class="reports-chart-actions">
+          <button @click="exportChart('monthlySalesChart')" class="reports-chart-action">
+            <i class="bi bi-download"></i> Export
+          </button>
+          <button @click="toggleChartType('monthlySalesChart')" class="reports-chart-action">
+            <i class="bi bi-graph-up"></i>
+          </button>
+        </div>
+      </div>
+      <div class="reports-chart-canvas large">
+        <canvas id="monthlySalesChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- GST Breakdown Charts -->
+  <div class="reports-charts-grid" x-show="filters.reportType === 'gstr1' || filters.reportType === 'gstr3b'">
+    <div class="reports-chart-container reports-slide-up">
+      <div class="reports-chart-header">
+        <h3 class="reports-chart-title">GST Breakdown - CGST</h3>
+        <div class="reports-chart-actions">
+          <button @click="exportChart('cgstChart')" class="reports-chart-action">
+            <i class="bi bi-download"></i> Export
+          </button>
+        </div>
+      </div>
+      <div class="reports-chart-canvas">
+        <canvas id="cgstChart"></canvas>
+      </div>
+    </div>
+
+    <div class="reports-chart-container reports-slide-up">
+      <div class="reports-chart-header">
+        <h3 class="reports-chart-title">GST Breakdown - SGST</h3>
+        <div class="reports-chart-actions">
+          <button @click="exportChart('sgstChart')" class="reports-chart-action">
+            <i class="bi bi-download"></i> Export
+          </button>
+        </div>
+      </div>
+      <div class="reports-chart-canvas">
+        <canvas id="sgstChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="reports-data-table reports-slide-up" x-show="filters.reportType !== 'dashboard'">
+    <table class="reports-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Orders</th>
+          <th>Gross Sales</th>
+          <th>Discount</th>
+          <th>Net Sales</th>
+          <th>CGST</th>
+          <th>SGST</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="row in tableData" :key="row.date">
+          <tr>
+            <td x-text="row.date"></td>
+            <td x-text="row.orders"></td>
+            <td x-text="formatCurrency(row.grossSales)"></td>
+            <td x-text="formatCurrency(row.discount)"></td>
+            <td x-text="formatCurrency(row.netSales)"></td>
+            <td x-text="formatCurrency(row.cgst)"></td>
+            <td x-text="formatCurrency(row.sgst)"></td>
+            <td x-text="formatCurrency(row.total)"></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Export Section -->
+  <div class="reports-export-section no-print">
+    <h3 class="reports-export-title">Export Reports</h3>
+    <div class="reports-export-options">
+      <button @click="exportReport('pdf')" class="reports-export-btn">
+        <i class="bi bi-file-earmark-pdf"></i> Export as PDF
+      </button>
+      <button @click="exportReport('csv')" class="reports-export-btn">
+        <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
+      </button>
+      <button @click="exportReport('excel')" class="reports-export-btn">
+        <i class="bi bi-file-earmark-excel"></i> Export as Excel
+      </button>
+      <button @click="emailReport()" class="reports-export-btn">
+        <i class="bi bi-envelope"></i> Email Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="reports-loading" x-show="isLoading" x-cloak>
+    <div class="reports-spinner"></div>
+    <div>Loading report data...</div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="reports-empty" x-show="!isLoading && !hasData" x-cloak>
+    <div class="reports-empty-icon">
+      <i class="bi bi-graph-up"></i>
+    </div>
+    <h3 class="reports-empty-title">No Data Available</h3>
+    <p class="reports-empty-text">There is no data available for the selected period and filters.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/reports-enhanced.js') }}"></script>
+{% endblock %}

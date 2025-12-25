@@ -1,6 +1,6 @@
 function paymentProcessor() {
   return {
-    orderData: window.orderData || {},
+    orderData: {},
     selectedMethod: null,
     processing: false,
     paymentData: {
@@ -20,6 +20,10 @@ function paymentProcessor() {
     },
 
     init() {
+      // Initialize order data from HTML data attribute
+      const container = this.$el;
+      this.orderData = JSON.parse(container.dataset.order || '{}');
+      
       // Initialize amount with order total
       this.paymentData.amount_paid = this.orderData.grand_total || 0;
 

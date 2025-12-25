@@ -253,6 +253,10 @@ class Order(db.Model):
         
         self.updated_at = datetime.utcnow()
         db.session.commit()
+        
+        # Send email notifications
+        self._send_status_change_notifications(old_status, new_status)
+        
         return True
     
     def to_dict(self):
@@ -331,11 +335,69 @@ class Order(db.Model):
             return None
         return get_encryption_manager().encrypt_field(customer_mobile)
     
-    def _decrypt_customer_mobile(self, encrypted_customer_mobile):
+    def _encrypt_customer_mobile(self, encrypted_customer_mobile):
         """Decrypt customer mobile number"""
         if not encrypted_customer_mobile:
             return None
         return get_encryption_manager().decrypt_field(encrypted_customer_mobile)
+    
+    def _send_status_change_notifications(self, old_status, new_status):
+        """Send email notifications for order status changes"""
+        try:
+            from utils.email_notifier import email_notifier
+            
+            # Prepare order data for email
+            order_data = {
+                'order_number': self.order_number,
+                'order_type': self.order_type,
+                'customer_name': self.customer_name_decrypted or 'Walk-in',
+                'table_name': self.table.table_number if self.table else 'N/A',
+                'grand_total': float(self.grand_total),
+                'created_at': self.created_at.isoformat() if self.created_at else None,
+                'items': [{
+                    'name': item.item_name,
+                    'quantity': item.quantity,
+                    'price': float(item.price),
+                    'total': float(item.total)
+                } for item in self.order_items]
+            }
+            
+            # Send appropriate email based on status change
+            if new_status == 'Completed' and old_status != 'Completed':
+                # Order completed - send order completion notification
+                email_notifier.send_order_notification(order_data)
+            elif new_status == 'Cancelled' and old_status != 'Cancelled':
+                # Order cancelled - could send cancellation notification if needed
+                pass
+                
+        except Exception as e:
+            # Log error but don't fail the status update
+            print(f"Failed to send order notification: {e}")
+    
+    def send_creation_notification(self):
+        """Send notification when order is created"""
+        try:
+            from utils.email_notifier import email_notifier
+            
+            order_data = {
+                'order_number': self.order_number,
+                'order_type': self.order_type,
+                'customer_name': self.customer_name_decrypted or 'Walk-in',
+                'table_name': self.table.table_number if self.table else 'N/A',
+                'grand_total': float(self.grand_total),
+                'created_at': self.created_at.isoformat() if self.created_at else None,
+                'items': [{
+                    'name': item.item_name,
+                    'quantity': item.quantity,
+                    'price': float(item.price),
+                    'total': float(item.total)
+                } for item in self.order_items]
+            }
+            
+            email_notifier.send_order_notification(order_data)
+            
+        except Exception as e:
+            print(f"Failed to send order creation notification: {e}")
     
     @property
     def customer_name_decrypted(self):

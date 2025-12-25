@@ -1,6 +1,6 @@
 function dashboardData() {
   return {
-    stats: window.dashboardStats || {},
+    stats: {},
 
     refreshStats() {
       fetch("/dashboard/stats")
@@ -14,6 +14,10 @@ function dashboardData() {
     },
 
     init() {
+      // Initialize stats from HTML data attribute
+      const container = this.$el;
+      this.stats = JSON.parse(container.dataset.stats || '{}');
+      
       // Auto-refresh stats every 30 seconds
       setInterval(() => {
         this.refreshStats();

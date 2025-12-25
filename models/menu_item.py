@@ -19,11 +19,26 @@ class MenuItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Extended attributes for Indian food
+    spice_level = db.Column(db.String(20), nullable=True)
+    is_vegetarian = db.Column(db.Boolean, default=True)
+    is_vegan = db.Column(db.Boolean, default=False)
+    is_gluten_free = db.Column(db.Boolean, default=False)
+    cooking_time = db.Column(db.Integer, nullable=True)  # in minutes
+    difficulty = db.Column(db.String(20), nullable=True)  # Easy, Medium, Hard
+    popularity_rating = db.Column(db.Integer, default=5)  # 1-10 scale
+    calories = db.Column(db.Integer, nullable=True)
+    protein = db.Column(db.Integer, nullable=True)  # grams
+    carbs = db.Column(db.Integer, nullable=True)   # grams
+    fat = db.Column(db.Integer, nullable=True)     # grams
+    
     # Relationships
     order_items = db.relationship('OrderItem', backref='menu_item', lazy=True)
     
     def __init__(self, name, price, category_id, description=None, stock_quantity=0, 
-                 min_stock_level=10, image_path=None):
+                 min_stock_level=10, image_path=None, spice_level=None, is_vegetarian=True, 
+                 is_vegan=False, is_gluten_free=False, cooking_time=None, difficulty=None, 
+                 popularity_rating=5, calories=None, protein=None, carbs=None, fat=None):
         self.name = name
         self.price = Decimal(str(price))
         self.category_id = category_id
@@ -31,6 +46,17 @@ class MenuItem(db.Model):
         self.stock_quantity = stock_quantity
         self.min_stock_level = min_stock_level
         self.image_path = image_path
+        self.spice_level = spice_level
+        self.is_vegetarian = is_vegetarian
+        self.is_vegan = is_vegan
+        self.is_gluten_free = is_gluten_free
+        self.cooking_time = cooking_time
+        self.difficulty = difficulty
+        self.popularity_rating = popularity_rating
+        self.calories = calories
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
     
     @property
     def formatted_price(self):
@@ -95,6 +121,18 @@ class MenuItem(db.Model):
             'is_active': self.is_active,
             'is_available': self.is_available,
             'image_path': self.image_path,
+            # Extended attributes
+            'spice_level': self.spice_level,
+            'is_vegetarian': self.is_vegetarian,
+            'is_vegan': self.is_vegan,
+            'is_gluten_free': self.is_gluten_free,
+            'cooking_time': self.cooking_time,
+            'difficulty': self.difficulty,
+            'popularity_rating': self.popularity_rating,
+            'calories': self.calories,
+            'protein': self.protein,
+            'carbs': self.carbs,
+            'fat': self.fat,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -138,7 +176,9 @@ class MenuItem(db.Model):
     
     @staticmethod
     def create_menu_item(name, price, category_id, description=None, stock_quantity=0, 
-                        min_stock_level=10, image_path=None):
+                        min_stock_level=10, image_path=None, spice_level=None, is_vegetarian=True, 
+                        is_vegan=False, is_gluten_free=False, cooking_time=None, difficulty=None, 
+                        popularity_rating=5, calories=None, protein=None, carbs=None, fat=None):
         """Create new menu item"""
         if MenuItem.query.filter_by(name=name).first():
             return None
@@ -150,14 +190,28 @@ class MenuItem(db.Model):
             description=description,
             stock_quantity=stock_quantity,
             min_stock_level=min_stock_level,
-            image_path=image_path
+            image_path=image_path,
+            spice_level=spice_level,
+            is_vegetarian=is_vegetarian,
+            is_vegan=is_vegan,
+            is_gluten_free=is_gluten_free,
+            cooking_time=cooking_time,
+            difficulty=difficulty,
+            popularity_rating=popularity_rating,
+            calories=calories,
+            protein=protein,
+            carbs=carbs,
+            fat=fat
         )
         db.session.add(menu_item)
         db.session.commit()
         return menu_item
     
     def update(self, name=None, price=None, category_id=None, description=None,
-               stock_quantity=None, min_stock_level=None, image_path=None):
+               stock_quantity=None, min_stock_level=None, image_path=None, 
+               spice_level=None, is_vegetarian=None, is_vegan=None, is_gluten_free=None, 
+               cooking_time=None, difficulty=None, popularity_rating=None, calories=None, 
+               protein=None, carbs=None, fat=None):
         """Update menu item"""
         if name and name != self.name:
             # Check if name already exists
@@ -183,6 +237,30 @@ class MenuItem(db.Model):
         
         if image_path is not None:
             self.image_path = image_path
+        
+        # Update extended attributes
+        if spice_level is not None:
+            self.spice_level = spice_level
+        if is_vegetarian is not None:
+            self.is_vegetarian = is_vegetarian
+        if is_vegan is not None:
+            self.is_vegan = is_vegan
+        if is_gluten_free is not None:
+            self.is_gluten_free = is_gluten_free
+        if cooking_time is not None:
+            self.cooking_time = cooking_time
+        if difficulty is not None:
+            self.difficulty = difficulty
+        if popularity_rating is not None:
+            self.popularity_rating = popularity_rating
+        if calories is not None:
+            self.calories = calories
+        if protein is not None:
+            self.protein = protein
+        if carbs is not None:
+            self.carbs = carbs
+        if fat is not None:
+            self.fat = fat
         
         self.updated_at = datetime.utcnow()
         db.session.commit()

@@ -1,17 +1,23 @@
 function kotWindow() {
   return {
-    orders: (typeof window.activeOrders !== 'undefined') ? window.activeOrders : [],
-    recentOrders: (typeof window.recentOrders !== 'undefined') ? window.recentOrders : [],
+    orders: [],
+    recentOrders: [],
     currentFilter: 'all',
     autoRefresh: true,
     soundEnabled: true,
-    lastOrderCount: (typeof window.activeOrders !== 'undefined' && window.activeOrders) ? window.activeOrders.length : 0,
+    lastOrderCount: 0,
     showBulkActions: false,
     selectedOrders: new Set(),
     refreshInterval: null,
     timeUpdateInterval: null,
     
     init() {
+      // Initialize data from HTML data attributes
+      const container = this.$el;
+      this.orders = JSON.parse(container.dataset.activeOrders || '[]');
+      this.recentOrders = JSON.parse(container.dataset.recentOrders || '[]');
+      this.lastOrderCount = this.orders.length;
+      
       // Start auto refresh if enabled
       if (this.autoRefresh) {
         this.startAutoRefresh();

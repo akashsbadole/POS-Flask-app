@@ -1,16 +1,21 @@
 function kotDisplay() {
   return {
-    activeOrders: (typeof window.activeOrders !== 'undefined') ? window.activeOrders : [],
+    activeOrders: [],
     filterStatus: "all",
     autoRefresh: true,
     soundEnabled: true,
-    lastOrderCount: (typeof window.activeOrdersCount !== 'undefined') ? window.activeOrdersCount : 0,
+    lastOrderCount: 0,
     showBulkActions: false,
     selectedOrders: new Set(),
     refreshInterval: null,
     timeUpdateInterval: null,
 
     init: function () {
+      // Initialize data from HTML data attributes
+      const container = this.$el;
+      this.activeOrders = JSON.parse(container.dataset.activeOrders || '[]');
+      this.lastOrderCount = this.activeOrders.length;
+      
       // Start auto refresh if enabled
       if (this.autoRefresh) {
         this.startAutoRefresh();

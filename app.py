@@ -10,6 +10,7 @@ from config import config
 
 # Import models
 from models import db, User, Category, MenuItem, Table, Order, OrderItem, Payment, Settings
+from utils.permissions import inject_permissions
 
 # Create Flask app
 def create_app(config_name='default'):
@@ -73,6 +74,9 @@ def create_app(config_name='default'):
     from routes.api import api_bp
     from routes.email import email_bp
     from routes.footer_settings import footer_settings_bp
+    from routes.settings import settings_bp
+    from routes.users import users_bp
+    from routes.import_export import import_export_bp
     
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
     app.register_blueprint(orders_bp, url_prefix='/orders')
@@ -84,6 +88,9 @@ def create_app(config_name='default'):
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(email_bp, url_prefix='/email')
     app.register_blueprint(footer_settings_bp, url_prefix='/footer')
+    app.register_blueprint(settings_bp, url_prefix='/settings')
+    app.register_blueprint(users_bp, url_prefix='/users')
+    app.register_blueprint(import_export_bp, url_prefix='/import-export')
     
     # Main routes
     @app.route('/')
@@ -112,6 +119,11 @@ def create_app(config_name='default'):
     def inject_user():
         """Inject current user into templates"""
         return dict(current_user=current_user)
+    
+    @app.context_processor
+    def inject_permissions():
+        """Inject permissions utilities into templates"""
+        return inject_permissions()
     
     # Error handlers
     @app.errorhandler(404)

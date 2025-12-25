@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import/Export Management - Restaurant POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .import-export-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #0056b3;
+            background-color: #e9ecef;
+        }
+        
+        .upload-area.dragover {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .preview-table {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+        
+        .status-badge {
+            font-size: 0.8em;
+        }
+        
+        .operation-card {
+            transition: transform 0.2s ease;
+        }
+        
+        .operation-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .file-info {
+            background-color: #e9ecef;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+        
+        .stats-card {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .template-section {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="import-export-container">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Import/Export</li>
+                    </ol>
+                </nav>
+                <h2><i class="fas fa-exchange-alt"></i> Import/Export Management</h2>
+                <p class="text-muted">Bulk import/export menu items and categories</p>
+            </div>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer" class="alert-container"></div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-upload fa-2x mb-2"></i>
+                    <h4>{{ menu_items_count or 0 }}</h4>
+                    <small>Total Menu Items</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-list fa-2x mb-2"></i>
+                    <h4>{{ categories_count or 0 }}</h4>
+                    <small>Categories</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h4>{{ available_items or 0 }}</h4>
+                    <small>Available Items</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h4>{{ low_stock or 0 }}</h4>
+                    <small>Low Stock Items</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Tabs -->
+        <ul class="nav nav-tabs" id="importExportTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="import-tab" data-bs-toggle="tab" data-bs-target="#import" type="button" role="tab">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="export-tab" data-bs-toggle="tab" data-bs-target="#export" type="button" role="tab">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates" type="button" role="tab">
+                    <i class="fas fa-file-download"></i> Templates
+                </button>
+            </li>
+            {% if permissions.can_view_history %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
+                    <i class="fas fa-history"></i> History
+                </button>
+            </li>
+            {% endif %}
+        </ul>
+
+        <div class="tab-content" id="importExportTabContent">
+            <!-- Import Tab -->
+            <div class="tab-pane fade show active" id="import" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-upload"></i> Import Menu Items</h5>
+                                <small class="text-muted">Upload CSV or Excel files to bulk import menu items</small>
+                            </div>
+                            <div class="card-body">
+                                {% if permissions.can_import %}
+                                <!-- File Upload Area -->
+                                <div class="upload-area" id="uploadArea">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                    <h5>Drop files here or click to upload</h5>
+                                    <p class="text-muted">Supported formats: CSV, Excel (.xlsx, .xls)</p>
+                                    <p class="text-muted">Maximum file size: 10MB</p>
+                                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;">
+                                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                        <i class="fas fa-folder-open"></i> Select File
+                                    </button>
+                                </div>
+
+                                <!-- Progress Bar -->
+                                <div class="progress-container" id="progressContainer">
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted mt-1">Processing...</small>
+                                </div>
+
+                                <!-- File Info -->
+                                <div id="fileInfo" class="file-info" style="display: none;">
+                                    <strong>File: </strong><span id="fileName"></span><br>
+                                    <strong>Records: </strong><span id="recordCount"></span><br>
+                                    <strong>Format: </strong><span id="fileFormat"></span>
+                                </div>
+
+                                <!-- Import Options -->
+                                <div id="importOptions" class="mt-3" style="display: none;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="updateExisting">
+                                        <label class="form-check-label" for="updateExisting">
+                                            Update existing items with matching names
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Preview Table -->
+                                <div id="previewContainer" class="mt-3" style="display: none;">
+                                    <h6>Data Preview</h6>
+                                    <div class="preview-table">
+                                        <table class="table table-sm table-striped">
+                                            <thead id="previewHeader"></thead>
+                                            <tbody id="previewBody"></tbody>
+                                        </table>
+                                    </div>
+                                    <small class="text-muted">Showing first 20 records</small>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div id="importActions" class="mt-3" style="display: none;">
+                                    <button class="btn btn-secondary me-2" onclick="clearImportData()">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                    <button class="btn btn-success" onclick="executeImport()">
+                                        <i class="fas fa-check"></i> Import Data
+                                    </button>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> You don't have permission to import menu items.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Tab -->
+            <div class="tab-pane fade" id="export" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-download"></i> Export Menu Items</h5>
+                                <small class="text-muted">Export menu items to CSV or Excel format</small>
+                            </div>
+                            <div class="card-body">
+                                {% if permissions.can_export %}
+                                <!-- Export Options -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="exportFormat" class="form-label">Export Format</label>
+                                            <select class="form-select" id="exportFormat">
+                                                <option value="csv">CSV (Comma Separated Values)</option>
+                                                <option value="excel">Excel (.xlsx)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="categoryFilter" class="form-label">Category Filter (Optional)</label>
+                                            <select class="form-select" id="categoryFilter">
+                                                <option value="">All Categories</option>
+                                                <!-- Categories will be populated by JavaScript -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Export Button -->
+                                <div class="text-center">
+                                    <button class="btn btn-primary btn-lg" onclick="exportData()">
+                                        <i class="fas fa-download"></i> Export Menu Items
+                                    </button>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> You don't have permission to export menu items.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Templates Tab -->
+            <div class="tab-pane fade" id="templates" role="tabpanel">
+                <div class="template-section">
+                    <h5><i class="fas fa-file-download"></i> Download Import Templates</h5>
+                    <p class="text-muted">Use these templates to prepare your import data</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card operation-card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-file-csv fa-3x text-success mb-3"></i>
+                                    <h6>CSV Template</h6>
+                                    <p class="text-muted small">Comma-separated values format</p>
+                                    <button class="btn btn-success" onclick="downloadTemplate('csv')">
+                                        <i class="fas fa-download"></i> Download CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card operation-card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-file-excel fa-3x text-primary mb-3"></i>
+                                    <h6>Excel Template</h6>
+                                    <p class="text-muted small">Microsoft Excel format</p>
+                                    <button class="btn btn-primary" onclick="downloadTemplate('excel')">
+                                        <i class="fas fa-download"></i> Download Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Template Instructions -->
+                    <div class="mt-4">
+                        <h6>Template Instructions</h6>
+                        <ul class="text-muted">
+                            <li><strong>Required fields:</strong> name, price, category</li>
+                            <li><strong>Optional fields:</strong> description, stock_quantity, image_path, spice_level, etc.</li>
+                            <li><strong>Price:</strong> Enter as decimal number (e.g., 250.00)</li>
+                            <li><strong>Boolean fields:</strong> Use true/false, 1/0, or yes/no</li>
+                            <li><strong>Categories:</strong> Will be created automatically if they don't exist</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            {% if permissions.can_view_history %}
+            <div class="tab-pane fade" id="history" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-history"></i> Import/Export History</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="historyContent">
+                                    <div class="text-center">
+                                        <div class="spinner-border" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="mt-2">Loading history...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let importData = [];
+        let currentFile = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadCategories();
+            loadHistory();
+        });
+
+        function initializeEventListeners() {
+            // File upload
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+
+            if (fileInput) {
+                fileInput.addEventListener('change', handleFileSelect);
+            }
+
+            if (uploadArea) {
+                // Click to upload
+                uploadArea.addEventListener('click', () => fileInput.click());
+
+                // Drag and drop
+                uploadArea.addEventListener('dragover', handleDragOver);
+                uploadArea.addEventListener('dragleave', handleDragLeave);
+                uploadArea.addEventListener('drop', handleDrop);
+            }
+
+            // Tab change events
+            const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+            tabs.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function (event) {
+                    if (event.target.getAttribute('data-bs-target') === '#history') {
+                        loadHistory();
+                    }
+                });
+            });
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadFile(file);
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        async function uploadFile(file) {
+            try {
+                showProgress();
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/import-export/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    importData = result.preview;
+                    currentFile = {
+                        name: result.filename,
+                        format: result.format,
+                        recordCount: result.record_count
+                    };
+
+                    showFileInfo(result);
+                    showPreview(result.preview);
+                    showImportOptions();
+                    showImportActions();
+                    
+                    if (result.validation_errors && result.validation_errors.length > 0) {
+                        showAlert('warning', 'Validation warnings found. Please review the data before importing.');
+                    } else {
+                        showAlert('success', 'File uploaded successfully. Data looks good!');
+                    }
+                } else {
+                    showAlert('error', result.error || 'Upload failed');
+                }
+            } catch (error) {
+                showAlert('error', 'Upload failed: ' + error.message);
+            } finally {
+                hideProgress();
+            }
+        }
+
+        function showProgress() {
+            document.getElementById('progressContainer').style.display = 'block';
+        }
+
+        function hideProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+        }
+
+        function showFileInfo(result) {
+            const fileInfo = document.getElementById('fileInfo');
+            document.getElementById('fileName').textContent = result.filename;
+            document.getElementById('recordCount').textContent = result.record_count;
+            document.getElementById('fileFormat').textContent = result.format.toUpperCase();
+            fileInfo.style.display = 'block';
+        }
+
+        function showPreview(data) {
+            if (!data || data.length === 0) return;
+
+            const previewContainer = document.getElementById('previewContainer');
+            const previewHeader = document.getElementById('previewHeader');
+            const previewBody = document.getElementById('previewBody');
+
+            // Create header
+            const columns = Object.keys(data[0]);
+            const headerRow = columns.map(col => `<th>${col}</th>`).join('');
+            previewHeader.innerHTML = `<tr>${headerRow}</tr>`;
+
+            // Create body
+            const rows = data.slice(0, 20).map(row => {
+                const cells = columns.map(col => {
+                    const value = row[col] || '';
+                    return `<td>${value}</td>`;
+                }).join('');
+                return `<tr>${cells}</tr>`;
+            }).join('');
+            previewBody.innerHTML = rows;
+
+            previewContainer.style.display = 'block';
+        }
+
+        function showImportOptions() {
+            document.getElementById('importOptions').style.display = 'block';
+        }
+
+        function showImportActions() {
+            document.getElementById('importActions').style.display = 'block';
+        }
+
+        function clearImportData() {
+            importData = [];
+            currentFile = null;
+            
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('previewContainer').style.display = 'none';
+            document.getElementById('importOptions').style.display = 'none';
+            document.getElementById('importActions').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            
+            fetch('/import-export/api/cleanup', { method: 'POST' });
+        }
+
+        async function executeImport() {
+            try {
+                const updateExisting = document.getElementById('updateExisting').checked;
+                
+                showProgress();
+
+                const response = await fetch('/import-export/api/import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        update_existing: updateExisting
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showImportResults(result);
+                    clearImportData();
+                    showAlert('success', 'Import completed successfully!');
+                } else {
+                    showAlert('error', result.error || 'Import failed');
+                }
+            } catch (error) {
+                showAlert('error', 'Import failed: ' + error.message);
+            } finally {
+                hideProgress();
+            }
+        }
+
+        function showImportResults(result) {
+            const { results, errors, warnings } = result;
+            
+            let message = `Import completed: ${results.created} created, ${results.updated} updated`;
+            if (results.skipped > 0) {
+                message += `, ${results.skipped} skipped`;
+            }
+            if (results.errors > 0) {
+                message += `, ${results.errors} errors`;
+            }
+
+            if (warnings && warnings.length > 0) {
+                showAlert('warning', 'Import completed with warnings: ' + warnings.join(', '));
+            }
+
+            showAlert('success', message);
+        }
+
+        async function exportData() {
+            try {
+                const format = document.getElementById('exportFormat').value;
+                const categoryFilter = document.getElementById('categoryFilter').value;
+
+                const response = await fetch('/import-export/api/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        format: format,
+                        category_filter: categoryFilter
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Download the file
+                    window.location.href = `/import-export/api/download/${result.filename}`;
+                    showAlert('success', `Export completed! Downloaded ${result.records} records.`);
+                } else {
+                    showAlert('error', result.error || 'Export failed');
+                }
+            } catch (error) {
+                showAlert('error', 'Export failed: ' + error.message);
+            }
+        }
+
+        async function downloadTemplate(format) {
+            try {
+                const response = await fetch('/import-export/api/template', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        format: format
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    window.location.href = `/import-export/api/download-template/${result.filename}`;
+                } else {
+                    showAlert('error', result.error || 'Template generation failed');
+                }
+            } catch (error) {
+                showAlert('error', 'Template generation failed: ' + error.message);
+            }
+        }
+
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/menu/categories');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const select = document.getElementById('categoryFilter');
+                    result.categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.name;
+                        option.textContent = category.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/import-export/api/history');
+                const result = await response.json();
+                
+                const content = document.getElementById('historyContent');
+                
+                if (result.success && result.history.length > 0) {
+                    // Render history table
+                    content.innerHTML = `
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Operation</th>
+                                        <th>File</th>
+                                        <th>Status</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${result.history.map(item => `
+                                        <tr>
+                                            <td>${new Date(item.timestamp).toLocaleString()}</td>
+                                            <td><span class="badge bg-${item.operation_type === 'import' ? 'primary' : 'success'}">${item.operation_type}</span></td>
+                                            <td>${item.filename || 'N/A'}</td>
+                                            <td><span class="badge bg-${item.errors > 0 ? 'danger' : 'success'}">Completed</span></td>
+                                            <td>${item.results ? JSON.stringify(item.results) : 'N/A'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="fas fa-history fa-3x mb-3"></i>
+                            <p>No import/export history found</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                const content = document.getElementById('historyContent');
+                content.innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to load history: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertClass = type === 'error' ? 'alert-danger' : 
+                              type === 'warning' ? 'alert-warning' : 'alert-success';
+            
+            const alertHtml = `
+                <div id="${alertId}" class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertContainer.innerHTML += alertHtml;
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

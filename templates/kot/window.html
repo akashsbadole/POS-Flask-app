@@ -90,7 +90,7 @@
 {% endblock %} 
 
 {% block content %}
-<div class="kot-window" x-data="kotWindow()">
+<div class="kot-window" x-data="kotWindow()" data-active-orders="{{ active_orders|tojson }}" data-recent-orders="{{ recent_orders|tojson }}">
   <!-- Header -->
   <div class="kot-header">
     <h1 class="kot-title">🍳 Kitchen Order Tickets</h1>
@@ -376,10 +376,6 @@
   </audio>
 </div>
 
-<script>
-  // Pass data from Flask to JavaScript
-  window.activeOrders = {{ active_orders|tojson|safe }};
-  window.recentOrders = {{ recent_orders|tojson|safe }};
-</script>
+<!-- Order data is now passed via data attributes on the container div -->
 <script src="{{ url_for('static', filename='js/kot-window-enhanced.js') }}"></script>
 {% endblock %}

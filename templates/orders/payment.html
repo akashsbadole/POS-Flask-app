@@ -89,7 +89,7 @@
   }
 </style>
 {% endblock %} {% block content %}
-<div class="container-fluid" x-data="paymentProcessor()">
+<div class="container-fluid" x-data="paymentProcessor()" data-order="{{ order.to_dict()|tojson }}">
   <div class="row">
     <div class="col-12">
       <!-- Page Header -->
@@ -487,8 +487,5 @@
 </div>
 {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='js/payment-processor.js') }}"></script>
-<script>
-  // Pass order data from Flask to JavaScript
-  window.orderData = JSON.parse('{{ order.to_dict()|tojson|safe }}');
-</script>
+<!-- Order data is now passed via data attribute on the container div -->
 {% endblock %}

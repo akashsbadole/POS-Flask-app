@@ -28,7 +28,7 @@
 {% endblock %} 
 
 {% block content %}
-<div class="container-fluid kot-display" x-data="kotDisplay()">
+<div class="container-fluid kot-display" x-data="kotDisplay()" data-active-orders="{{ active_orders|tojson }}" data-active-orders-count="{{ active_orders|length }}">
   <!-- Header -->
   <div class="kot-header">
     <h1 class="kot-title">
@@ -317,10 +317,6 @@
   </audio>
 </div>
 
-<script>
-  // Pass data from Flask to JavaScript
-  window.activeOrders = {{ active_orders|tojson|safe }};
-  window.activeOrdersCount = {{ active_orders|length }};
-</script>
+<!-- Order data is now passed via data attributes on the container div -->
 <script src="{{ url_for('static', filename='js/kot-enhanced.js') }}"></script>
 {% endblock %}

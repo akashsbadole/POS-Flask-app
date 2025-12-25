@@ -8,11 +8,35 @@ class User(UserMixin, db.Model):
     """User model for authentication and authorization"""
     __tablename__ = 'users'
     
+    # Role constants for better maintainability
+    ROLE_SUPER_ADMIN = 'super_admin'
+    ROLE_ADMIN = 'admin'
+    ROLE_MANAGER = 'manager'
+    ROLE_HEAD_CHEF = 'head_chef'
+    ROLE_CHEF = 'chef'
+    ROLE_CASHIER = 'cashier'
+    ROLE_WAITER = 'waiter'
+    ROLE_KITCHEN_STAFF = 'kitchen_staff'
+    ROLE_READONLY = 'readonly'
+    
+    # Role hierarchy for permission inheritance (higher index = higher privilege)
+    ROLE_HIERARCHY = [
+        ROLE_READONLY,
+        ROLE_KITCHEN_STAFF,
+        ROLE_WAITER,
+        ROLE_CASHIER,
+        ROLE_CHEF,
+        ROLE_HEAD_CHEF,
+        ROLE_MANAGER,
+        ROLE_ADMIN,
+        ROLE_SUPER_ADMIN
+    ]
+    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='cashier')  # admin, cashier
+    role = db.Column(db.String(20), nullable=False, default='cashier')
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -35,13 +59,71 @@ class User(UserMixin, db.Model):
         decrypted_hash = self._decrypt_password_hash(self.password_hash)
         return check_password_hash(decrypted_hash, password)
     
+    def is_super_admin(self):
+        """Check if user is super admin"""
+        return self.role == self.ROLE_SUPER_ADMIN
+    
     def is_admin(self):
-        """Check if user is admin"""
-        return self.role == 'admin'
+        """Check if user is admin or super admin"""
+        return self.role in [self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN]
+    
+    def is_manager(self):
+        """Check if user is manager or higher"""
+        return self.role in [self.ROLE_MANAGER, self.ROLE_HEAD_CHEF, self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN]
+    
+    def is_chef(self):
+        """Check if user is chef or higher"""
+        return self.role in [self.ROLE_CHEF, self.ROLE_HEAD_CHEF, self.ROLE_MANAGER, self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN]
+    
+    def is_head_chef(self):
+        """Check if user is head chef or higher"""
+        return self.role in [self.ROLE_HEAD_CHEF, self.ROLE_MANAGER, self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN]
+    
+    def is_kitchen_staff(self):
+        """Check if user is kitchen staff or higher"""
+        return self.role in [self.ROLE_KITCHEN_STAFF, self.ROLE_CHEF, self.ROLE_HEAD_CHEF, self.ROLE_MANAGER, self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN]
+    
+    def is_waiter(self):
+        """Check if user is waiter or higher"""
+        return self.role in [self.ROLE_WAITER, self.ROLE_CASHIER, self.ROLE_CHEF, self.ROLE_HEAD_CHEF, self.ROLE_MANAGER, self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN]
     
     def is_cashier(self):
-        """Check if user is cashier"""
-        return self.role == 'cashier'
+        """Check if user is cashier or higher"""
+        return self.role in [self.ROLE_CASHIER, self.ROLE_CHEF, self.ROLE_HEAD_CHEF, self.ROLE_MANAGER, self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN]
+    
+    def get_role_level(self):
+        """Get numeric role level (higher number = higher privilege)"""
+        try:
+            return self.ROLE_HIERARCHY.index(self.role)
+        except ValueError:
+            return 0  # Unknown role gets lowest level
+    
+    def has_role_or_higher(self, required_role):
+        """Check if user has required role or higher privilege"""
+        user_level = self.get_role_level()
+        required_level = self.ROLE_HIERARCHY.index(required_role) if required_role in self.ROLE_HIERARCHY else 0
+        return user_level >= required_level
+    
+    @staticmethod
+    def get_valid_roles():
+        """Get list of all valid roles"""
+        return User.ROLE_HIERARCHY.copy()
+    
+    @staticmethod
+    def get_role_display_name(role):
+        """Get human-readable role name"""
+        role_names = {
+            'super_admin': 'Super Admin',
+            'admin': 'Admin',
+            'manager': 'Manager',
+            'head_chef': 'Head Chef',
+            'chef': 'Chef',
+            'cashier': 'Cashier',
+            'waiter': 'Waiter',
+            'kitchen_staff': 'Kitchen Staff',
+            'readonly': 'Read Only'
+        }
+        return role_names.get(role, role.title())
     
     def update_last_login(self):
         """Update last login timestamp"""
@@ -55,7 +137,12 @@ class User(UserMixin, db.Model):
             'username': self.username,
             'email': self._decrypt_email(self.email),
             'role': self.role,
+            'role_display_name': self.get_role_display_name(self.role),
+            'role_level': self.get_role_level(),
             'is_active': self.is_active,
+            'is_admin': self.is_admin(),
+            'is_manager': self.is_manager(),
+            'is_chef': self.is_chef(),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }

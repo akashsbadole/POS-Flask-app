@@ -1,6 +1,6 @@
 {% extends "base.html" %} {% block title %}Dashboard - Restaurant POS{% endblock
 %} {% block content %}
-<div class="container-fluid" x-data="dashboardData()">
+<div class="container-fluid" x-data="dashboardData()" data-stats="{{ stats|tojson }}">
   <!-- Page Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
@@ -293,23 +293,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-<!-- Pass data from Flask to JavaScript -->
-<script type="text/template" id="dashboard-stats-template">
-{{ stats|tojson|safe }}
-</script>
-<script type="text/javascript">
-// Parse dashboard stats from template
-try {
-  const statsTemplate = document.getElementById('dashboard-stats-template');
-  if (statsTemplate) {
-    window.dashboardStats = JSON.parse(statsTemplate.textContent);
-  } else {
-    window.dashboardStats = {};
-  }
-} catch (e) {
-  window.dashboardStats = {};
-  console.error('Error parsing dashboard stats:', e);
-}
-</script>
+<!-- Dashboard stats are now passed via data attribute on the container div -->
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

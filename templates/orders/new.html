@@ -662,9 +662,9 @@
 {% block content %}
 <div class="pos-billing-container" 
      x-data="posBillingManager()"
-     data-categories="{{ categories | tojson }}"
-     data-menu-items="{{ menu_items | tojson }}"
-     data-tables="{{ tables | tojson }}">
+     data-categories="{{ categories | tojson | safe }}"
+     data-menu-items="{{ menu_items | tojson | safe }}"
+     data-tables="{{ tables | tojson | safe }}">
   <!-- Left Panel - Menu Area -->
   <div class="pos-menu-panel">
     <!-- Category Tabs -->

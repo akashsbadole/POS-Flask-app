@@ -302,3 +302,229 @@ class FlaskImageHandler(ImageHandler):
         )
         
         return True, relative_path
+
+class WhiteLabelImageHandler(ImageHandler):
+    """Image handler with white label specific functionality"""
+    
+    # White label logo size specifications
+    LOGO_SIZES = {
+        'main': {'width': 200, 'height': 80, 'quality': 90},
+        'header': {'width': 150, 'height': 60, 'quality': 90},
+        'footer': {'width': 120, 'height': 48, 'quality': 85},
+        'favicon': {'width': 32, 'height': 32, 'quality': 80},
+        'invoice': {'width': 180, 'height': 72, 'quality': 90},
+        'email': {'width': 200, 'height': 80, 'quality': 90},
+        'login': {'width': 200, 'height': 80, 'quality': 90}
+    }
+    
+    # Allowed logo formats for white labeling
+    LOGO_FORMATS = {'png', 'jpg', 'jpeg', 'svg', 'webp'}
+    
+    @staticmethod
+    def validate_logo_format(filename, allowed_formats=None):
+        """Validate logo file format for white label uploads"""
+        if allowed_formats is None:
+            allowed_formats = WhiteLabelImageHandler.LOGO_FORMATS
+        
+        if not filename:
+            return False, "No filename provided"
+        
+        if '.' not in filename:
+            return False, "File must have an extension"
+        
+        ext = filename.rsplit('.', 1)[1].lower()
+        if ext not in allowed_formats:
+            return False, f"Invalid format. Allowed: {', '.join(allowed_formats)}"
+        
+        return True, "Valid logo format"
+    
+    @staticmethod
+    def validate_logo_size(file_path, max_size_kb=2048):
+        """Validate logo file size for white label uploads"""
+        if not os.path.exists(file_path):
+            return False, "File does not exist"
+        
+        file_size_kb = os.path.getsize(file_path) / 1024
+        if file_size_kb > max_size_kb:
+            return False, f"File size ({file_size_kb:.1f}KB) exceeds maximum ({max_size_kb}KB)"
+        
+        return True, "Valid logo size"
+    
+    @staticmethod
+    def resize_logo_for_context(image_path, output_path, context='main'):
+        """Resize logo for specific white label context"""
+        if context not in WhiteLabelImageHandler.LOGO_SIZES:
+            context = 'main'  # Default fallback
+        
+        size_config = WhiteLabelImageHandler.LOGO_SIZES[context]
+        target_size = (size_config['width'], size_config['height'])
+        quality = size_config['quality']
+        
+        return WhiteLabelImageHandler.resize_image(
+            image_path, output_path, target_size, quality
+        )
+    
+    @staticmethod
+    def process_white_label_logo_upload(file_storage, logo_type='main', upload_folder='static/images/branding'):
+        """Process logo upload for white label purposes"""
+        if not file_storage or not file_storage.filename:
+            return False, "No file provided"
+        
+        # Validate format
+        is_valid_format, format_msg = WhiteLabelImageHandler.validate_logo_format(file_storage.filename)
+        if not is_valid_format:
+            return False, format_msg
+        
+        try:
+            # Generate unique filename with type prefix
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            ext = os.path.splitext(file_storage.filename)[1].lower()
+            
+            # Create directory structure
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            # Save original file temporarily
+            temp_filename = f"temp_{timestamp}_{unique_id}{ext}"
+            temp_path = os.path.join(upload_folder, temp_filename)
+            file_storage.save(temp_path)
+            
+            # Validate file size
+            max_size_kb = int(Settings.get('logo_upload_max_size', 2048))
+            is_valid_size, size_msg = WhiteLabelImageHandler.validate_logo_size(temp_path, max_size_kb)
+            if not is_valid_size:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                return False, size_msg
+            
+            # Validate image integrity
+            is_valid_image, image_msg = WhiteLabelImageHandler.validate_image(temp_path)
+            if not is_valid_image:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                return False, image_msg
+            
+            # Generate final filename
+            final_filename = f"{logo_type}_logo_{timestamp}_{unique_id}{ext}"
+            final_path = os.path.join(upload_folder, final_filename)
+            
+            # Move and resize if needed
+            if ext.lower() == 'svg':
+                # For SVG files, just move without resizing
+                os.rename(temp_path, final_path)
+                return True, {
+                    'original_path': final_path,
+                    'filename': final_filename,
+                    'file_size': os.path.getsize(final_path),
+                    'format': 'svg'
+                }
+            else:
+                # Resize for context
+                success, result = WhiteLabelImageHandler.resize_logo_for_context(
+                    temp_path, final_path, logo_type
+                )
+                
+                # Clean up temp file
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                
+                if not success:
+                    return False, result
+                
+                return True, {
+                    'original_path': final_path,
+                    'filename': final_filename,
+                    'file_size': os.path.getsize(final_path),
+                    'format': 'image'
+                }
+            
+        except Exception as e:
+            return False, f"Error processing logo upload: {str(e)}"
+    
+    @staticmethod
+    def delete_white_label_logo(logo_path):
+        """Delete white label logo files"""
+        if not logo_path:
+            return True, None
+        
+        try:
+            if os.path.exists(logo_path):
+                os.remove(logo_path)
+            return True, None
+        except Exception as e:
+            return False, f"Error deleting logo: {str(e)}"
+    
+    @staticmethod
+    def get_white_label_logo_info(logo_path):
+        """Get information about white label logo"""
+        if not logo_path or not os.path.exists(logo_path):
+            return False, "Logo file does not exist"
+        
+        try:
+            with Image.open(logo_path) as img:
+                info = {
+                    'path': logo_path,
+                    'filename': os.path.basename(logo_path),
+                    'width': img.width,
+                    'height': img.height,
+                    'format': img.format,
+                    'mode': img.mode,
+                    'file_size': os.path.getsize(logo_path),
+                    'recommended_contexts': WhiteLabelImageHandler.get_recommended_contexts(img.width, img.height)
+                }
+            
+            return True, info
+        except Exception as e:
+            return False, f"Error getting logo info: {str(e)}"
+    
+    @staticmethod
+    def get_recommended_contexts(width, height):
+        """Get recommended usage contexts based on logo dimensions"""
+        recommendations = []
+        
+        # Aspect ratio analysis
+        aspect_ratio = width / height if height > 0 else 1
+        
+        # Size-based recommendations
+        if width >= 200 and height >= 80:
+            recommendations.extend(['main', 'email', 'login'])
+        
+        if width >= 150 and height >= 60:
+            recommendations.append('header')
+        
+        if width >= 120 and height >= 48:
+            recommendations.append('footer')
+        
+        if width >= 180 and height >= 72:
+            recommendations.append('invoice')
+        
+        # Favicon recommendation (square-ish logos)
+        if 0.8 <= aspect_ratio <= 1.2 and width >= 32 and height >= 32:
+            recommendations.append('favicon')
+        
+        return recommendations
+    
+    @staticmethod
+    def optimize_logo_for_web(logo_path, output_path=None):
+        """Optimize logo for web usage"""
+        if output_path is None:
+            base, ext = os.path.splitext(logo_path)
+            output_path = f"{base}_optimized{ext}"
+        
+        try:
+            with Image.open(logo_path) as img:
+                # Convert to RGB if necessary
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    # Create white background for transparency
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                    img = background
+                
+                # Optimize and save
+                img.save(output_path, 'JPEG', quality=85, optimize=True)
+                
+            return True, output_path
+        except Exception as e:
+            return False, f"Error optimizing logo: {str(e)}"

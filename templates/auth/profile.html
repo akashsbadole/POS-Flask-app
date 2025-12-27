@@ -5,7 +5,7 @@
 {% block extra_css %}
 <style>
     .profile-container {
-        max-width: 800px;
+        max-width: 1000px;
         margin: 0 auto;
         padding: 2rem 1rem;
     }
@@ -27,8 +27,8 @@
     }
     
     .profile-avatar {
-        width: 80px;
-        height: 80px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
@@ -36,12 +36,20 @@
         justify-content: center;
         margin-right: 1.5rem;
         color: white;
-        font-size: 2rem;
+        font-size: 2.5rem;
         font-weight: 600;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
     
     .profile-info h2 {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: #1f2937;
         margin-bottom: 0.25rem;
@@ -61,11 +69,83 @@
     .profile-info .status {
         color: #6b7280;
         font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .completion-status {
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .completion-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .completion-bar {
+        width: 100%;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+    
+    .completion-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #059669);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    .completion-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .missing-fields {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .missing-fields h4 {
+        color: #dc2626;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .missing-fields ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-size: 0.875rem;
+        color: #7f1d1d;
+    }
+    
+    .missing-fields li {
+        padding: 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
     .info-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
@@ -92,10 +172,26 @@
         font-weight: 500;
     }
     
+    .info-value.missing {
+        color: #6b7280;
+        font-style: italic;
+    }
+    
     .action-buttons {
         display: flex;
         gap: 1rem;
         justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    
+    .btn-edit-profile {
+        background: #10b981;
+        border-color: #10b981;
+    }
+    
+    .btn-edit-profile:hover {
+        background: #059669;
+        border-color: #059669;
     }
     
     .btn-change-password {
@@ -106,6 +202,58 @@
     .btn-change-password:hover {
         background: #5558e3;
         border-color: #5558e3;
+    }
+    
+    .btn-preferences {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: white;
+    }
+    
+    .btn-preferences:hover {
+        background: #d97706;
+        border-color: #d97706;
+        color: white;
+    }
+    
+    .activity-section {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .activity-header {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .activity-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-action {
+        font-weight: 500;
+        color: #374151;
+    }
+    
+    .activity-time {
+        font-size: 0.875rem;
+        color: #6b7280;
     }
     
     @media (max-width: 768px) {
@@ -130,22 +278,68 @@
         .action-buttons .btn {
             width: 100%;
         }
+        
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="profile-container">
+    <!-- Profile Completion Status -->
+    {% if completion_percentage < 100 %}
+    <div class="completion-status">
+        <div class="completion-header">
+            <h4 style="color: #0c4a6e; margin: 0; font-size: 1rem; font-weight: 600;">
+                <i class="bi bi-check-circle"></i> Profile Completion
+            </h4>
+            <span style="color: #0c4a6e; font-weight: 600;">{{ completion_percentage }}%</span>
+        </div>
+        <div class="completion-bar">
+            <div class="completion-fill" style="width: {{ completion_percentage }}%"></div>
+        </div>
+        <div class="completion-text">Complete your profile to get the most out of your account</div>
+    </div>
+    {% endif %}
+    
+    <!-- Missing Required Fields Alert -->
+    {% if missing_fields %}
+    <div class="missing-fields">
+        <h4>
+            <i class="bi bi-exclamation-triangle"></i> Complete Your Profile
+        </h4>
+        <ul>
+            {% for field in missing_fields %}
+            <li>
+                <i class="bi bi-dot"></i>
+                {{ field.replace('_', ' ').title() }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <!-- Main Profile Card -->
     <div class="profile-card">
         <div class="profile-header">
             <div class="profile-avatar">
-                {{ current_user.username|first|upper }}
+                {% if current_user.avatar_path %}
+                    <img src="{{ url_for('auth.get_avatar', user_id=current_user.id) }}" alt="Profile Picture">
+                {% else %}
+                    {{ current_user.username|first|upper }}
+                {% endif %}
             </div>
             <div class="profile-info">
-                <h2>{{ current_user.username }}</h2>
+                <h2>{{ current_user.full_name or current_user.username }}</h2>
                 <span class="role">{{ current_user.role.title() }}</span>
                 <div class="status">
-                    <i class="bi bi-circle-fill text-success"></i> Active User
+                    <i class="bi bi-circle-fill text-success"></i> 
+                    Active User
+                    {% if current_user.is_account_locked() %}
+                        <span class="badge bg-warning ms-2">Temporarily Locked</span>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -157,8 +351,48 @@
             </div>
             
             <div class="info-item">
+                <div class="info-label">Full Name</div>
+                <div class="info-value {% if not current_user.full_name %}missing{% endif %}">
+                    {{ current_user.full_name or 'Not provided' }}
+                </div>
+            </div>
+            
+            <div class="info-item">
                 <div class="info-label">Email Address</div>
-                <div class="info-value">{{ current_user.email_decrypted or 'Not provided' }}</div>
+                <div class="info-value {% if not current_user.email_decrypted %}missing{% endif %}">
+                    {{ current_user.email_decrypted or 'Not provided' }}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value {% if not current_user.phone %}missing{% endif %}">
+                    {{ current_user.phone or 'Not provided' }}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Address</div>
+                <div class="info-value {% if not current_user.address %}missing{% endif %}">
+                    {{ current_user.address or 'Not provided' }}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Bio</div>
+                <div class="info-value {% if not current_user.bio %}missing{% endif %}">
+                    {{ current_user.bio or 'Not provided' }}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Preferred Language</div>
+                <div class="info-value">{{ current_user.preferred_language|upper }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Preferred Timezone</div>
+                <div class="info-value">{{ current_user.preferred_timezone }}</div>
             </div>
             
             <div class="info-item">
@@ -192,11 +426,41 @@
                     {% endif %}
                 </div>
             </div>
+            
+            <div class="info-item">
+                <div class="info-label">Last Password Change</div>
+                <div class="info-value">
+                    {% if current_user.last_password_change %}
+                        {{ current_user.last_password_change.strftime('%B %d, %Y') }}
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Profile Last Updated</div>
+                <div class="info-value">
+                    {% if current_user.profile_updated_at %}
+                        {{ current_user.profile_updated_at.strftime('%B %d, %Y %I:%M %p') }}
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+            </div>
         </div>
         
         <div class="action-buttons">
+            <a href="{{ url_for('auth.edit_profile') }}" class="btn btn-primary btn-edit-profile">
+                <i class="bi bi-pencil"></i> Edit Profile
+            </a>
+            
             <a href="{{ url_for('auth.change_password') }}" class="btn btn-primary btn-change-password">
                 <i class="bi bi-key"></i> Change Password
+            </a>
+            
+            <a href="{{ url_for('auth.notification_preferences') }}" class="btn btn-primary btn-preferences">
+                <i class="bi bi-bell"></i> Notification Preferences
             </a>
             
             {% if current_user.is_admin() %}
@@ -209,6 +473,40 @@
                 <i class="bi bi-box-arrow-right"></i> Logout
             </a>
         </div>
+    </div>
+    
+    <!-- Recent Activity Section -->
+    <div class="activity-section">
+        <div class="activity-header">
+            <i class="bi bi-clock-history"></i>
+            Recent Activity
+        </div>
+        
+        <div class="activity-item">
+            <div class="activity-action">Profile Created</div>
+            <div class="activity-time">{{ current_user.created_at.strftime('%B %d, %Y') }}</div>
+        </div>
+        
+        {% if current_user.last_login %}
+        <div class="activity-item">
+            <div class="activity-action">Last Login</div>
+            <div class="activity-time">{{ current_user.last_login.strftime('%B %d, %Y at %I:%M %p') }}</div>
+        </div>
+        {% endif %}
+        
+        {% if current_user.last_password_change and current_user.last_password_change != current_user.created_at %}
+        <div class="activity-item">
+            <div class="activity-action">Password Changed</div>
+            <div class="activity-time">{{ current_user.last_password_change.strftime('%B %d, %Y') }}</div>
+        </div>
+        {% endif %}
+        
+        {% if current_user.profile_updated_at and current_user.profile_updated_at != current_user.created_at %}
+        <div class="activity-item">
+            <div class="activity-action">Profile Updated</div>
+            <div class="activity-time">{{ current_user.profile_updated_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

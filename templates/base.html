@@ -5,8 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>
-      {% block title %}{{ public_settings.get('restaurant_name', 'Restaurant POS') }}{% endblock %}
+      {% block title %}{{ white_label_settings.get('company_name', public_settings.get('restaurant_name', 'Restaurant POS')) }}{% endblock %}
     </title>
+    
+    <!-- Dynamic Favicon -->
+    {% set favicon_path = white_label_settings.get('logo_favicon_path', 'images/favicon.ico') %}
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename=favicon_path) }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+    
+    <!-- White Label Custom CSS -->
+    {% if white_label_settings.get('custom_css_enabled') == 'true' %}
+    <link href="{{ url_for('static', filename='css/white-label-custom.css') }}" rel="stylesheet" media="all">
+    {% endif %}
 
      <!-- Bootstrap CSS -->
     <link
@@ -69,8 +79,12 @@
         <!-- Left: Logo and Order Tabs -->
         <div class="d-flex align-items-center">
           <div class="modern-logo">
-            <i class="bi bi-shop"></i>
-            <span>{{ public_settings.get('restaurant_name', 'Restaurant POS') }}</span>
+            {% if white_label_settings.get('logo_show_in_header', 'true') == 'true' and white_label_settings.get('logo_header_path') %}
+              <img src="{{ url_for('static', filename=white_label_settings.logo_header_path) }}" alt="{{ white_label_settings.get('company_name', 'Restaurant POS') }}" style="height: {{ white_label_settings.get('logo_height_header', '40px') }}; margin-right: 10px;">
+            {% else %}
+              <i class="bi bi-shop"></i>
+            {% endif %}
+            <span>{{ white_label_settings.get('company_name', public_settings.get('restaurant_name', 'Restaurant POS')) }}</span>
           </div>
           
           <!-- Order Tabs -->
@@ -173,6 +187,11 @@
                   <i class="bi bi-gear"></i> Settings
                 </a>
               </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('white_label.index') }}">
+                  <i class="bi bi-palette"></i> White Label
+                </a>
+              </li>
               {% endif %}
             </ul>
           </div>
@@ -239,6 +258,10 @@
             <a href="{{ url_for('settings.index') }}" class="modern-nav-item">
               <span class="modern-nav-icon"><i class="bi bi-gear"></i></span>
               <span x-show="sidebarOpen">Settings</span>
+            </a>
+            <a href="{{ url_for('white_label.index') }}" class="modern-nav-item">
+              <span class="modern-nav-icon"><i class="bi bi-palette"></i></span>
+              <span x-show="sidebarOpen">White Label</span>
             </a>
             {% endif %}
           </nav>

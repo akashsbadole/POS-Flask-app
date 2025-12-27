@@ -90,7 +90,7 @@
 {% endblock %} 
 
 {% block content %}
-<div class="kot-window" x-data="kotWindow()" data-active-orders="{{ active_orders|tojson }}" data-recent-orders="{{ recent_orders|tojson }}">
+<div class="kot-window" x-data="kotWindow()" data-active-orders="{{ active_orders|tojson | safe }}" data-recent-orders="{{ recent_orders|tojson | safe }}">
   <!-- Header -->
   <div class="kot-header">
     <h1 class="kot-title">🍳 Kitchen Order Tickets</h1>

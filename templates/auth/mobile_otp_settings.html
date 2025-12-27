@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile OTP Settings - {{ config.get('APP_NAME', 'POS System') }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .mobile-otp-settings-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 2rem 0;
+        }
+        .settings-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .settings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .settings-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .settings-body {
+            padding: 2rem;
+        }
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        .phone-input-group {
+            position: relative;
+        }
+        .country-code {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            z-index: 10;
+        }
+        .phone-input {
+            padding-left: 45px;
+        }
+        .loading {
+            display: none;
+        }
+        .loading.show {
+            display: inline-block;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .alert-success {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: #155724;
+        }
+        .alert-error {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #721c24;
+        }
+        .settings-section {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .settings-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .form-check {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .form-check:hover {
+            background: #e9ecef;
+        }
+        .form-check-input:checked + .form-check-label {
+            color: #667eea;
+            font-weight: 600;
+        }
+        .verification-status {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        .status-verified {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-unverified {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .feature-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .feature-list h6 {
+            color: #667eea;
+            margin-bottom: 0.75rem;
+        }
+        .feature-list ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+        .feature-list li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-otp-settings-container">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-mobile-alt settings-icon"></i>
+                            <h2>Mobile OTP Settings</h2>
+                            <p class="mb-0">Manage your phone verification and mobile login preferences</p>
+                        </div>
+
+                        <div class="settings-body">
+                            <!-- Alert Messages -->
+                            <div id="alert-container"></div>
+
+                            <form id="mobileOTPSettingsForm" method="POST" action="">
+                                {{ form.hidden_tag() }}
+                                
+                                <!-- Feature Information -->
+                                <div class="feature-list">
+                                    <h6><i class="fas fa-star me-2"></i>Mobile OTP Benefits</h6>
+                                    <ul>
+                                        <li><i class="fas fa-check text-success me-2"></i>Quick login without passwords</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Enhanced security with 2FA</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>SMS-based verification</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Backup phone number support</li>
+                                    </ul>
+                                </div>
+
+                                <!-- Phone Number Section -->
+                                <div class="settings-section">
+                                    <h5 class="mb-3">
+                                        <i class="fas fa-phone me-2 text-primary"></i>
+                                        Phone Number
+                                    </h5>
+                                    
+                                    <!-- Verification Status -->
+                                    <div class="verification-status {% if current_user.phone_verified %}status-verified{% else %}status-unverified{% endif %}">
+                                        <i class="fas {% if current_user.phone_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %} me-2"></i>
+                                        <div>
+                                            <strong>{% if current_user.phone_verified %}Phone Verified{% else %}Phone Not Verified{% endif %}</strong>
+                                            <div class="small">
+                                                {% if current_user.phone_verified %}
+                                                    Your phone number is verified and ready for mobile OTP
+                                                {% else %}
+                                                    Verify your phone number to enable mobile OTP login
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-floating">
+                                        <div class="phone-input-group">
+                                            <i class="fas fa-phone country-code"></i>
+                                            {{ form.phone(class="form-control phone-input", placeholder="Enter phone number") }}
+                                        </div>
+                                        {{ form.phone.label(class="form-label") }}
+                                        {% for error in form.phone.errors %}
+                                            <div class="text-danger small mt-1">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <!-- Mobile OTP Settings Section -->
+                                <div class="settings-section">
+                                    <h5 class="mb-3">
+                                        <i class="fas fa-shield-alt me-2 text-primary"></i>
+                                        Mobile OTP Login
+                                    </h5>
+                                    
+                                    <div class="form-check">
+                                        {{ form.mobile_otp_enabled(class="form-check-input", id="mobileOtpEnabled") }}
+                                        <label class="form-check-label" for="mobileOtpEnabled">
+                                            <strong>Enable Mobile OTP Login</strong>
+                                            <div class="text-muted small mt-1">
+                                                Allow login using SMS verification codes sent to your phone
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Backup Phone Section -->
+                                <div class="settings-section">
+                                    <h5 class="mb-3">
+                                        <i class="fas fa-save me-2 text-primary"></i>
+                                        Backup Phone Number
+                                    </h5>
+                                    
+                                    <div class="form-floating">
+                                        <div class="phone-input-group">
+                                            <i class="fas fa-phone country-code"></i>
+                                            {{ form.backup_phone(class="form-control phone-input", placeholder="Enter backup phone number") }}
+                                        </div>
+                                        {{ form.backup_phone.label(class="form-label") }}
+                                        {% for error in form.backup_phone.errors %}
+                                            <div class="text-danger small mt-1">{{ error }}</div>
+                                        {% endfor %}
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Optional backup number for account recovery
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Current Status Display -->
+                                <div class="settings-section">
+                                    <h5 class="mb-3">
+                                        <i class="fas fa-info-circle me-2 text-primary"></i>
+                                        Current Status
+                                    </h5>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="card border-0 bg-light">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-phone fa-2x text-primary mb-2"></i>
+                                                    <h6>Phone Number</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        {% if current_user.phone %}
+                                                            {{ current_user.phone }}
+                                                        {% else %}
+                                                            Not set
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border-0 bg-light">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-shield-alt fa-2x {% if current_user.phone_verified %}text-success{% else %}text-warning{% endif %} mb-2"></i>
+                                                    <h6>Verification</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        {% if current_user.phone_verified %}
+                                                            Verified
+                                                        {% else %}
+                                                            Not Verified
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-secondary me-md-2">
+                                        <i class="fas fa-arrow-left me-1"></i>
+                                        Back to Profile
+                                    </a>
+                                    
+                                    {% if not current_user.phone_verified %}
+                                        <a href="{{ url_for('auth.verify_phone') }}" class="btn btn-warning me-md-2">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            Verify Phone
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <button type="submit" class="btn btn-save" id="saveBtn">
+                                        <span class="btn-text">
+                                            <i class="fas fa-save me-1"></i>
+                                            Save Settings
+                                        </span>
+                                        <span class="loading">
+                                            <i class="fas fa-spinner fa-spin me-1"></i>
+                                            Saving...
+                                        </span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('mobileOTPSettingsForm');
+            const saveBtn = document.getElementById('saveBtn');
+            const alertContainer = document.getElementById('alert-container');
+            const phoneInput = document.querySelector('input[name="phone"]');
+            const backupPhoneInput = document.querySelector('input[name="backup_phone"]');
+            
+            // Phone number formatting
+            function formatPhoneInput(input) {
+                input.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (value.length > 0) {
+                        if (value.startsWith('1') && value.length > 1) {
+                            value = '+' + value;
+                        } else if (!value.startsWith('+')) {
+                            value = '+' + value;
+                        }
+                    }
+                    e.target.value = value;
+                });
+            }
+            
+            if (phoneInput) formatPhoneInput(phoneInput);
+            if (backupPhoneInput) formatPhoneInput(backupPhoneInput);
+
+            // Form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show loading state
+                saveBtn.disabled = true;
+                saveBtn.querySelector('.btn-text').style.display = 'none';
+                saveBtn.querySelector('.loading').classList.add('show');
+                
+                // Clear previous alerts
+                alertContainer.innerHTML = '';
+                
+                // Get form data
+                const formData = new FormData(form);
+                
+                // Submit via AJAX
+                fetch('{{ url_for("auth.mobile_otp_settings") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': formData.get('csrf_token')
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Reset button state
+                    saveBtn.disabled = false;
+                    saveBtn.querySelector('.btn-text').style.display = 'inline';
+                    saveBtn.querySelector('.loading').classList.remove('show');
+                    
+                    if (data.success) {
+                        // Show success message
+                        showAlert('success', data.message);
+                        
+                        // Reload page after short delay to show updated status
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        // Show error message
+                        let errorMessage = data.message || 'An error occurred. Please try again.';
+                        if (data.errors) {
+                            errorMessage = Object.values(data.errors).flat().join('<br>');
+                        }
+                        showAlert('error', errorMessage);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    
+                    // Reset button state
+                    saveBtn.disabled = false;
+                    saveBtn.querySelector('.btn-text').style.display = 'inline';
+                    saveBtn.querySelector('.loading').classList.remove('show');
+                    
+                    showAlert('error', 'An unexpected error occurred. Please try again.');
+                });
+            });
+            
+            // Helper function to show alerts
+            function showAlert(type, message) {
+                const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+                const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+                
+                const alertHtml = `
+                    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-${icon} me-2"></i>
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                
+                alertContainer.innerHTML = alertHtml;
+                
+                // Auto-dismiss success alerts
+                if (type === 'success') {
+                    setTimeout(() => {
+                        const alert = alertContainer.querySelector('.alert');
+                        if (alert) {
+                            const bsAlert = new bootstrap.Alert(alert);
+                            bsAlert.close();
+                        }
+                    }, 5000);
+                }
+            }
+
+            // Mobile OTP toggle functionality
+            const mobileOtpToggle = document.getElementById('mobileOtpEnabled');
+            if (mobileOtpToggle) {
+                mobileOtpToggle.addEventListener('change', function() {
+                    const isEnabled = this.checked;
+                    const phoneVerified = {{ 'true' if current_user.phone_verified else 'false' }};
+                    
+                    if (isEnabled && !phoneVerified) {
+                        showAlert('warning', 'Please verify your phone number before enabling mobile OTP login.');
+                        this.checked = false;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

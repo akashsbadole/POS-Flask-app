@@ -28,7 +28,7 @@
 {% endblock %} 
 
 {% block content %}
-<div class="container-fluid kot-display" x-data="kotDisplay()" data-active-orders="{{ active_orders|tojson }}" data-active-orders-count="{{ active_orders|length }}">
+<div class="container-fluid kot-display" x-data="kotDisplay()" data-active-orders="{{ active_orders|tojson | safe }}" data-active-orders-count="{{ active_orders|length }}">
   <!-- Header -->
   <div class="kot-header">
     <h1 class="kot-title">

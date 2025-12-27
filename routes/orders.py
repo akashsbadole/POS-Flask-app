@@ -4,6 +4,8 @@ from models import db, Order, OrderItem, MenuItem, Payment, Table, Settings, Cat
 from datetime import datetime, timedelta
 from decimal import Decimal
 from utils.pdf_invoice_generator import generate_invoice_pdf, generate_kot_pdf
+from utils.order_workflow import order_workflow, WorkflowAction, OrderWorkflowState
+from utils.inventory_workflow import inventory_workflow
 import os
 
 orders_bp = Blueprint('orders', __name__)
@@ -338,16 +340,13 @@ def process_payment():
             payment_details=str(payment_details) if payment_details else None
         )
         
-        # Update order status to Completed
-        order.update_status('Completed')
+        # Use workflow engine to complete order
+        success, message, result = order_workflow.execute_workflow_action(
+            current_user, order.id, WorkflowAction.COMPLETE_ORDER, {'payment_id': payment.id}
+        )
         
-        # Update table availability if dine-in
-        if order.order_type == 'Dine-in' and order.table_id:
-            table = Table.query.get(order.table_id)
-            if table:
-                table.is_available = True
-        
-        db.session.commit()
+        if not success:
+            return jsonify({'success': False, 'message': message}), 400
         
         return jsonify({
             'success': True,
@@ -360,6 +359,187 @@ def process_payment():
         
     except Exception as e:
         db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# Workflow Management Endpoints
+@orders_bp.route('/workflow/action', methods=['POST'])
+@login_required
+def workflow_action():
+    """Execute workflow action on order"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        action = data.get('action')
+        action_data = data.get('data', {})
+        
+        # Convert string action to enum
+        try:
+            workflow_action = WorkflowAction(action)
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid workflow action'}), 400
+        
+        # Execute workflow action
+        success, message, result = order_workflow.execute_workflow_action(
+            current_user, order_id, workflow_action, action_data
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'result': result
+            })
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@orders_bp.route('/workflow/can_perform', methods=['POST'])
+@login_required
+def can_perform_action():
+    """Check if current user can perform workflow action"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        action = data.get('action')
+        
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify({'success': False, 'message': 'Order not found'}), 404
+        
+        # Convert string action to enum
+        try:
+            workflow_action = WorkflowAction(action)
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid workflow action'}), 400
+        
+        # Check permissions
+        can_perform, reason = order_workflow.can_perform_action(current_user, workflow_action, order)
+        
+        return jsonify({
+            'success': True,
+            'can_perform': can_perform,
+            'reason': reason,
+            'available_actions': get_available_actions_for_user(current_user, order)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@orders_bp.route('/workflow/timeline/<int:order_id>')
+@login_required
+def order_timeline(order_id):
+    """Get order timeline with all workflow actions"""
+    try:
+        timeline = order_workflow.get_order_timeline(order_id)
+        
+        return jsonify({
+            'success': True,
+            'timeline': timeline
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@orders_bp.route('/workflow/statistics')
+@login_required
+def workflow_statistics():
+    """Get workflow performance statistics"""
+    try:
+        date_filter = request.args.get('date_range')
+        date_range = None
+        
+        if date_filter:
+            try:
+                start_date, end_date = date_filter.split(',')
+                date_range = (
+                    datetime.strptime(start_date, '%Y-%m-%d'),
+                    datetime.strptime(end_date, '%Y-%m-%d')
+                )
+            except ValueError:
+                pass
+        
+        stats = order_workflow.get_workflow_statistics(date_range)
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@orders_bp.route('/send_to_kitchen', methods=['POST'])
+@login_required
+def send_to_kitchen():
+    """Send order to kitchen using workflow"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        
+        success, message, result = order_workflow.execute_workflow_action(
+            current_user, order_id, WorkflowAction.SEND_TO_KITCHEN, data
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'result': result
+            })
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@orders_bp.route('/mark_ready', methods=['POST'])
+@login_required
+def mark_ready():
+    """Mark order as ready using workflow"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        
+        success, message, result = order_workflow.execute_workflow_action(
+            current_user, order_id, WorkflowAction.MARK_READY, data
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'result': result
+            })
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@orders_bp.route('/serve_order', methods=['POST'])
+@login_required
+def serve_order():
+    """Mark order as served using workflow"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        
+        success, message, result = order_workflow.execute_workflow_action(
+            current_user, order_id, WorkflowAction.SERVE_ORDER, data
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'result': result
+            })
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+            
+    except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @orders_bp.route('/payment/<int:order_id>')
@@ -634,8 +814,26 @@ def update_order_totals(order):
     order.grand_total = subtotal + order.cgst_amount + order.sgst_amount - order.discount_amount
     order.item_count = len(items)
 
+def get_available_actions_for_user(user, order):
+    """Get available workflow actions for user on specific order"""
+    available_actions = []
+    
+    # Check each action permission
+    for action in WorkflowAction:
+        can_perform, _ = order_workflow.can_perform_action(user, action, order)
+        if can_perform:
+            available_actions.append(action.value)
+    
+    return available_actions
+
 @orders_bp.route('/print-management')
 @login_required
 def print_management():
     """Print management interface"""
     return render_template('orders/print_management.html')
+
+@orders_bp.route('/workflow')
+@login_required
+def workflow_dashboard():
+    """Order workflow management dashboard"""
+    return render_template('orders/workflow_list.html')

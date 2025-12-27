@@ -1,0 +1,1463 @@
+{% extends "base.html" %}
+
+{% block title %}White Label Customization{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-palette"></i> White Label Customization</h2>
+                    <p class="text-muted mb-0">Customize your restaurant POS system branding and appearance</p>
+                </div>
+                <div>
+                    <button @click="previewChanges()" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-eye"></i> Preview
+                    </button>
+                    <button @click="generateCSS()" class="btn btn-outline-success me-2">
+                        <i class="bi bi-brush"></i> Generate CSS
+                    </button>
+                    <button @click="resetToDefaults()" class="btn btn-outline-warning">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="row">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="whiteLabelTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="company-tab" data-bs-toggle="tab" data-bs-target="#company" type="button" role="tab">
+                        <i class="bi bi-building"></i> Company Info
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="logos-tab" data-bs-toggle="tab" data-bs-target="#logos" type="button" role="tab">
+                        <i class="bi bi-image"></i> Logos & Images
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="branding-tab" data-bs-toggle="tab" data-bs-target="#branding" type="button" role="tab">
+                        <i class="bi bi-palette"></i> Colors & Fonts
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ui-tab" data-bs-toggle="tab" data-bs-target="#ui" type="button" role="tab">
+                        <i class="bi bi-layout-text-window"></i> UI Customization
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab">
+                        <i class="bi bi-chat-text"></i> Custom Content
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab">
+                        <i class="bi bi-envelope"></i> Email Templates
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="print-tab" data-bs-toggle="tab" data-bs-target="#print" type="button" role="tab">
+                        <i class="bi bi-printer"></i> Print Materials
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="whiteLabelTabContent">
+        
+        <!-- Company Information Tab -->
+        <div class="tab-pane fade show active" id="company" role="tabpanel">
+            <div class="row mt-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-building"></i> Company Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <form @submit.prevent="saveCompanyInfo()">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Company Name *</label>
+                                            <input type="text" class="form-control" x-model="companyForm.company_name" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Short Name</label>
+                                            <input type="text" class="form-control" x-model="companyForm.company_short_name">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Full Company Name</label>
+                                    <input type="text" class="form-control" x-model="companyForm.company_full_name">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Company Tagline</label>
+                                    <input type="text" class="form-control" x-model="companyForm.company_tagline" placeholder="Your company motto or slogan">
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Primary Phone</label>
+                                            <input type="tel" class="form-control" x-model="companyForm.company_phone_primary">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Secondary Phone</label>
+                                            <input type="tel" class="form-control" x-model="companyForm.company_phone_secondary">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Primary Email</label>
+                                            <input type="email" class="form-control" x-model="companyForm.company_email_primary">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Website</label>
+                                            <input type="url" class="form-control" x-model="companyForm.company_website" placeholder="https://">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Address Line 1</label>
+                                    <input type="text" class="form-control" x-model="companyForm.company_address_line1">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Address Line 2</label>
+                                    <input type="text" class="form-control" x-model="companyForm.company_address_line2">
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">City</label>
+                                            <input type="text" class="form-control" x-model="companyForm.company_city">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">State</label>
+                                            <input type="text" class="form-control" x-model="companyForm.company_state">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Postal Code</label>
+                                            <input type="text" class="form-control" x-model="companyForm.company_postal_code">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Country</label>
+                                    <select class="form-select" x-model="companyForm.company_country">
+                                        <option value="">Select Country</option>
+                                        <option value="India">India</option>
+                                        <option value="United States">United States</option>
+                                        <option value="United Kingdom">United Kingdom</option>
+                                        <option value="Canada">Canada</option>
+                                        <option value="Australia">Australia</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Registration Number</label>
+                                            <input type="text" class="form-control" x-model="companyForm.company_registration_number">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Tax ID / GST Number</label>
+                                            <input type="text" class="form-control" x-model="companyForm.company_tax_id">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Legal Entity</label>
+                                            <select class="form-select" x-model="companyForm.company_legal_entity">
+                                                <option value="">Select Entity Type</option>
+                                                <option value="Sole Proprietorship">Sole Proprietorship</option>
+                                                <option value="Partnership">Partnership</option>
+                                                <option value="Private Limited">Private Limited</option>
+                                                <option value="Public Limited">Public Limited</option>
+                                                <option value="LLP">LLP</option>
+                                                <option value="Corporation">Corporation</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Year Established</label>
+                                            <input type="number" class="form-control" x-model="companyForm.company_year_established" min="1800" max="2030">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary" :disabled="saving">
+                                    <span x-show="saving" class="spinner-border spinner-border-sm me-1"></span>
+                                    <i class="bi bi-check-lg"></i> Save Company Info
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Company Info Preview -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="preview-content">
+                                <h5 x-text="companyForm.company_name || 'Company Name'"></h5>
+                                <p class="text-muted" x-text="companyForm.company_tagline || 'Company tagline'"></p>
+                                <div class="company-details">
+                                    <p><strong>Email:</strong> <span x-text="companyForm.company_email_primary || 'email@company.com'"></span></p>
+                                    <p><strong>Phone:</strong> <span x-text="companyForm.company_phone_primary || '+91 1234567890'"></span></p>
+                                    <p><strong>Address:</strong> <span x-text="formatAddress()"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logos & Images Tab -->
+        <div class="tab-pane fade" id="logos" role="tabpanel">
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-image"></i> Logo Management</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Logo Upload Forms -->
+                                <div class="col-lg-8">
+                                    <div class="row">
+                                        <!-- Main Logo -->
+                                        <div class="col-md-6 mb-4">
+                                            <div class="logo-upload-card">
+                                                <h6>Main Logo</h6>
+                                                <p class="text-muted small">Used in header and main branding</p>
+                                                <div class="logo-upload-area" @drop="handleLogoDrop($event, 'main')" @dragover.prevent @dragenter.prevent>
+                                                    <input type="file" id="mainLogoInput" accept=".png,.jpg,.jpeg,.svg,.webp" @change="uploadLogo($event, 'main')" style="display: none;">
+                                                    <div class="upload-placeholder" onclick="document.getElementById('mainLogoInput').click()">
+                                                        <i class="bi bi-cloud-upload"></i>
+                                                        <p>Click to upload main logo</p>
+                                                        <small class="text-muted">PNG, JPG, SVG (max 2MB)</small>
+                                                    </div>
+                                                </div>
+                                                <div class="logo-preview mt-2" x-show="logoPreview.main">
+                                                    <img :src="logoPreview.main" alt="Main Logo" class="img-fluid">
+                                                    <button @click="deleteLogo('main')" class="btn btn-sm btn-danger mt-1">Delete</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Header Logo -->
+                                        <div class="col-md-6 mb-4">
+                                            <div class="logo-upload-card">
+                                                <h6>Header Logo</h6>
+                                                <p class="text-muted small">Smaller version for navigation</p>
+                                                <div class="logo-upload-area" @drop="handleLogoDrop($event, 'header')" @dragover.prevent @dragenter.prevent>
+                                                    <input type="file" id="headerLogoInput" accept=".png,.jpg,.jpeg,.svg,.webp" @change="uploadLogo($event, 'header')" style="display: none;">
+                                                    <div class="upload-placeholder" onclick="document.getElementById('headerLogoInput').click()">
+                                                        <i class="bi bi-cloud-upload"></i>
+                                                        <p>Click to upload header logo</p>
+                                                        <small class="text-muted">PNG, JPG, SVG (max 2MB)</small>
+                                                    </div>
+                                                </div>
+                                                <div class="logo-preview mt-2" x-show="logoPreview.header">
+                                                    <img :src="logoPreview.header" alt="Header Logo" class="img-fluid">
+                                                    <button @click="deleteLogo('header')" class="btn btn-sm btn-danger mt-1">Delete</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Favicon -->
+                                        <div class="col-md-6 mb-4">
+                                            <div class="logo-upload-card">
+                                                <h6>Favicon</h6>
+                                                <p class="text-muted small">Browser tab icon (32x32px)</p>
+                                                <div class="logo-upload-area" @drop="handleLogoDrop($event, 'favicon')" @dragover.prevent @dragenter.prevent>
+                                                    <input type="file" id="faviconInput" accept=".png,.jpg,.jpeg,.ico,.svg" @change="uploadLogo($event, 'favicon')" style="display: none;">
+                                                    <div class="upload-placeholder" onclick="document.getElementById('faviconInput').click()">
+                                                        <i class="bi bi-cloud-upload"></i>
+                                                        <p>Click to upload favicon</p>
+                                                        <small class="text-muted">PNG, ICO, SVG (max 2MB)</small>
+                                                    </div>
+                                                </div>
+                                                <div class="logo-preview mt-2" x-show="logoPreview.favicon">
+                                                    <img :src="logoPreview.favicon" alt="Favicon" class="img-fluid" style="max-width: 32px; max-height: 32px;">
+                                                    <button @click="deleteLogo('favicon')" class="btn btn-sm btn-danger mt-1">Delete</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Login Logo -->
+                                        <div class="col-md-6 mb-4">
+                                            <div class="logo-upload-card">
+                                                <h6>Login Logo</h6>
+                                                <p class="text-muted small">Logo for login page</p>
+                                                <div class="logo-upload-area" @drop="handleLogoDrop($event, 'login')" @dragover.prevent @dragenter.prevent>
+                                                    <input type="file" id="loginLogoInput" accept=".png,.jpg,.jpeg,.svg,.webp" @change="uploadLogo($event, 'login')" style="display: none;">
+                                                    <div class="upload-placeholder" onclick="document.getElementById('loginLogoInput').click()">
+                                                        <i class="bi bi-cloud-upload"></i>
+                                                        <p>Click to upload login logo</p>
+                                                        <small class="text-muted">PNG, JPG, SVG (max 2MB)</small>
+                                                    </div>
+                                                </div>
+                                                <div class="logo-preview mt-2" x-show="logoPreview.login">
+                                                    <img :src="logoPreview.login" alt="Login Logo" class="img-fluid">
+                                                    <button @click="deleteLogo('login')" class="btn btn-sm btn-danger mt-1">Delete</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Logo Settings -->
+                                <div class="col-lg-4">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Logo Display Settings</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="showHeaderLogo" x-model="logoSettings.logo_show_in_header">
+                                                <label class="form-check-label" for="showHeaderLogo">Show logo in header</label>
+                                            </div>
+                                            
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="showFooterLogo" x-model="logoSettings.logo_show_in_footer">
+                                                <label class="form-check-label" for="showFooterLogo">Show logo in footer</label>
+                                            </div>
+                                            
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="showLoginLogo" x-model="logoSettings.logo_show_in_login">
+                                                <label class="form-check-label" for="showLoginLogo">Show logo on login page</label>
+                                            </div>
+                                            
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="showEmailLogo" x-model="logoSettings.logo_show_in_emails">
+                                                <label class="form-check-label" for="showEmailLogo">Show logo in emails</label>
+                                            </div>
+                                            
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="showInvoiceLogo" x-model="logoSettings.logo_show_in_invoices">
+                                                <label class="form-check-label" for="showInvoiceLogo">Show logo on invoices</label>
+                                            </div>
+                                            
+                                            <hr>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">Header Logo Height</label>
+                                                <input type="text" class="form-control" x-model="logoSettings.logo_height_header" placeholder="40px">
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">Footer Logo Height</label>
+                                                <input type="text" class="form-control" x-model="logoSettings.logo_height_footer" placeholder="30px">
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">Login Logo Height</label>
+                                                <input type="text" class="form-control" x-model="logoSettings.logo_height_login" placeholder="60px">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colors & Fonts Tab -->
+        <div class="tab-pane fade" id="branding" role="tabpanel">
+            <div class="row mt-4">
+                <!-- Color Scheme -->
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-palette"></i> Color Scheme</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Primary Colors -->
+                                <div class="col-md-6">
+                                    <h6>Brand Colors</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Primary Color</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="brandingForm.brand_primary_color">
+                                            <input type="text" class="form-control" x-model="brandingForm.brand_primary_color">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Secondary Color</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="brandingForm.brand_secondary_color">
+                                            <input type="text" class="form-control" x-model="brandingForm.brand_secondary_color">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Accent Color</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="brandingForm.brand_accent_color">
+                                            <input type="text" class="form-control" x-model="brandingForm.brand_accent_color">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Background Colors -->
+                                <div class="col-md-6">
+                                    <h6>Background Colors</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Primary Background</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="brandingForm.bg_primary_color">
+                                            <input type="text" class="form-control" x-model="brandingForm.bg_primary_color">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Secondary Background</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="brandingForm.bg_secondary_color">
+                                            <input type="text" class="form-control" x-model="brandingForm.bg_secondary_color">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Header Background</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="brandingForm.bg_header_color">
+                                            <input type="text" class="form-control" x-model="brandingForm.bg_header_color">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Text Colors -->
+                                <div class="col-12">
+                                    <h6 class="mt-3">Text Colors</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">Primary Text</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" x-model="brandingForm.text_primary_color">
+                                                    <input type="text" class="form-control" x-model="brandingForm.text_primary_color">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">Secondary Text</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" x-model="brandingForm.text_secondary_color">
+                                                    <input type="text" class="form-control" x-model="brandingForm.text_secondary_color">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">Light Text</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" x-model="brandingForm.text_light_color">
+                                                    <input type="text" class="form-control" x-model="brandingForm.text_light_color">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button @click="saveBrandingSettings()" class="btn btn-primary mt-3" :disabled="saving">
+                                <span x-show="saving" class="spinner-border spinner-border-sm me-1"></span>
+                                <i class="bi bi-check-lg"></i> Save Color Scheme
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Color Preview -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Color Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="color-preview">
+                                <div class="color-swatch" :style="{ backgroundColor: brandingForm.brand_primary_color }"></div>
+                                <p class="mt-2"><strong>Primary:</strong> <span x-text="brandingForm.brand_primary_color"></span></p>
+                                
+                                <div class="color-swatch" :style="{ backgroundColor: brandingForm.brand_secondary_color }"></div>
+                                <p class="mt-2"><strong>Secondary:</strong> <span x-text="brandingForm.brand_secondary_color"></span></p>
+                                
+                                <div class="color-swatch" :style="{ backgroundColor: brandingForm.brand_accent_color }"></div>
+                                <p class="mt-2"><strong>Accent:</strong> <span x-text="brandingForm.brand_accent_color"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Typography Settings -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">Typography</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Primary Font Family</label>
+                                <select class="form-select" x-model="brandingForm.font_primary_family">
+                                    <option value="Inter, sans-serif">Inter</option>
+                                    <option value="Roboto, sans-serif">Roboto</option>
+                                    <option value="Open Sans, sans-serif">Open Sans</option>
+                                    <option value="Lato, sans-serif">Lato</option>
+                                    <option value="Poppins, sans-serif">Poppins</option>
+                                    <option value="Montserrat, sans-serif">Montserrat</option>
+                                    <option value="Source Sans Pro, sans-serif">Source Sans Pro</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Base Font Size</label>
+                                <input type="text" class="form-control" x-model="brandingForm.font_size_base" placeholder="14px">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Heading Font Weight</label>
+                                <select class="form-select" x-model="brandingForm.font_weight_bold">
+                                    <option value="400">Normal</option>
+                                    <option value="500">Medium</option>
+                                    <option value="600">Semi Bold</option>
+                                    <option value="700">Bold</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UI Customization Tab -->
+        <div class="tab-pane fade" id="ui" role="tabpanel">
+            <div class="row mt-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-layout-text-window"></i> UI Customization</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Login Page Settings -->
+                            <h6>Login Page</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Login Title</label>
+                                        <input type="text" class="form-control" x-model="uiForm.login_title">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Login Subtitle</label>
+                                        <input type="text" class="form-control" x-model="uiForm.login_subtitle">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Background Color</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" x-model="uiForm.login_background_color">
+                                    <input type="text" class="form-control" x-model="uiForm.login_background_color">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Card Background Color</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" x-model="uiForm.login_card_background">
+                                    <input type="text" class="form-control" x-model="uiForm.login_card_background">
+                                </div>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showLoginFeatures" x-model="uiForm.login_features_enabled">
+                                <label class="form-check-label" for="showLoginFeatures">Show features section on login</label>
+                            </div>
+                            
+                            <hr>
+                            
+                            <!-- Dashboard Settings -->
+                            <h6>Dashboard</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Welcome Message</label>
+                                <textarea class="form-control" rows="3" x-model="uiForm.dashboard_welcome_text"></textarea>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showDashboardStats" x-model="uiForm.dashboard_stats_enabled">
+                                <label class="form-check-label" for="showDashboardStats">Show statistics on dashboard</label>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showQuickActions" x-model="uiForm.dashboard_quick_actions_enabled">
+                                <label class="form-check-label" for="showQuickActions">Show quick actions on dashboard</label>
+                            </div>
+                            
+                            <hr>
+                            
+                            <!-- Navigation Settings -->
+                            <h6>Navigation</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Navigation Style</label>
+                                        <select class="form-select" x-model="uiForm.nav_style">
+                                            <option value="modern">Modern</option>
+                                            <option value="classic">Classic</option>
+                                            <option value="minimal">Minimal</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Color Scheme</label>
+                                        <select class="form-select" x-model="uiForm.nav_color_scheme">
+                                            <option value="light">Light</option>
+                                            <option value="dark">Dark</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showNavBranding" x-model="uiForm.nav_show_branding">
+                                <label class="form-check-label" for="showNavBranding">Show branding in navigation</label>
+                            </div>
+                            
+                            <hr>
+                            
+                            <!-- Theme Settings -->
+                            <h6>Theme</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Theme Preset</label>
+                                <select class="form-select" x-model="uiForm.theme_preset">
+                                    <option value="default">Default</option>
+                                    <option value="corporate">Corporate</option>
+                                    <option value="modern">Modern</option>
+                                    <option value="elegant">Elegant</option>
+                                    <option value="minimal">Minimal</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="customTheme" x-model="uiForm.theme_custom_enabled">
+                                <label class="form-check-label" for="customTheme">Enable custom theme creation</label>
+                            </div>
+                            
+                            <button @click="saveUISettings()" class="btn btn-primary mt-3" :disabled="saving">
+                                <span x-show="saving" class="spinner-border spinner-border-sm me-1"></span>
+                                <i class="bi bi-check-lg"></i> Save UI Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- UI Preview -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">UI Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="ui-preview" :style="{ backgroundColor: uiForm.login_background_color }">
+                                <div class="preview-header" :style="{ backgroundColor: uiForm.login_card_background }">
+                                    <h5 x-text="uiForm.login_title || 'Welcome Back'"></h5>
+                                    <p x-text="uiForm.login_subtitle || 'Sign in to continue'"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Content Tab -->
+        <div class="tab-pane fade" id="content" role="tabpanel">
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-chat-text"></i> Custom Content</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Welcome Messages -->
+                                <div class="col-lg-6">
+                                    <h6>Welcome Messages</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Dashboard Welcome Message</label>
+                                        <textarea class="form-control" rows="3" x-model="contentForm.welcome_message_dashboard"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Login Welcome Message</label>
+                                        <textarea class="form-control" rows="3" x-model="contentForm.welcome_message_login"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Registration Welcome Message</label>
+                                        <textarea class="form-control" rows="3" x-model="contentForm.welcome_message_registration"></textarea>
+                                    </div>
+                                </div>
+                                
+                                <!-- Custom Text -->
+                                <div class="col-lg-6">
+                                    <h6>Custom Text</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Custom Header Text</label>
+                                        <input type="text" class="form-control" x-model="contentForm.custom_header_text">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Custom Footer Text</label>
+                                        <textarea class="form-control" rows="3" x-model="contentForm.custom_footer_text"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">About Us Text</label>
+                                        <textarea class="form-control" rows="4" x-model="contentForm.custom_about_text"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Contact Information</label>
+                                        <textarea class="form-control" rows="4" x-model="contentForm.custom_contact_text"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <!-- Custom CSS -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6>Custom CSS</h6>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="enableCustomCSS" x-model="contentForm.custom_css_enabled">
+                                        <label class="form-check-label" for="enableCustomCSS">Enable custom CSS injection</label>
+                                    </div>
+                                    
+                                    <div class="mb-3" x-show="contentForm.custom_css_enabled">
+                                        <label class="form-label">Custom CSS Content</label>
+                                        <textarea class="form-control" rows="10" x-model="contentForm.custom_css_content" placeholder="/* Add your custom CSS here */"></textarea>
+                                        <small class="text-muted">Warning: Custom CSS can break the application. Use with caution.</small>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">CSS Loading Priority</label>
+                                        <input type="number" class="form-control" x-model="contentForm.custom_css_priority" min="1" max="1000">
+                                        <small class="text-muted">Lower numbers load first (default: 100)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button @click="saveContentSettings()" class="btn btn-primary mt-3" :disabled="saving">
+                                <span x-show="saving" class="spinner-border spinner-border-sm me-1"></span>
+                                <i class="bi bi-check-lg"></i> Save Content Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Templates Tab -->
+        <div class="tab-pane fade" id="email" role="tabpanel">
+            <div class="row mt-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-envelope"></i> Email Template Branding</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Email Template Style</label>
+                                        <select class="form-select" x-model="emailForm.email_template_style">
+                                            <option value="modern">Modern</option>
+                                            <option value="classic">Classic</option>
+                                            <option value="minimal">Minimal</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Primary Color</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="emailForm.email_primary_color">
+                                            <input type="text" class="form-control" x-model="emailForm.email_primary_color">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Background Color</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="emailForm.email_background_color">
+                                            <input type="text" class="form-control" x-model="emailForm.email_background_color">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Text Color</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" x-model="emailForm.email_text_color">
+                                            <input type="text" class="form-control" x-model="emailForm.email_text_color">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Email Signature</label>
+                                        <textarea class="form-control" rows="4" x-model="emailForm.email_signature_text"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Contact Information</label>
+                                        <textarea class="form-control" rows="3" x-model="emailForm.email_contact_info"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showEmailSocial" x-model="emailForm.email_show_social_links">
+                                <label class="form-check-label" for="showEmailSocial">Show social media links in emails</label>
+                            </div>
+                            
+                            <button @click="saveEmailSettings()" class="btn btn-primary mt-3" :disabled="saving">
+                                <span x-show="saving" class="spinner-border spinner-border-sm me-1"></span>
+                                <i class="bi bi-check-lg"></i> Save Email Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Email Preview -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Email Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="email-preview" :style="{ backgroundColor: emailForm.email_background_color, color: emailForm.email_text_color }">
+                                <div class="email-header" :style="{ backgroundColor: emailForm.email_primary_color }">
+                                    <h5>Company Name</h5>
+                                </div>
+                                <div class="email-body p-3">
+                                    <p>Dear Customer,</p>
+                                    <p>Your order has been confirmed.</p>
+                                    <p>Thank you for choosing us!</p>
+                                </div>
+                                <div class="email-footer p-2" style="border-top: 1px solid #ddd;">
+                                    <p class="mb-0" x-text="emailForm.email_signature_text || 'Best regards,\\nThe Team'"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Print Materials Tab -->
+        <div class="tab-pane fade" id="print" role="tabpanel">
+            <div class="row mt-4">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-printer"></i> Invoice Branding</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Header Color</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" x-model="printForm.invoice_header_color">
+                                    <input type="text" class="form-control" x-model="printForm.invoice_header_color">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Footer Text</label>
+                                <textarea class="form-control" rows="3" x-model="printForm.invoice_footer_text"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Terms & Conditions</label>
+                                <textarea class="form-control" rows="4" x-model="printForm.invoice_terms_text"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Note</label>
+                                <textarea class="form-control" rows="3" x-model="printForm.invoice_note_text"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Receipt Branding</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Header Color</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" x-model="printForm.receipt_header_color">
+                                    <input type="text" class="form-control" x-model="printForm.receipt_header_color">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Footer Text</label>
+                                <textarea class="form-control" rows="3" x-model="printForm.receipt_footer_text"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Custom Message</label>
+                                <textarea class="form-control" rows="3" x-model="printForm.receipt_custom_message"></textarea>
+                            </div>
+                            
+                            <hr>
+                            
+                            <h6>Print Settings</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="printHeader" x-model="printForm.print_header_enabled">
+                                <label class="form-check-label" for="printHeader">Enable print header</label>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="printFooter" x-model="printForm.print_footer_enabled">
+                                <label class="form-check-label" for="printFooter">Enable print footer</label>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Logo Size</label>
+                                <input type="text" class="form-control" x-model="printForm.print_logo_size" placeholder="100px">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Font Size</label>
+                                <input type="text" class="form-control" x-model="printForm.print_font_size" placeholder="12px">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <button @click="savePrintSettings()" class="btn btn-primary" :disabled="saving">
+                        <span x-show="saving" class="spinner-border spinner-border-sm me-1"></span>
+                        <i class="bi bi-check-lg"></i> Save Print Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.logo-upload-card {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.logo-upload-card:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.logo-upload-area {
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.upload-placeholder {
+    text-align: center;
+    color: #6c757d;
+}
+
+.upload-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.logo-preview img {
+    max-height: 80px;
+    max-width: 200px;
+    object-fit: contain;
+}
+
+.color-swatch {
+    width: 100%;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    margin-bottom: 5px;
+}
+
+.color-preview {
+    margin-bottom: 20px;
+}
+
+.ui-preview {
+    min-height: 200px;
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid #ddd;
+}
+
+.preview-header {
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.email-preview {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.email-header {
+    color: white;
+    padding: 15px;
+    text-align: center;
+}
+
+.email-body {
+    background-color: white;
+}
+
+.email-footer {
+    background-color: #f8f9fa;
+    font-size: 12px;
+}
+
+.tab-content {
+    background: white;
+    border-radius: 0 0 8px 8px;
+    padding: 20px;
+    border: 1px solid #dee2e6;
+    border-top: none;
+}
+
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: #007bff;
+}
+
+.nav-tabs .nav-link.active {
+    border-bottom-color: #007bff;
+    color: #007bff;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function whiteLabelManager() {
+    return {
+        // Form data
+        companyForm: JSON.parse('{{ company_info | tojson | safe }}'),
+        logoPreview: {},
+        logoSettings: JSON.parse('{{ logo_settings | tojson | safe }}'),
+        brandingForm: JSON.parse('{{ branding_info | tojson | safe }}'),
+        uiForm: JSON.parse('{{ ui_customization | tojson | safe }}'),
+        contentForm: JSON.parse('{{ custom_content | tojson | safe }}'),
+        emailForm: JSON.parse('{{ email_branding | tojson | safe }}'),
+        printForm: JSON.parse('{{ print_branding | tojson | safe }}'),
+        
+        // UI state
+        saving: false,
+        activeTab: 'company',
+        
+        // Initialize
+        init() {
+            // Load logo previews
+            this.loadLogoPreviews();
+            
+            // Add event listeners for tabs
+            const tabButtons = document.querySelectorAll('#whiteLabelTabs button');
+            tabButtons.forEach(button => {
+                button.addEventListener('shown.bs.tab', (event) => {
+                    this.activeTab = event.target.getAttribute('data-bs-target').replace('#', '');
+                });
+            });
+        },
+        
+        // Company Info
+        async saveCompanyInfo() {
+            this.saving = true;
+            try {
+                const response = await fetch('/white-label/company-info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.companyForm)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('Company information saved successfully!', 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error saving company information', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        // Logo Management
+        loadLogoPreviews() {
+            const logoTypes = ['main', 'header', 'footer', 'favicon', 'invoice', 'email', 'login'];
+            logoTypes.forEach(type => {
+                const path = this.logoSettings[`logo_${type}_path`];
+                if (path) {
+                    this.logoPreview[type] = `/static/${path}`;
+                }
+            });
+        },
+        
+        async uploadLogo(event, logoType) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('logo_file', file);
+            formData.append('logo_type', logoType);
+            
+            try {
+                const response = await fetch('/white-label/upload-logo', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.logoPreview[logoType] = result.logo_info.url;
+                    this.showNotification(`${logoType} logo uploaded successfully!`, 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error uploading logo', 'error');
+            }
+        },
+        
+        async deleteLogo(logoType) {
+            if (!confirm(`Are you sure you want to delete the ${logoType} logo?`)) return;
+            
+            try {
+                const response = await fetch(`/white-label/delete-logo/${logoType}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    delete this.logoPreview[logoType];
+                    this.showNotification(`${logoType} logo deleted successfully!`, 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error deleting logo', 'error');
+            }
+        },
+        
+        // Branding Settings
+        async saveBrandingSettings() {
+            this.saving = true;
+            try {
+                const response = await fetch('/white-label/branding-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.brandingForm)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('Branding settings saved successfully!', 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error saving branding settings', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        // UI Settings
+        async saveUISettings() {
+            this.saving = true;
+            try {
+                const response = await fetch('/white-label/ui-customization', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.uiForm)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('UI settings saved successfully!', 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error saving UI settings', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        // Content Settings
+        async saveContentSettings() {
+            this.saving = true;
+            try {
+                const response = await fetch('/white-label/custom-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.contentForm)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('Content settings saved successfully!', 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error saving content settings', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        // Email Settings
+        async saveEmailSettings() {
+            this.saving = true;
+            try {
+                const response = await fetch('/white-label/email-branding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.emailForm)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('Email settings saved successfully!', 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error saving email settings', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        // Print Settings
+        async savePrintSettings() {
+            this.saving = true;
+            try {
+                const response = await fetch('/white-label/print-branding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.printForm)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('Print settings saved successfully!', 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error saving print settings', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        // Utility functions
+        formatAddress() {
+            const parts = [
+                this.companyForm.company_address_line1,
+                this.companyForm.company_address_line2,
+                this.companyForm.company_city,
+                this.companyForm.company_state,
+                this.companyForm.company_postal_code
+            ].filter(part => part && part.trim());
+            
+            return parts.length > 0 ? parts.join(', ') : 'Address not specified';
+        },
+        
+        async generateCSS() {
+            try {
+                const response = await fetch('/white-label/generate-css', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('CSS generated successfully!', 'success');
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error generating CSS', 'error');
+            }
+        },
+        
+        async previewChanges() {
+            try {
+                const response = await fetch('/white-label/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        preview_type: 'dashboard',
+                        ...this.getCurrentTabData()
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    // Open preview in modal or new window
+                    const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                    previewWindow.document.write(result.preview_html);
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error generating preview', 'error');
+            }
+        },
+        
+        async resetToDefaults() {
+            if (!confirm('Are you sure you want to reset all white label settings to defaults? This cannot be undone.')) return;
+            
+            try {
+                const response = await fetch('/white-label/reset', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification('Settings reset to defaults!', 'success');
+                    // Reload page to refresh all forms
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error resetting settings', 'error');
+            }
+        },
+        
+        getCurrentTabData() {
+            switch (this.activeTab) {
+                case 'company':
+                    return this.companyForm;
+                case 'branding':
+                    return this.brandingForm;
+                case 'ui':
+                    return this.uiForm;
+                case 'content':
+                    return this.contentForm;
+                case 'email':
+                    return this.emailForm;
+                case 'print':
+                    return this.printForm;
+                default:
+                    return {};
+            }
+        },
+        
+        showNotification(message, type = 'info') {
+            // Create notification element
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+    };
+}
+</script>
+{% endblock %}

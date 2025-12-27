@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% block title %}Dynamic Reports Dashboard - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports-modern.css') }}">
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<!-- Date Range Picker -->
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat/dayjs.customParseFormat.min.js"></script>
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="dynamic-reports-dashboard" x-data="dynamicReportsDashboard()">
+  <!-- Dashboard Header -->
+  <div class="dashboard-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="dashboard-title-section">
+        <h1 class="dashboard-title">
+          <i class="bi bi-graph-up-arrow text-primary"></i>
+          Dynamic Reports Dashboard
+        </h1>
+        <p class="dashboard-subtitle">Real-time insights and analytics for your restaurant</p>
+      </div>
+      <div class="dashboard-actions">
+        <button @click="refreshDashboard()" class="btn btn-outline-primary btn-sm" :disabled="isLoading">
+          <i class="bi bi-arrow-clockwise" :class="{ 'spinning': isLoading }"></i>
+          Refresh
+        </button>
+        <button @click="toggleFullscreen()" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-fullscreen"></i>
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-download"></i> Export
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" @click="exportReport('pdf')"><i class="bi bi-file-pdf"></i> PDF Report</a></li>
+            <li><a class="dropdown-item" href="#" @click="exportReport('csv')"><i class="bi bi-file-spreadsheet"></i> CSV Data</a></li>
+            <li><a class="dropdown-item" href="#" @click="exportReport('json')"><i class="bi bi-file-code"></i> JSON Data</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time Status Bar -->
+  <div class="realtime-status-bar" x-show="realtimeData.connected" x-transition>
+    <div class="status-indicator">
+      <div class="pulse-dot"></div>
+      <span>Live Data Connected</span>
+      <small class="text-muted" x-text="'Last updated: ' + formatTime(realtimeData.lastUpdated)"></small>
+    </div>
+    <div class="realtime-metrics">
+      <div class="metric">
+        <span class="metric-label">Today's Sales</span>
+        <span class="metric-value" x-text="formatCurrency(realtimeData.todaySales)"></span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Active Orders</span>
+        <span class="metric-value" x-text="realtimeData.activeOrders"></span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Low Stock Items</span>
+        <span class="metric-value text-warning" x-text="realtimeData.lowStockItems"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Range Selector -->
+  <div class="date-range-selector">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Quick Select</label>
+        <select class="form-select form-select-sm" x-model="dateRange.quickSelect" @change="updateDateRange()">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="last7days">Last 7 Days</option>
+          <option value="last30days">Last 30 Days</option>
+          <option value="thisMonth">This Month</option>
+          <option value="lastMonth">Last Month</option>
+          <option value="custom">Custom Range</option>
+        </select>
+      </div>
+      <div class="col-md-3" x-show="dateRange.quickSelect === 'custom'">
+        <label class="form-label">From Date</label>
+        <input type="date" class="form-control form-control-sm" x-model="dateRange.fromDate" @change="loadDashboardData()">
+      </div>
+      <div class="col-md-3" x-show="dateRange.quickSelect === 'custom'">
+        <label class="form-label">To Date</label>
+        <input type="date" class="form-control form-control-sm" x-model="dateRange.toDate" @change="loadDashboardData()">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Comparison</label>
+        <select class="form-select form-select-sm" x-model="dateRange.comparison" @change="loadDashboardData()">
+          <option value="none">No Comparison</option>
+          <option value="previous">Previous Period</option>
+          <option value="year">Same Period Last Year</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Performance Indicators -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-primary" x-data="{ animatedValue: 0 }" x-init="animateValue($el, 0, dashboardData.overview?.totalSales || 0, 2000)">
+      <div class="kpi-icon">
+        <i class="bi bi-currency-rupee"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="formatCurrency(animatedValue)">₹0</div>
+        <div class="kpi-label">Total Sales</div>
+        <div class="kpi-change" :class="getChangeClass(dashboardData.overview?.growth?.sales)">
+          <i :class="getChangeIcon(dashboardData.overview?.growth?.sales)"></i>
+          <span x-text="(dashboardData.overview?.growth?.sales || 0) + '%'">0%</span>
+          <small>vs previous period</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-success" x-data="{ animatedValue: 0 }" x-init="animateValue($el, 0, dashboardData.overview?.totalOrders || 0, 2000)">
+      <div class="kpi-icon">
+        <i class="bi bi-bag-check"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="animatedValue">0</div>
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-change" :class="getChangeClass(dashboardData.overview?.growth?.orders)">
+          <i :class="getChangeIcon(dashboardData.overview?.growth?.orders)"></i>
+          <span x-text="(dashboardData.overview?.growth?.orders || 0) + '%'">0%</span>
+          <small>vs previous period</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-info" x-data="{ animatedValue: 0 }" x-init="animateValue($el, 0, dashboardData.overview?.averageOrderValue || 0, 2000)">
+      <div class="kpi-icon">
+        <i class="bi bi-graph-up-arrow"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="formatCurrency(animatedValue)">₹0</div>
+        <div class="kpi-label">Avg Order Value</div>
+        <div class="kpi-change" :class="getChangeClass(dashboardData.overview?.growth?.aov)">
+          <i :class="getChangeIcon(dashboardData.overview?.growth?.aov)"></i>
+          <span x-text="(dashboardData.overview?.growth?.aov || 0) + '%'">0%</span>
+          <small>vs previous period</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-warning" x-data="{ animatedValue: 0 }" x-init="animateValue($el, 0, dashboardData.overview?.completionRate || 0, 2000)">
+      <div class="kpi-icon">
+        <i class="bi bi-check-circle"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="animatedValue.toFixed(1) + '%'">0%</div>
+        <div class="kpi-label">Completion Rate</div>
+        <div class="kpi-change neutral">
+          <i class="bi bi-dash"></i>
+          <span>Target: 95%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="charts-grid">
+    <!-- Sales Trend Chart -->
+    <div class="chart-container chart-large">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-graph-up"></i>
+          Sales Trend
+        </h3>
+        <div class="chart-controls">
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="salesTrend" id="daily" value="daily" x-model="charts.salesTrendType" @change="updateSalesChart()">
+            <label class="btn btn-outline-primary" for="daily">Daily</label>
+            <input type="radio" class="btn-check" name="salesTrend" id="weekly" value="weekly" x-model="charts.salesTrendType" @change="updateSalesChart()">
+            <label class="btn btn-outline-primary" for="weekly">Weekly</label>
+            <input type="radio" class="btn-check" name="salesTrend" id="monthly" value="monthly" x-model="charts.salesTrendType" @change="updateSalesChart()">
+            <label class="btn btn-outline-primary" for="monthly">Monthly</label>
+          </div>
+          <button @click="exportChart('salesChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="salesChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Category Distribution -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-pie-chart"></i>
+          Sales by Category
+        </h3>
+        <div class="chart-controls">
+          <button @click="exportChart('categoryChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Payment Methods -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-credit-card"></i>
+          Payment Methods
+        </h3>
+        <div class="chart-controls">
+          <button @click="exportChart('paymentChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="paymentChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Hourly Sales Pattern -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-clock"></i>
+          Peak Hours
+        </h3>
+        <div class="chart-controls">
+          <button @click="exportChart('hourlyChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="hourlyChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Tables -->
+  <div class="tables-section">
+    <!-- Top Selling Items -->
+    <div class="table-container">
+      <div class="table-header">
+        <h3 class="table-title">
+          <i class="bi bi-trophy"></i>
+          Top Selling Items
+        </h3>
+        <div class="table-actions">
+          <button @click="refreshTopItems()" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="table table-hover" id="topItemsTable">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Item Name</th>
+              <th>Category</th>
+              <th>Quantity Sold</th>
+              <th>Revenue</th>
+              <th>Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(item, index) in topSellingItems" :key="item.id">
+              <tr>
+                <td>
+                  <span class="rank-badge" :class="'rank-' + (index + 1)" x-text="index + 1"></span>
+                </td>
+                <td>
+                  <div class="item-info">
+                    <strong x-text="item.name"></strong>
+                    <small class="text-muted d-block" x-text="item.description"></small>
+                  </div>
+                </td>
+                <td>
+                  <span class="category-badge" x-text="item.category"></span>
+                </td>
+                <td>
+                  <span class="quantity-badge" x-text="item.quantitySold"></span>
+                </td>
+                <td>
+                  <strong x-text="formatCurrency(item.revenue)"></strong>
+                </td>
+                <td>
+                  <div class="trend-indicator" :class="item.trend">
+                    <i :class="getTrendIcon(item.trend)"></i>
+                    <span x-text="item.trendPercentage + '%'"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="table-container">
+      <div class="table-header">
+        <h3 class="table-title">
+          <i class="bi bi-list-ul"></i>
+          Recent Orders
+        </h3>
+        <div class="table-actions">
+          <button @click="refreshRecentOrders()" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <a href="/orders" class="btn btn-primary btn-sm">
+            <i class="bi bi-eye"></i> View All
+          </a>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="table table-hover" id="recentOrdersTable">
+          <thead>
+            <tr>
+              <th>Order #</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="order in recentOrders" :key="order.id">
+              <tr>
+                <td>
+                  <strong x-text="order.orderNumber"></strong>
+                </td>
+                <td>
+                  <div class="customer-info">
+                    <span x-text="order.customerName || 'Walk-in'"></span>
+                    <small class="text-muted d-block" x-text="order.tableNumber ? 'Table ' + order.tableNumber : ''"></small>
+                  </div>
+                </td>
+                <td>
+                  <span class="items-count" x-text="order.itemsCount + ' items'"></span>
+                </td>
+                <td>
+                  <strong x-text="formatCurrency(order.total)"></strong>
+                </td>
+                <td>
+                  <span class="status-badge" :class="'status-' + order.status.toLowerCase()" x-text="order.status"></span>
+                </td>
+                <td>
+                  <small x-text="formatTime(order.createdAt)"></small>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts Section -->
+  <div class="alerts-section" x-show="alerts.length > 0">
+    <h3 class="alerts-title">
+      <i class="bi bi-exclamation-triangle"></i>
+      Business Alerts
+    </h3>
+    <div class="alerts-grid">
+      <template x-for="alert in alerts" :key="alert.id">
+        <div class="alert-card" :class="'alert-' + alert.type">
+          <div class="alert-icon">
+            <i :class="getAlertIcon(alert.type)"></i>
+          </div>
+          <div class="alert-content">
+            <h4 class="alert-title" x-text="alert.title"></h4>
+            <p class="alert-message" x-text="alert.message"></p>
+            <div class="alert-meta">
+              <small x-text="alert.timestamp"></small>
+              <button @click="dismissAlert(alert.id)" class="btn btn-sm btn-link">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" x-show="isLoading" x-transition>
+    <div class="loading-content">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="loading-text">Loading dashboard data...</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dynamic-reports-dashboard.js') }}"></script>
+{% endblock %}

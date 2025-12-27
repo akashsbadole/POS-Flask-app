@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Restore Backup{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('backup.index') }}">Backup</a></li>
+                    <li class="breadcrumb-item active">Restore</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1><i class="fas fa-upload"></i> Restore Backup</h1>
+                <p class="lead">Select a backup to restore your system</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restore Options -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Important Restore Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Current database will be backed up</strong> before restore begins</li>
+                        <li><strong>Rollback backup</strong> will be created for emergency recovery</li>
+                        <li><strong>System will be validated</strong> after restore completion</li>
+                        <li><strong>Restore operations cannot be undone</strong> - use rollback backup if needed</li>
+                        <li><strong>Service will be temporarily unavailable</strong> during restore process</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Backups -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-database"></i> Available Backups
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if backups %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Size</th>
+                                        <th>Created</th>
+                                        <th>Components</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for backup in backups %}
+                                        <tr>
+                                            <td>#{{ backup.id }}</td>
+                                            <td>
+                                                <span class="badge badge-info">{{ backup.backup_type.value }}</span>
+                                            </td>
+                                            <td>
+                                                {% if backup.status.value == 'completed' %}
+                                                    <span class="badge badge-success">Completed</span>
+                                                {% elif backup.status.value == 'failed' %}
+                                                    <span class="badge badge-danger">Failed</span>
+                                                {% else %}
+                                                    <span class="badge badge-secondary">{{ backup.status.value }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if backup.file_size %}
+                                                    {{ "%.1f"|format(backup.file_size / 1024 / 1024) }} MB
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ backup.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td>
+                                                {% if backup.components_backed_up %}
+                                                    {% set components = backup.components_backed_up | from_json %}
+                                                    <div class="component-badges">
+                                                        {% for component in components %}
+                                                            <span class="badge badge-light badge-sm">{{ component }}</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-primary btn-sm" 
+                                                            data-toggle="modal" 
+                                                            data-target="#restoreModal{{ backup.id }}">
+                                                        <i class="fas fa-upload"></i> Restore
+                                                    </button>
+                                                    <a href="{{ url_for('backup.run_details', run_id=backup.id) }}" 
+                                                       class="btn btn-outline-info btn-sm">
+                                                        <i class="fas fa-info-circle"></i> Details
+                                                    </a>
+                                                    <button type="button" class="btn btn-danger btn-sm" 
+                                                            onclick="emergencyRestore({{ backup.id }})">
+                                                        <i class="fas fa-exclamation-triangle"></i> Emergency
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-database fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No Backups Available</h4>
+                            <p class="text-muted">Create your first backup before attempting a restore.</p>
+                            <a href="{{ url_for('backup.create_job') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Backup Job
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Restore Modals -->
+{% for backup in backups %}
+    <div class="modal fade" id="restoreModal{{ backup.id }}" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Restore Backup #{{ backup.id }}</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form method="post" action="{{ url_for('backup.restore_backup', run_id=backup.id) }}">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <h6>Backup Information:</h6>
+                            <p><strong>Type:</strong> {{ backup.backup_type.value }}</p>
+                            <p><strong>Created:</strong> {{ backup.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                            <p><strong>Size:</strong> 
+                                {% if backup.file_size %}
+                                    {{ "%.1f"|format(backup.file_size / 1024 / 1024) }} MB
+                                {% else %}
+                                    Unknown
+                                {% endif %}
+                            </p>
+                            {% if backup.components_backed_up %}
+                                <p><strong>Components:</strong> 
+                                    {% set components = backup.components_backed_up | from_json %}
+                                    {{ components | join(', ') }}
+                                </p>
+                            {% endif %}
+                        </div>
+
+                        <h6>Restore Options:</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" 
+                                               id="backup_before_restore{{ backup.id }}" 
+                                               name="backup_before_restore" checked>
+                                        <label class="custom-control-label" 
+                                               for="backup_before_restore{{ backup.id }}">
+                                            Backup current system before restore
+                                        </label>
+                                        <small class="form-text text-muted">Creates a safety backup</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" 
+                                               id="create_rollback_backup{{ backup.id }}" 
+                                               name="create_rollback_backup" checked>
+                                        <label class="custom-control-label" 
+                                               for="create_rollback_backup{{ backup.id }}">
+                                            Create rollback backup
+                                        </label>
+                                        <small class="form-text text-muted">For emergency recovery</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" 
+                                               id="backup_existing_files{{ backup.id }}" 
+                                               name="backup_existing_files" checked>
+                                        <label class="custom-control-label" 
+                                               for="backup_existing_files{{ backup.id }}">
+                                            Backup existing files
+                                        </label>
+                                        <small class="form-text text-muted">Before overwriting</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" 
+                                               id="restore_logs{{ backup.id }}" 
+                                               name="restore_logs">
+                                        <label class="custom-control-label" 
+                                               for="restore_logs{{ backup.id }}">
+                                            Restore log files
+                                        </label>
+                                        <small class="form-text text-muted">Usually not recommended</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <strong>Warning:</strong> This operation cannot be undone. 
+                            Make sure you have a recent backup and understand the implications.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Start Restore
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+
+<script>
+function emergencyRestore(backupId) {
+    if (confirm('⚠️ EMERGENCY RESTORE ⚠️\n\nThis will perform a restore with minimal validation and safety checks.\n\nThis should only be used in emergency situations!\n\nContinue?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/backup/restore/emergency/${backupId}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+
+<style>
+.component-badges .badge {
+    margin-right: 2px;
+    margin-bottom: 2px;
+}
+
+.badge-sm {
+    font-size: 0.75rem;
+    padding: 0.25em 0.4em;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - {{ public_settings.get('restaurant_name', 'Restaurant POS') }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-profile-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .edit-profile-card {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 2rem;
+    }
+    
+    .profile-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .profile-header h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+    
+    .profile-header p {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+    
+    .avatar-upload-section {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .current-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+        font-weight: 600;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .current-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+    }
+    
+    .form-section h3 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .form-floating {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-floating input,
+    .form-floating textarea,
+    .form-floating select {
+        width: 100%;
+        padding: 1rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        background: white;
+    }
+    
+    .form-floating input:focus,
+    .form-floating textarea:focus,
+    .form-floating select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .form-floating label {
+        position: absolute;
+        top: 0;
+        left: 0.75rem;
+        height: 100%;
+        padding: 1rem 0;
+        pointer-events: none;
+        border: 1px solid transparent;
+        transform-origin: 0 0;
+        transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+        color: #6b7280;
+        font-size: 1rem;
+    }
+    
+    .form-floating input:focus + label,
+    .form-floating input:not(:placeholder-shown) + label,
+    .form-floating textarea:focus + label,
+    .form-floating textarea:not(:placeholder-shown) + label {
+        opacity: 0.65;
+        transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+    }
+    
+    .form-floating textarea {
+        height: 120px;
+        resize: vertical;
+        padding-top: 1.5rem;
+    }
+    
+    .form-floating textarea + label {
+        top: 1.5rem;
+    }
+    
+    .avatar-upload {
+        display: none;
+    }
+    
+    .upload-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+    
+    .upload-button:hover {
+        background: #2563eb;
+    }
+    
+    .file-info {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .form-errors {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-errors ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        color: #dc2626;
+        font-size: 0.875rem;
+    }
+    
+    .form-errors li {
+        padding: 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .form-errors li::before {
+        content: "⚠";
+        color: #dc2626;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    .btn-save {
+        background: #10b981;
+        border-color: #10b981;
+        color: white;
+        padding: 0.75rem 2rem;
+    }
+    
+    .btn-save:hover {
+        background: #059669;
+        border-color: #059669;
+        color: white;
+    }
+    
+    .btn-cancel {
+        background: white;
+        border-color: #6c757d;
+        color: #6c757d;
+        padding: 0.75rem 2rem;
+    }
+    
+    .btn-cancel:hover {
+        background: #f8f9fa;
+        border-color: #5c636a;
+        color: #5c636a;
+    }
+    
+    @media (max-width: 768px) {
+        .edit-profile-card {
+            padding: 1.5rem;
+        }
+        
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-profile-container">
+    <div class="edit-profile-card">
+        <div class="profile-header">
+            <h2>Edit Profile</h2>
+            <p>Update your personal information and preferences</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %} 
+        {% if messages %} 
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category or 'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %} 
+        {% endif %} 
+        {% endwith %}
+        
+        <form method="POST" enctype="multipart/form-data" id="editProfileForm">
+            {{ form.hidden_tag() }}
+            
+            <!-- Avatar Upload Section -->
+            <div class="avatar-upload-section">
+                <div class="current-avatar">
+                    {% if current_user.avatar_path %}
+                        <img src="{{ url_for('auth.get_avatar', user_id=current_user.id) }}" alt="Current Avatar">
+                    {% else %}
+                        {{ current_user.username|first|upper }}
+                    {% endif %}
+                </div>
+                
+                <input type="file" 
+                       id="avatar" 
+                       name="avatar" 
+                       class="avatar-upload" 
+                       accept="image/*"
+                       onchange="handleFileUpload(this)">
+                
+                <label for="avatar" class="upload-button">
+                    <i class="bi bi-camera"></i>
+                    Change Profile Picture
+                </label>
+                
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <span id="fileName"></span>
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="clearFile()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                
+                <div class="file-info mt-2">
+                    <small class="text-muted">Supported formats: JPG, PNG, GIF (max 5MB)</small>
+                </div>
+            </div>
+            
+            <!-- Display form errors -->
+            {% if form.errors %}
+            <div class="form-errors">
+                <strong>Please fix the following errors:</strong>
+                <ul>
+                    {% for field, errors in form.errors.items() %}
+                        {% for error in errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <!-- Personal Information Section -->
+            <div class="form-section">
+                <h3><i class="bi bi-person"></i> Personal Information</h3>
+                
+                <div class="form-grid">
+                    <div class="form-floating">
+                        {{ form.full_name(id="full_name", placeholder=" ") }}
+                        {{ form.full_name.label }}
+                    </div>
+                    
+                    <div class="form-floating">
+                        {{ form.email(id="email", placeholder=" ") }}
+                        {{ form.email.label }}
+                    </div>
+                    
+                    <div class="form-floating">
+                        {{ form.phone(id="phone", placeholder=" ") }}
+                        {{ form.phone.label }}
+                    </div>
+                    
+                    <div class="form-floating">
+                        {{ form.date_of_birth(id="date_of_birth", placeholder=" ") }}
+                        {{ form.date_of_birth.label }}
+                    </div>
+                </div>
+                
+                <div class="form-floating">
+                    {{ form.address(id="address", placeholder=" ") }}
+                    {{ form.address.label }}
+                </div>
+                
+                <div class="form-floating">
+                    {{ form.bio(id="bio", placeholder=" ") }}
+                    {{ form.bio.label }}
+                </div>
+            </div>
+            
+            <!-- Preferences Section -->
+            <div class="form-section">
+                <h3><i class="bi bi-gear"></i> Preferences</h3>
+                
+                <div class="form-grid">
+                    <div class="form-floating">
+                        {{ form.preferred_language(id="preferred_language", placeholder=" ") }}
+                        {{ form.preferred_language.label }}
+                    </div>
+                    
+                    <div class="form-floating">
+                        {{ form.preferred_timezone(id="preferred_timezone", placeholder=" ") }}
+                        {{ form.preferred_timezone.label }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-primary btn-save">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+                <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-secondary btn-cancel">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function handleFileUpload(input) {
+        const file = input.files[0];
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        
+        if (file) {
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please select a valid image file (JPG, PNG, or GIF)');
+                input.value = '';
+                fileInfo.style.display = 'none';
+                return;
+            }
+            
+            // Validate file size (5MB)
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('File size must be less than 5MB');
+                input.value = '';
+                fileInfo.style.display = 'none';
+                return;
+            }
+            
+            // Display file info
+            fileName.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            fileInfo.style.display = 'block';
+        } else {
+            fileInfo.style.display = 'none';
+        }
+    }
+    
+    function clearFile() {
+        document.getElementById('avatar').value = '';
+        document.getElementById('fileInfo').style.display = 'none';
+    }
+    
+    // Form validation and AJAX submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('editProfileForm');
+        
+        form.addEventListener('submit', function(e) {
+            // For now, let the form submit normally
+            // You can enhance this with AJAX submission later
+            e.preventDefault();
+            
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+            submitBtn.disabled = true;
+            
+            // Submit form normally
+            form.submit();
+        });
+    });
+</script>
+{% endblock %}

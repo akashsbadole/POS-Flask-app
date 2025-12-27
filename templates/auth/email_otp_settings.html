@@ -1,0 +1,808 @@
+{% extends "auth/auth-base.html" %}
+
+{% block title %}Email OTP Settings - {{ super() }}{% endblock %}
+
+{% block auth_content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Email OTP Settings</h2>
+            <p>Configure your email OTP login preferences</p>
+        </div>
+
+        <!-- Settings Info -->
+        <div class="settings-info">
+            <div class="info-item">
+                <i class="fas fa-info-circle"></i>
+                <div class="info-text">
+                    <strong>About Email OTP</strong>
+                    <p>Email OTP allows you to login securely using verification codes sent to your email address. This provides an alternative to traditional password-based authentication.</p>
+                </div>
+            </div>
+            
+            <!-- Current Status -->
+            <div class="status-item">
+                <div class="status-header">
+                    <i class="fas fa-shield-alt"></i>
+                    <span><strong>Current Status</strong></span>
+                </div>
+                <div class="status-details">
+                    <div class="status-row">
+                        <span class="status-label">Email OTP:</span>
+                        <span class="status-value {% if current_user.email_otp_enabled %}enabled{% else %}disabled{% endif %}">
+                            {% if current_user.email_otp_enabled %}
+                                <i class="fas fa-check-circle"></i> Enabled
+                            {% else %}
+                                <i class="fas fa-times-circle"></i> Disabled
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">Email Address:</span>
+                        <span class="status-value">
+                            {% if current_user.email_decrypted %}
+                                <i class="fas fa-envelope"></i> {{ current_user.email_decrypted }}
+                            {% else %}
+                                <i class="fas fa-exclamation-triangle"></i> No email set
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email OTP Settings Form -->
+        <form id="email-otp-settings-form" method="POST" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-input", placeholder="Enter your email address") }}
+                {% if form.email.errors %}
+                    <div class="error-messages">
+                        {% for error in form.email.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    {{ form.email_otp_enabled(class="form-checkbox") }}
+                    {{ form.email_otp_enabled.label(class="checkbox-label") }}
+                </div>
+                <div class="checkbox-help">
+                    Enable email-based OTP login for this account
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.backup_email.label(class="form-label") }}
+                {{ form.backup_email(class="form-input", placeholder="Enter backup email address (optional)") }}
+                {% if form.backup_email.errors %}
+                    <div class="error-messages">
+                        {% for error in form.backup_email.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="field-help">
+                    Backup email for recovery purposes (optional)
+                </div>
+            </div>
+
+            <div class="form-actions">
+                {{ form.submit(class="btn btn-primary btn-full") }}
+            </div>
+
+            <!-- Error/Success Messages -->
+            <div id="auth-messages" class="auth-messages" style="display: none;">
+                <div class="message-content"></div>
+            </div>
+        </form>
+
+        <!-- Additional Actions -->
+        <div class="additional-actions">
+            <div class="action-section">
+                <h3>Email Verification</h3>
+                <p>Need to verify your email address?</p>
+                <a href="{{ url_for('auth.verify_email') }}" class="btn btn-secondary btn-small">
+                    <i class="fas fa-envelope"></i> Verify Email
+                </a>
+            </div>
+            
+            <div class="action-section">
+                <h3>Test Email OTP</h3>
+                <p>Test if your email OTP is working correctly?</p>
+                <button type="button" id="test-email-otp" class="btn btn-outline btn-small">
+                    <i class="fas fa-paper-plane"></i> Send Test Code
+                </button>
+            </div>
+        </div>
+
+        <!-- Additional Links -->
+        <div class="auth-links">
+            <a href="{{ url_for('auth.profile') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Profile
+            </a>
+            <a href="{{ url_for('auth.mobile_otp_settings') }}" class="mobile-settings-link">
+                <i class="fas fa-mobile-alt"></i> Mobile OTP Settings
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Email Service Status -->
+<div class="status-indicator">
+    <div class="service-status">
+        <span class="status-icon checking">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+        <span class="status-text">Checking email service...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('email-otp-settings-form');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const testBtn = document.getElementById('test-email-otp');
+    const messagesContainer = document.getElementById('auth-messages');
+    const emailOtpCheckbox = form.querySelector('input[name="email_otp_enabled"]');
+    
+    // Check email service status
+    checkEmailServiceStatus();
+    
+    // Email OTP toggle handler
+    emailOtpCheckbox.addEventListener('change', function() {
+        const emailInput = form.querySelector('input[name="email"]');
+        if (this.checked && !emailInput.value) {
+            showWarning('Please enter your email address before enabling Email OTP');
+        }
+    });
+    
+    // Form submission handler
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Clear previous messages
+        hideMessages();
+        
+        // Validate email if OTP is enabled
+        if (emailOtpCheckbox.checked) {
+            const email = form.querySelector('input[name="email"]').value.trim();
+            if (!email) {
+                showError('Please enter your email address before enabling Email OTP');
+                return;
+            }
+        }
+        
+        // Disable submit button
+        setLoadingState(true);
+        
+        try {
+            const formData = new FormData(form);
+            
+            const response = await fetch('{{ url_for("auth.email_otp_settings") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showSuccess(result.message);
+                // Reload page to reflect changes
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showError(result.message);
+                if (result.errors) {
+                    displayFieldErrors(result.errors);
+                }
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showError('An unexpected error occurred. Please try again.');
+        } finally {
+            setLoadingState(false);
+        }
+    });
+    
+    // Test Email OTP handler
+    testBtn.addEventListener('click', async function() {
+        const email = form.querySelector('input[name="email"]').value.trim();
+        if (!email) {
+            showError('Please enter your email address first');
+            return;
+        }
+        
+        if (!emailOtpCheckbox.checked) {
+            showError('Please enable Email OTP first');
+            return;
+        }
+        
+        // Disable test button
+        setTestLoadingState(true);
+        
+        try {
+            const response = await fetch('{{ url_for("auth.email_login") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `email=${encodeURIComponent(email)}&csrf_token=${form.querySelector('input[name="csrf_token"]').value}`
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showSuccess('Test code sent! Check your email and use it to login.');
+                // Redirect to verification page
+                setTimeout(() => {
+                    window.location.href = result.redirect;
+                }, 2000);
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            console.error('Test email OTP error:', error);
+            showError('Failed to send test code. Please try again.');
+        } finally {
+            setTestLoadingState(false);
+        }
+    });
+    
+    async function checkEmailServiceStatus() {
+        try {
+            const response = await fetch('{{ url_for("auth.api_email_otp_status") }}');
+            const result = await response.json();
+            
+            const statusIndicator = document.querySelector('.service-status');
+            const statusIcon = statusIndicator.querySelector('.status-icon');
+            const statusText = statusIndicator.querySelector('.status-text');
+            
+            if (result.success && result.email_service_enabled) {
+                statusIcon.className = 'status-icon available';
+                statusIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                statusText.textContent = 'Email service available';
+                statusText.className = 'status-text available';
+            } else {
+                statusIcon.className = 'status-icon unavailable';
+                statusIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                statusText.textContent = 'Email service unavailable';
+                statusText.className = 'status-text unavailable';
+            }
+        } catch (error) {
+            console.error('Error checking email service status:', error);
+            const statusText = document.querySelector('.status-text');
+            statusText.textContent = 'Could not check email service status';
+        }
+    }
+    
+    function setLoadingState(isLoading) {
+        if (isLoading) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+            form.classList.add('loading');
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Update Settings';
+            form.classList.remove('loading');
+        }
+    }
+    
+    function setTestLoadingState(isLoading) {
+        if (isLoading) {
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Sending...';
+        } else {
+            testBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Test Code';
+        }
+    }
+    
+    function showError(message) {
+        const messageContent = messagesContainer.querySelector('.message-content');
+        messageContent.innerHTML = `<div class="message-error"><i class="fas fa-exclamation-circle"></i> ${message}</div>`;
+        messagesContainer.style.display = 'block';
+        messagesContainer.className = 'auth-messages error';
+    }
+    
+    function showSuccess(message) {
+        const messageContent = messagesContainer.querySelector('.message-content');
+        messageContent.innerHTML = `<div class="message-success"><i class="fas fa-check-circle"></i> ${message}</div>`;
+        messagesContainer.style.display = 'block';
+        messagesContainer.className = 'auth-messages success';
+    }
+    
+    function showWarning(message) {
+        const messageContent = messagesContainer.querySelector('.message-content');
+        messageContent.innerHTML = `<div class="message-warning"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
+        messagesContainer.style.display = 'block';
+        messagesContainer.className = 'auth-messages warning';
+    }
+    
+    function hideMessages() {
+        messagesContainer.style.display = 'none';
+    }
+    
+    function displayFieldErrors(errors) {
+        // Clear existing error states
+        form.querySelectorAll('.form-input').forEach(input => {
+            input.classList.remove('error');
+        });
+        
+        // Display field-specific errors
+        Object.keys(errors).forEach(field => {
+            const input = form.querySelector(`[name="${field}"]`);
+            if (input) {
+                input.classList.add('error');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.auth-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.auth-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.auth-header {
+    text-align: center;
+    padding: 30px 30px 20px;
+    background: linear-gradient(135deg, #6f42c1, #5a32a3);
+    color: white;
+}
+
+.auth-header h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.auth-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.settings-info {
+    padding: 20px 30px 10px;
+    background: #f8f9fa;
+    margin: 0 30px 20px;
+    border-radius: 8px;
+    border-left: 4px solid #6f42c1;
+}
+
+.info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+}
+
+.info-item i {
+    color: #6f42c1;
+    margin-top: 2px;
+    font-size: 18px;
+}
+
+.info-text {
+    flex: 1;
+}
+
+.info-text strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-size: 14px;
+}
+
+.info-text p {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.status-item {
+    border-top: 1px solid #dee2e6;
+    padding-top: 16px;
+    margin-top: 16px;
+}
+
+.status-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #333;
+}
+
+.status-header i {
+    color: #6f42c1;
+}
+
+.status-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+}
+
+.status-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.status-value {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.status-value.enabled {
+    color: #28a745;
+}
+
+.status-value.disabled {
+    color: #dc3545;
+}
+
+.status-value i {
+    font-size: 12px;
+}
+
+.form-group {
+    margin: 20px 30px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #6f42c1;
+    box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1);
+}
+
+.form-input.error {
+    border-color: #dc3545;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.form-checkbox {
+    margin: 0;
+}
+
+.checkbox-label {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.checkbox-help {
+    font-size: 12px;
+    color: #666;
+    margin-left: 28px;
+    margin-top: -4px;
+}
+
+.field-help {
+    font-size: 12px;
+    color: #666;
+    margin-top: 6px;
+}
+
+.form-actions {
+    margin: 30px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #6f42c1, #5a32a3);
+    color: white;
+    width: 100%;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5a32a3, #4a2c8a);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid #6f42c1;
+    color: #6f42c1;
+}
+
+.btn-outline:hover:not(:disabled) {
+    background: #6f42c1;
+    color: white;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.auth-messages {
+    margin: 20px 30px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.auth-messages.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.auth-messages.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.auth-messages.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.message-error, .message-success, .message-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.additional-actions {
+    margin: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.action-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.action-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.action-section h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.action-section p {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    color: #666;
+}
+
+.auth-links {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px 30px;
+    border-top: 1px solid #e9ecef;
+    margin-top: 20px;
+}
+
+.auth-links a {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s ease;
+}
+
+.auth-links a:hover {
+    color: #0056b3;
+}
+
+.back-link {
+    color: #6c757d;
+}
+
+.back-link:hover {
+    color: #495057;
+}
+
+.mobile-settings-link {
+    color: #6f42c1;
+}
+
+.mobile-settings-link:hover {
+    color: #5a32a3;
+}
+
+.status-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.service-status {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.status-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.status-icon.checking {
+    color: #ffc107;
+}
+
+.status-icon.available {
+    color: #28a745;
+}
+
+.status-icon.unavailable {
+    color: #dc3545;
+}
+
+.status-text {
+    font-weight: 500;
+}
+
+.status-text.available {
+    color: #28a745;
+}
+
+.status-text.unavailable {
+    color: #dc3545;
+}
+
+.form.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+@media (max-width: 480px) {
+    .auth-container {
+        padding: 10px;
+    }
+    
+    .auth-header {
+        padding: 20px 20px 15px;
+    }
+    
+    .settings-info {
+        margin: 0 20px 15px;
+        padding: 15px;
+    }
+    
+    .form-group {
+        margin: 15px 20px;
+    }
+    
+    .form-actions {
+        margin: 20px;
+    }
+    
+    .additional-actions {
+        margin: 20px;
+        padding: 15px;
+    }
+    
+    .action-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .auth-links {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}

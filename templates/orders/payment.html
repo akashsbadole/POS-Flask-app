@@ -89,7 +89,7 @@
   }
 </style>
 {% endblock %} {% block content %}
-<div class="container-fluid" x-data="paymentProcessor()" data-order="{{ order.to_dict()|tojson }}">
+<div class="container-fluid" x-data="paymentProcessor()" data-order="{{ order.to_dict()|tojson | safe }}">
   <div class="row">
     <div class="col-12">
       <!-- Page Header -->

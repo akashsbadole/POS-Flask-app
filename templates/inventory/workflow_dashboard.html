@@ -1,0 +1,808 @@
+{% extends "base.html" %}
+{% block title %}Inventory Workflow Dashboard - Restaurant POS{% endblock %}
+{% block extra_css %}
+<style>
+    .inventory-workflow-container {
+        background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+    
+    .workflow-header {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        color: white;
+    }
+    
+    .inventory-grid {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .inventory-main {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .inventory-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .stock-status-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #eee;
+    }
+    
+    .status-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .stock-item {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-left: 4px solid;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .stock-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stock-item.available { border-left-color: #27ae60; }
+    .stock-item.low-stock { border-left-color: #f39c12; }
+    .stock-item.critical { border-left-color: #e74c3c; }
+    .stock-item.out-of-stock { border-left-color: #95a5a6; }
+    
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .item-name {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 14px;
+    }
+    
+    .stock-level {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+    
+    .level-available { background: #d5f4e6; color: #27ae60; }
+    .level-low { background: #fdeaa7; color: #f39c12; }
+    .level-critical { background: #faded3; color: #e74c3c; }
+    .level-empty { background: #ecf0f1; color: #95a5a6; }
+    
+    .item-details {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-bottom: 8px;
+    }
+    
+    .item-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .action-btn {
+        padding: 4px 8px;
+        border: none;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-update-stock {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-update-stock:hover {
+        background: #2980b9;
+        transform: scale(1.05);
+    }
+    
+    .btn-request-reorder {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .btn-request-reorder:hover {
+        background: #e67e22;
+        transform: scale(1.05);
+    }
+    
+    .btn-mark-available {
+        background: #27ae60;
+        color: white;
+    }
+    
+    .btn-mark-available:hover {
+        background: #229954;
+        transform: scale(1.05);
+    }
+    
+    .reorder-panel {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .metrics-panel {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .metric-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .metric-value {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #2c3e50;
+    }
+    
+    .metric-label {
+        font-size: 12px;
+        color: #7f8c8d;
+    }
+    
+    .alerts-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .alert-item {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .alert-critical {
+        background: #f8d7da;
+        border-color: #f5c6cb;
+    }
+    
+    .alert-normal {
+        background: #d1ecf1;
+        border-color: #bee5eb;
+    }
+    
+    .bulk-actions {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    
+    .search-filter {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        padding: 8px 12px;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inventory-workflow-container" x-data="inventoryWorkflow()" x-init="init()">
+    <!-- Header -->
+    <div class="workflow-header">
+        <h1 class="mb-0">
+            <i class="fas fa-warehouse"></i>
+            Inventory Workflow Dashboard
+        </h1>
+        <p class="mb-0 mt-2 opacity-75">Real-time inventory management with automated workflows</p>
+    </div>
+
+    <!-- Metrics Panel -->
+    <div class="metrics-panel" x-show="metrics">
+        <h5 class="mb-3">
+            <i class="fas fa-chart-bar"></i>
+            Inventory Overview
+        </h5>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" x-text="metrics.total_items || 0">0</div>
+                <div class="metric-label">Total Items</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" x-text="metrics.low_stock_count || 0">0</div>
+                <div class="metric-label">Low Stock</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" x-text="metrics.out_of_stock_count || 0">0</div>
+                <div class="metric-label">Out of Stock</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" x-text="metrics.available_items || 0">0</div>
+                <div class="metric-label">Available</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Controls -->
+    <div class="bulk-actions">
+        <h5 class="mb-3">
+            <i class="fas fa-filter"></i>
+            Filter & Search
+        </h5>
+        <div class="search-filter">
+            <input type="text" x-model="searchTerm" @input="filterItems()" placeholder="Search items..." class="form-control" style="flex: 1;">
+            
+            <select x-model="statusFilter" @change="filterItems()" class="form-control" style="width: auto;">
+                <option value="all">All Items</option>
+                <option value="available">Available</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="critical">Critical</option>
+                <option value="out_of_stock">Out of Stock</option>
+            </select>
+            
+            <button @click="refreshInventory()" class="btn btn-outline-primary">
+                <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
+                Refresh
+            </button>
+            
+            <button @click="checkStockLevels()" class="btn btn-outline-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                Check Stock Levels
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="inventory-grid">
+        <!-- Inventory Items -->
+        <div class="inventory-main">
+            <div class="status-header">
+                <div class="status-title">
+                    <i class="fas fa-boxes"></i>
+                    Inventory Items
+                </div>
+                <div>
+                    <span class="badge bg-info" x-text="filteredItems.length">0</span>
+                    <span class="text-muted">items</span>
+                </div>
+            </div>
+            
+            <!-- Bulk Actions -->
+            <div class="mb-3" x-show="selectedItems.length > 0">
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="small text-muted" x-text="`${selectedItems.length} items selected`"></span>
+                    <button @click="bulkUpdateStock()" class="btn btn-sm btn-primary">
+                        <i class="fas fa-edit"></i>
+                        Bulk Update
+                    </button>
+                    <button @click="bulkRequestReorder()" class="btn btn-sm btn-warning">
+                        <i class="fas fa-shopping-cart"></i>
+                        Bulk Reorder
+                    </button>
+                    <button @click="clearSelection()" class="btn btn-sm btn-secondary">
+                        Clear
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Items List -->
+            <div style="max-height: 600px; overflow-y: auto;">
+                <template x-for="item in filteredItems" :key="item.id">
+                    <div class="stock-item" :class="getItemStatusClass(item)">
+                        <div class="item-header">
+                            <div class="item-name">
+                                <input type="checkbox" @change="toggleSelection(item.id)" :checked="selectedItems.includes(item.id)" class="me-2">
+                                <span x-text="item.name"></span>
+                            </div>
+                            <span class="stock-level" :class="getLevelClass(item)" x-text="getStockLevelText(item)"></span>
+                        </div>
+                        
+                        <div class="item-details">
+                            <span x-text="`Stock: ${item.stock_quantity}/${item.min_stock_level}`"></span>
+                            <span class="ms-3" x-text="`₹${item.price}`"></span>
+                            <span class="ms-3" x-show="item.category_name" x-text="item.category_name"></span>
+                        </div>
+                        
+                        <div class="item-actions">
+                            <button @click="updateStock(item.id)" class="action-btn btn-update-stock"
+                                    :disabled="!canUpdateStock(item)">
+                                <i class="fas fa-edit"></i>
+                                Update Stock
+                            </button>
+                            
+                            <button @click="requestReorder(item.id)" class="action-btn btn-request-reorder"
+                                    :disabled="!needsReorder(item)">
+                                <i class="fas fa-shopping-cart"></i>
+                                Reorder
+                            </button>
+                            
+                            <button @click="markAvailable(item.id)" class="action-btn btn-mark-available"
+                                    :disabled="!canMarkAvailable(item)">
+                                <i class="fas fa-check"></i>
+                                Available
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                
+                <div x-show="filteredItems.length === 0" class="text-center text-muted py-5">
+                    <i class="fas fa-boxes fa-3x mb-3"></i>
+                    <p>No inventory items found</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="inventory-sidebar">
+            <!-- Stock Alerts -->
+            <div class="alerts-container">
+                <h6 class="mb-3">
+                    <i class="fas fa-bell"></i>
+                    Active Alerts
+                </h6>
+                
+                <template x-for="alert in alerts" :key="alert.id">
+                    <div class="alert-item" :class="alert.level === 'critical' ? 'alert-critical' : 'alert-normal'">
+                        <div>
+                            <div class="fw-bold" x-text="alert.item_name"></div>
+                            <div class="small" x-text="alert.message"></div>
+                        </div>
+                        <span class="badge" :class="alert.level === 'critical' ? 'bg-danger' : 'bg-warning'" x-text="alert.level"></span>
+                    </div>
+                </template>
+                
+                <div x-show="alerts.length === 0" class="text-center text-muted py-3">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <p class="small mb-0">No active alerts</p>
+                </div>
+            </div>
+            
+            <!-- Reorder Queue -->
+            <div class="reorder-panel">
+                <h6 class="mb-3">
+                    <i class="fas fa-shopping-cart"></i>
+                    Reorder Queue
+                </h6>
+                
+                <template x-for="reorder in reorderQueue" :key="reorder.id">
+                    <div class="border rounded p-2 mb-2">
+                        <div class="fw-bold small" x-text="reorder.item_name"></div>
+                        <div class="small text-muted">
+                            <span x-text="`Qty: ${reorder.quantity}`"></span>
+                            <span class="ms-2" x-text="`Urgency: ${reorder.urgency}`"></span>
+                        </div>
+                        <div class="mt-1">
+                            <button @click="approveReorder(reorder.id)" class="btn btn-sm btn-success me-1">
+                                Approve
+                            </button>
+                            <button @click="rejectReorder(reorder.id)" class="btn btn-sm btn-danger">
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                
+                <div x-show="reorderQueue.length === 0" class="text-center text-muted py-3">
+                    <i class="fas fa-inbox"></i>
+                    <p class="small mb-0">No pending reorders</p>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="stock-status-card">
+                <h6 class="mb-3">
+                    <i class="fas fa-bolt"></i>
+                    Quick Actions
+                </h6>
+                
+                <div class="d-grid gap-2">
+                    <button @click="showBulkUpdateModal = true" class="btn btn-primary btn-sm">
+                        <i class="fas fa-upload"></i>
+                        Bulk Stock Update
+                    </button>
+                    
+                    <button @click="generateReorderReport()" class="btn btn-warning btn-sm">
+                        <i class="fas fa-file-export"></i>
+                        Reorder Report
+                    </button>
+                    
+                    <button @click="exportInventory()" class="btn btn-info btn-sm">
+                        <i class="fas fa-download"></i>
+                        Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <!-- Stock Update Modal -->
+    <div class="modal fade" id="stockUpdateModal" tabindex="-1" x-show="showStockUpdateModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update Stock</h5>
+                    <button type="button" class="btn-close" @click="showStockUpdateModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Item</label>
+                        <input type="text" class="form-control" x-model="selectedItem.name" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Current Stock</label>
+                        <input type="number" class="form-control" x-model="selectedItem.stock_quantity" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">New Stock Quantity</label>
+                        <input type="number" class="form-control" x-model="stockUpdate.quantity" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reason</label>
+                        <select class="form-control" x-model="stockUpdate.reason">
+                            <option value="manual_update">Manual Update</option>
+                            <option value="restock">Restock</option>
+                            <option value="waste">Waste/Spoilage</option>
+                            <option value="correction">Stock Correction</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="showStockUpdateModal = false">Cancel</button>
+                    <button type="button" class="btn btn-primary" @click="confirmStockUpdate()">
+                        <span x-show="!updatingStock">Update Stock</span>
+                        <span x-show="updatingStock"><div class="loading-spinner"></div></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function inventoryWorkflow() {
+    return {
+        items: [],
+        filteredItems: [],
+        alerts: [],
+        reorderQueue: [],
+        metrics: null,
+        selectedItems: [],
+        selectedItem: {},
+        stockUpdate: { quantity: 0, reason: 'manual_update' },
+        
+        loading: false,
+        updatingStock: false,
+        showStockUpdateModal: false,
+        searchTerm: '',
+        statusFilter: 'all',
+        
+        async init() {
+            await this.loadInventory();
+            await this.loadAlerts();
+            await this.loadMetrics();
+            this.startAutoRefresh();
+        },
+        
+        async loadInventory() {
+            this.loading = true;
+            try {
+                const response = await fetch('/inventory/data');
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.items = data.items;
+                    this.filteredItems = this.items;
+                }
+            } catch (error) {
+                console.error('Error loading inventory:', error);
+                this.showNotification('Error loading inventory', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        async loadAlerts() {
+            try {
+                const response = await fetch('/inventory/workflow/alerts');
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.alerts = data.alerts;
+                }
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        },
+        
+        async loadMetrics() {
+            try {
+                const response = await fetch('/inventory/workflow/statistics');
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.metrics = data.statistics;
+                }
+            } catch (error) {
+                console.error('Error loading metrics:', error);
+            }
+        },
+        
+        filterItems() {
+            this.filteredItems = this.items.filter(item => {
+                const matchesSearch = !this.searchTerm || 
+                    item.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+                    (item.category_name && item.category_name.toLowerCase().includes(this.searchTerm.toLowerCase()));
+                
+                const matchesStatus = this.statusFilter === 'all' || this.getItemStatus(item) === this.statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+        },
+        
+        getItemStatus(item) {
+            if (item.stock_quantity <= 0) return 'out_of_stock';
+            if (item.stock_quantity <= item.min_stock_level * 0.5) return 'critical';
+            if (item.stock_quantity <= item.min_stock_level) return 'low_stock';
+            return 'available';
+        },
+        
+        getItemStatusClass(item) {
+            return this.getItemStatus(item);
+        },
+        
+        getLevelClass(item) {
+            const status = this.getItemStatus(item);
+            return `level-${status.replace('_', '-')}`;
+        },
+        
+        getStockLevelText(item) {
+            const status = this.getItemStatus(item);
+            const statusText = {
+                'available': 'Available',
+                'low_stock': 'Low Stock',
+                'critical': 'Critical',
+                'out_of_stock': 'Out of Stock'
+            };
+            return statusText[status] || status;
+        },
+        
+        canUpdateStock(item) {
+            return true; // All users can update stock
+        },
+        
+        needsReorder(item) {
+            return item.stock_quantity <= item.min_stock_level;
+        },
+        
+        canMarkAvailable(item) {
+            return item.stock_quantity > 0 && !item.is_available;
+        },
+        
+        toggleSelection(itemId) {
+            if (this.selectedItems.includes(itemId)) {
+                this.selectedItems = this.selectedItems.filter(id => id !== itemId);
+            } else {
+                this.selectedItems.push(itemId);
+            }
+        },
+        
+        clearSelection() {
+            this.selectedItems = [];
+        },
+        
+        async updateStock(itemId) {
+            const item = this.items.find(i => i.id === itemId);
+            if (item) {
+                this.selectedItem = { ...item };
+                this.stockUpdate.quantity = item.stock_quantity;
+                this.showStockUpdateModal = true;
+            }
+        },
+        
+        async confirmStockUpdate() {
+            this.updatingStock = true;
+            try {
+                const response = await fetch('/inventory/workflow/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        item_id: this.selectedItem.id,
+                        action: 'update_stock',
+                        data: this.stockUpdate
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showNotification('Stock updated successfully', 'success');
+                    this.showStockUpdateModal = false;
+                    await this.loadInventory();
+                    await this.loadMetrics();
+                } else {
+                    this.showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating stock:', error);
+                this.showNotification('Error updating stock', 'error');
+            } finally {
+                this.updatingStock = false;
+            }
+        },
+        
+        async requestReorder(itemId) {
+            try {
+                const response = await fetch('/inventory/workflow/request_reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        urgency: 'normal'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showNotification('Reorder requested successfully', 'success');
+                    await this.loadAlerts();
+                } else {
+                    this.showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error requesting reorder:', error);
+                this.showNotification('Error requesting reorder', 'error');
+            }
+        },
+        
+        async markAvailable(itemId) {
+            try {
+                const response = await fetch('/inventory/workflow/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        action: 'mark_available'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showNotification('Item marked as available', 'success');
+                    await this.loadInventory();
+                } else {
+                    this.showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error marking available:', error);
+                this.showNotification('Error marking item available', 'error');
+            }
+        },
+        
+        async checkStockLevels() {
+            try {
+                const response = await fetch('/inventory/workflow/check_stock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showNotification('Stock levels checked', 'info');
+                    await this.loadAlerts();
+                } else {
+                    this.showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error checking stock levels:', error);
+                this.showNotification('Error checking stock levels', 'error');
+            }
+        },
+        
+        async refreshInventory() {
+            await Promise.all([
+                this.loadInventory(),
+                this.loadAlerts(),
+                this.loadMetrics()
+            ]);
+            this.showNotification('Inventory refreshed', 'info');
+        },
+        
+        startAutoRefresh() {
+            setInterval(() => {
+                if (!this.loading) {
+                    this.refreshInventory();
+                }
+            }, 60000); // Refresh every minute
+        },
+        
+        showNotification(message, type = 'info') {
+            // Implement notification system
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+    }
+}
+</script>
+{% endblock %}

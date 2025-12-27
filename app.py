@@ -1,255 +1,265 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask_sqlalchemy import SQLAlchemy
-from flask_wtf.csrf import CSRFProtect
 import os
 import logging
-from logging.handlers import RotatingFileHandler
 from datetime import datetime
-from config import config
+from flask import Flask, render_template
+from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
+from flask_migrate import Migrate
+from flask_compress import Compress
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
-# Import models
-from models import db, User, Category, MenuItem, Table, Order, OrderItem, Payment, Settings
-from utils.permissions import inject_permissions
+# Import models and utilities
+from models import db, init_db, create_tables, validate_database_config, get_database_info
+from models.user import User
+from utils.encryption import EncryptionManager, get_encryption_manager
 
-# Create Flask app
-def create_app(config_name='default'):
-    app = Flask(__name__)
-    app.config.from_object(config[config_name])
+# Import routes
+from routes.auth import auth_bp
+from routes.dashboard import dashboard_bp
+from routes.menu import menu_bp
+from routes.orders import orders_bp
+from routes.tables import tables_bp
+from routes.reports import reports_bp
+from routes.users import users_bp
+from routes.settings import settings_bp
+from routes.inventory import inventory_bp
+from routes.kot import kot_bp
+from routes.print_management import print_bp as print_management_bp
+from routes.printer_customization import printer_customization_bp
+from routes.api import api_bp
+from routes.dynamic_reports import dynamic_reports_bp
+from routes.import_export import import_export_bp
+from routes.white_label import white_label_bp
+from routes.footer_settings import footer_settings_bp
+from routes.email import email_bp
+
+# Import backup system
+from routes.backup import backup_bp
+
+# Import backup system utilities
+from utils.backup_scheduler import init_backup_scheduler
+from utils.backup_monitor import BackupMonitor
+
+def create_app():
+    """Create Flask application with all configurations"""
     
-    # Configure logging
-    configure_logging(app)
+    app = Flask(__name__)
+    
+    # Load configuration
+    app.config.from_object(os.environ.get('FLASK_ENV', 'config.DevelopmentConfig'))
     
     # Initialize extensions
-    db.init_app(app)
+    init_extensions(app)
     
-    # CSRF protection
+    # Register blueprints
+    register_blueprints(app)
+    
+    # Initialize backup system
+    init_backup_system(app)
+    
+    # Register error handlers
+    register_error_handlers(app)
+    
+    # Create database tables
+    with app.app_context():
+        init_database(app)
+    
+    return app
+
+def init_extensions(app):
+    """Initialize Flask extensions"""
+    
+    # Database
+    init_db(app)
+    
+    # CSRF Protection
     csrf = CSRFProtect(app)
     
-    # Login manager
+    # Login Manager
     login_manager = LoginManager()
-    login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Please log in to access this page.'
     login_manager.login_message_category = 'info'
+    login_manager.init_app(app)
     
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
     
-    # Create database tables
-    with app.app_context():
-        db.create_all()
-        # Create default settings
-        Settings.create_defaults()
-        # Create default admin user if not exists
-        if not User.query.filter_by(username='admin').first():
-            admin_user = User.create_user('admin', 'admin123', 'admin', 'admin@restaurant.com')
-            if admin_user:
-                print("Default admin user created: username=admin, password=admin123")
+    # Migration support
+    migrate = Migrate(app, db)
     
-    # Simple test route first
-    @app.route('/simple-test')
-    def simple_test():
-        return "Simple test working!"
+    # Compression
+    compress = Compress()
+    compress.init_app(app)
     
-    # Register blueprints
+    # Rate limiting
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"]
+    )
+    limiter.init_app(app)
+    
+    # Store extensions in app for access
+    app.extensions['csrf'] = csrf
+    app.extensions['login_manager'] = login_manager
+    app.extensions['migrate'] = migrate
+    app.extensions['compress'] = compress
+    app.extensions['limiter'] = limiter
+
+def register_blueprints(app):
+    """Register all application blueprints"""
+    
+    blueprints = [
+        (auth_bp, None),
+        (dashboard_bp, None),
+        (menu_bp, None),
+        (orders_bp, None),
+        (tables_bp, None),
+        (reports_bp, None),
+        (users_bp, None),
+        (settings_bp, None),
+        (inventory_bp, None),
+        (kot_bp, None),
+        (print_management_bp, None),
+        (printer_customization_bp, None),
+        (api_bp, '/api'),
+        (dynamic_reports_bp, None),
+        (import_export_bp, None),
+        (white_label_bp, None),
+        (footer_settings_bp, None),
+        (email_bp, None),
+        # Backup system
+        (backup_bp, None)
+    ]
+    
+    for blueprint, url_prefix in blueprints:
+        if url_prefix:
+            app.register_blueprint(blueprint, url_prefix=url_prefix)
+        else:
+            app.register_blueprint(blueprint)
+
+def init_backup_system(app):
+    """Initialize the backup and restore system"""
+    
     try:
-        from routes.auth import auth_bp
-        print("Auth blueprint imported successfully")
-        app.register_blueprint(auth_bp, url_prefix='/auth')
-        print("Auth blueprint registered successfully")
+        # Initialize backup scheduler
+        backup_scheduler = init_backup_scheduler(app)
+        
+        # Initialize backup monitor
+        backup_monitor = BackupMonitor(app)
+        
+        # Store in app context for easy access
+        app.backup_scheduler = backup_scheduler
+        app.backup_monitor = backup_monitor
+        
+        app.logger.info("Backup system initialized successfully")
+        
     except Exception as e:
-        print(f"Error importing/registering auth blueprint: {e}")
-        import traceback
-        traceback.print_exc()
+        app.logger.error(f"Failed to initialize backup system: {str(e)}")
+
+def register_error_handlers(app):
+    """Register error handlers"""
     
-    from routes.dashboard import dashboard_bp
-    from routes.orders import orders_bp
-    from routes.menu import menu_bp
-    from routes.tables import tables_bp
-    from routes.inventory import inventory_bp
-    from routes.kot import kot_bp
-    from routes.reports import reports_bp
-    from routes.api import api_bp
-    from routes.email import email_bp
-    from routes.footer_settings import footer_settings_bp
-    from routes.settings import settings_bp
-    from routes.users import users_bp
-    from routes.import_export import import_export_bp
-    
-    app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
-    app.register_blueprint(orders_bp, url_prefix='/orders')
-    app.register_blueprint(menu_bp, url_prefix='/menu')
-    app.register_blueprint(tables_bp, url_prefix='/tables')
-    app.register_blueprint(inventory_bp, url_prefix='/inventory')
-    app.register_blueprint(kot_bp, url_prefix='/kot')
-    app.register_blueprint(reports_bp, url_prefix='/reports')
-    app.register_blueprint(api_bp, url_prefix='/api')
-    app.register_blueprint(email_bp, url_prefix='/email')
-    app.register_blueprint(footer_settings_bp, url_prefix='/footer')
-    app.register_blueprint(settings_bp, url_prefix='/settings')
-    app.register_blueprint(users_bp, url_prefix='/users')
-    app.register_blueprint(import_export_bp, url_prefix='/import-export')
-    
-    # Main routes
-    @app.route('/')
-    def index():
-        if current_user.is_authenticated:
-            return redirect(url_for('dashboard.index'))
-        return redirect(url_for('auth.login'))
-    
-    @app.route('/health')
-    def health_check():
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'version': '1.0.0'
-        })
-    
-    # Context processors
-    @app.context_processor
-    def inject_settings():
-        """Inject global settings into templates"""
-        public_settings = Settings.get_public()
-        all_settings = Settings.get_all_as_dict()
-        return dict(public_settings=public_settings, settings=all_settings)
-    
-    @app.context_processor
-    def inject_user():
-        """Inject current user into templates"""
-        return dict(current_user=current_user)
-    
-    @app.context_processor
-    def inject_permissions():
-        """Inject permissions utilities into templates"""
-        return inject_permissions()
-    
-    # Error handlers
     @app.errorhandler(404)
     def not_found_error(error):
-        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
-            return jsonify({'error': 'Not found'}), 404
         return render_template('errors/404.html'), 404
+    
+    @app.errorhandler(403)
+    def forbidden_error(error):
+        return render_template('errors/403.html'), 403
     
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
-        app.logger.error(f"Internal server error: {str(error)}")
-        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
-            return jsonify({'error': 'Internal server error'}), 500
         return render_template('errors/500.html'), 500
-    
-    @app.errorhandler(403)
-    def forbidden_error(error):
-        app.logger.warning(f"Forbidden access attempt: {str(error)}")
-        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
-            return jsonify({'error': 'Forbidden'}), 403
-        return render_template('errors/403.html'), 403
     
     @app.errorhandler(400)
     def bad_request_error(error):
-        app.logger.error(f"Bad request error: {str(error)}")
-        app.logger.error(f"Request data: {request.form}")
-        app.logger.error(f"Request method: {request.method}")
-        app.logger.error(f"Request URL: {request.url}")
-        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
-            return jsonify({'error': 'Bad request', 'details': str(error)}), 400
         return render_template('errors/400.html'), 400
-    
-    # Template filters
-    @app.template_filter('currency')
-    def currency_filter(amount):
-        """Format amount as currency"""
-        try:
-            currency_symbol = Settings.get('currency_symbol', '₹')
-            decimal_places = int(Settings.get('decimal_places', 2))
-            return f"{currency_symbol}{float(amount):.{decimal_places}f}"
-        except (ValueError, TypeError):
-            return f"₹{amount}"
-    
-    @app.template_filter('datetime')
-    def datetime_filter(dt):
-        """Format datetime"""
-        if isinstance(dt, str):
-            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
-        return dt.strftime('%d %b %Y %I:%M %p') if dt else ''
-    
-    @app.template_filter('date')
-    def date_filter(dt):
-        """Format date"""
-        if isinstance(dt, str):
-            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
-        return dt.strftime('%d %b %Y') if dt else ''
-    
-    @app.template_filter('time')
-    def time_filter(dt):
-        """Format time"""
-        if isinstance(dt, str):
-            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
-        return dt.strftime('%I:%M %p') if dt else ''
-    
-    # Security headers
-    @app.after_request
-    def after_request(response):
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        return response
-    
-    return app
 
-def configure_logging(app):
-    """Configure application logging"""
-    if not app.debug and not app.testing:
-        # Create logs directory if it doesn't exist
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
+def init_database(app):
+    """Initialize database and create tables"""
+    
+    try:
+        # Validate database configuration
+        if not validate_database_config(app):
+            app.logger.error("Database configuration validation failed")
+            return False
         
-        # Configure file handler with rotation
-        file_handler = RotatingFileHandler(
-            'logs/pos_app.log',
-            maxBytes=10240000,  # 10MB
-            backupCount=10
-        )
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        ))
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
+        # Create all tables
+        create_tables()
         
-        # Configure console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s'
-        ))
-        console_handler.setLevel(logging.DEBUG if app.debug else logging.INFO)
-        app.logger.addHandler(console_handler)
+        # Get database info
+        db_info = get_database_info()
+        app.logger.info(f"Database initialized: {db_info['type']}")
         
-        app.logger.setLevel(logging.DEBUG if app.debug else logging.INFO)
-        app.logger.info('POS application startup')
+        # Create default admin user if none exists
+        create_default_admin(app)
         
-        # Configure encryption logger separately
-        encryption_logger = logging.getLogger('web_cloud.utils.encryption')
-        encryption_handler = RotatingFileHandler(
-            'logs/encryption.log',
-            maxBytes=10240000,  # 10MB
-            backupCount=10
-        )
-        encryption_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        ))
-        encryption_handler.setLevel(logging.INFO)
-        encryption_logger.addHandler(encryption_handler)
-        encryption_logger.setLevel(logging.INFO)
+        # Initialize encryption if not exists
+        init_encryption_system(app)
         
-        # Prevent encryption logs from propagating to root logger
-        encryption_logger.propagate = False
+        return True
+        
+    except Exception as e:
+        app.logger.error(f"Database initialization failed: {str(e)}")
+        return False
 
-# Create app instance
+def create_default_admin(app):
+    """Create default admin user if none exists"""
+    
+    try:
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user:
+            admin_user = User(
+                username='admin',
+                email='admin@example.com',
+                role='admin',
+                is_active=True
+            )
+            admin_user.set_password('admin123')  # Default password - should be changed
+            
+            db.session.add(admin_user)
+            db.session.commit()
+            
+            app.logger.info("Default admin user created (username: admin, password: admin123)")
+            
+    except Exception as e:
+        app.logger.error(f"Failed to create default admin: {str(e)}")
+
+def init_encryption_system(app):
+    """Initialize encryption system"""
+    
+    try:
+        encryption_manager = get_encryption_manager(app)
+        app.logger.info("Encryption system initialized")
+        
+    except Exception as e:
+        app.logger.error(f"Failed to initialize encryption: {str(e)}")
+
+# Application factory
 app = create_app()
 
+# Development server startup
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') == 'development'
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    
+    # Ensure backup directories exist
+    backup_dirs = ['backups', 'backups/database', 'backups/configuration', 
+                   'backups/user_data', 'backups/logs', 'backups/temp']
+    
+    for directory in backup_dirs:
+        os.makedirs(directory, exist_ok=True)
+    
+    # Start backup scheduler if not already running
+    if hasattr(app, 'backup_scheduler') and not app.backup_scheduler.is_running:
+        app.backup_scheduler.start_scheduler()
+        app.backup_scheduler.reschedule_all_jobs()
+        app.logger.info("Backup scheduler started")
+    
+    # Run the application
+    app.run(
+        host=app.config.get('HOST', '127.0.0.1'),
+        port=app.config.get('PORT', 5000),
+        debug=app.config.get('DEBUG', False)
+    )

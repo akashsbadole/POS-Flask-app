@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Printer Customization - White Label Settings</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap10.0/font-icons@1./bootstrap-icons.css" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/modern-pos.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/thermal-print.css') }}" rel="stylesheet">
+        <style>
+            .printer-customization-container {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px 0;
+            }
+            
+            .customization-card {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border: none;
+                border-radius: 15px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+                transition: all 0.3s ease;
+            }
+            
+            .customization-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            }
+            
+            .category-header {
+                background: linear-gradient(45deg, #007bff, #0056b3);
+                color: white;
+                border-radius: 15px 15px 0 0;
+                padding: 20px;
+                margin: -1px -1px 20px -1px;
+            }
+            
+            .setting-group {
+                border: 1px solid #e9ecef;
+                border-radius: 10px;
+                padding: 20px;
+                margin-bottom: 15px;
+                background: #f8f9fa;
+            }
+            
+            .setting-group h6 {
+                color: #495057;
+                margin-bottom: 15px;
+                font-weight: 600;
+            }
+            
+            .form-control, .form-select {
+                border: 2px solid #e9ecef;
+                border-radius: 8px;
+                transition: all 0.3s ease;
+            }
+            
+            .form-control:focus, .form-select:focus {
+                border-color: #007bff;
+                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            }
+            
+            .preview-section {
+                background: #ffffff;
+                border: 2px dashed #dee2e6;
+                border-radius: 10px;
+                padding: 20px;
+                margin-top: 15px;
+                min-height: 200px;
+                position: relative;
+            }
+            
+            .preview-header {
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: #28a745;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 15px;
+                font-size: 12px;
+            }
+            
+            .thermal-preview {
+                font-family: monospace;
+                font-size: 12px;
+                line-height: 1.4;
+                color: #000;
+                max-width: 300px;
+                margin: 0 auto;
+            }
+            
+            .thermal-line {
+                border-bottom: 1px dotted #ccc;
+                padding: 2px 0;
+                margin: 1px 0;
+            }
+            
+            .color-preview {
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                border: 2px solid #dee2e6;
+                display: inline-block;
+                margin-right: 10px;
+            }
+            
+            .printer-status {
+                background: #d4edda;
+                border: 1px solid #c3e6cb;
+                color: #155724;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .export-import-section {
+                background: linear-gradient(45deg, #28a745, #20c997);
+                color: white;
+                border-radius: 15px;
+                padding: 20px;
+                margin-top: 30px;
+            }
+            
+            .tab-content {
+                background: white;
+                border-radius: 0 0 15px 15px;
+                padding: 30px;
+            }
+            
+            .nav-tabs .nav-link {
+                border-radius: 10px 10px 0 0;
+                border: none;
+                background: #f8f9fa;
+                color: #495057;
+                margin-right: 5px;
+            }
+            
+            .nav-tabs .nav-link.active {
+                background: #007bff;
+                color: white;
+            }
+            
+            .btn-custom {
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-weight: 500;
+                transition: all 0.3s ease;
+            }
+            
+            .btn-save {
+                background: linear-gradient(45deg, #28a745, #20c997);
+                border: none;
+                color: white;
+            }
+            
+            .btn-save:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+            }
+            
+            .btn-preview {
+                background: linear-gradient(45deg, #007bff, #0056b3);
+                border: none;
+                color: white;
+            }
+            
+            .btn-preview:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+            }
+            
+            .loading-spinner {
+                display: none;
+            }
+            
+            .toast-container {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1050;
+            }
+            
+            .setting-toggle {
+                position: relative;
+                display: inline-block;
+                width: 50px;
+                height: 24px;
+            }
+            
+            .setting-toggle input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            
+            .setting-slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #ccc;
+                transition: .4s;
+                border-radius: 24px;
+            }
+            
+            .setting-slider:before {
+                position: absolute;
+                content: "";
+                height: 18px;
+                width: 18px;
+                left: 3px;
+                bottom: 3px;
+                background-color: white;
+                transition: .4s;
+                border-radius: 50%;
+            }
+            
+            input:checked + .setting-slider {
+                background-color: #007bff;
+            }
+            
+            input:checked + .setting-slider:before {
+                transform: translateX(26px);
+            }
+        </style>
+</head>
+<body>
+        <div class="printer-customization-container">
+            <div class="container-fluid">
+                <!-- Header -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h1 class="text-white mb-0">
+                                    <i class="bi bi-printer"></i> Printer Customization
+                                </h1>
+                                <p class="text-white-50 mb-0">Comprehensive printer settings and white label integration</p>
+                        </div>
+                            <div>
+                                <a href="{{ url_for('white_label.index') }}" class="btn btn-light btn-custom">
+                                    <i class="bi bi-arrow-left"></i> Back to White Label
+                                </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
+                <!-- Printer Status -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="printer-status" id="printerStatus">
+                            <i class="bi bi-check-circle"></i> Printer customization system is ready
+                            <span class="float-end" id="lastUpdate">2025-12-26 04:49:07</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Main Customization Tabs -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="customization-card">
+                            <!-- Navigation Tabs -->
+                            <ul class="nav nav-tabs" id="customizationTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="receipt-tab" data-bs-toggle="tab" data-bs-target="#receipt-settings" type="button" role="tab">
+                                        <i class="bi bi-receipt"></i> Receipt Settings
+                                </button>
+                            </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="invoice-tab" data-bs-toggle="tab" data-bs-target="#invoice-settings" type="button" role="tab">
+                                        <i class="bi bi-file-earmark-text"></i> Invoice Settings
+                                </button>
+                            </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="kot-tab" data-bs-toggle="tab" data-bs-target="#kot-settings" type="button" role="tab">
+                                        <i class="bi bi-cup-hot"></i> KOT Settings
+                                </button>
+                            </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="thermal-tab" data-bs-toggle="tab" data-bs-target="#thermal-settings" type="button" role="tab">
+                                        <i class="bi bi-gear"></i> Thermal Settings
+                                </button>
+                            </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="multi-printer-tab" data-bs-toggle="tab" data-bs-target="#multi-printer-settings" type="button" role="tab">
+                                        <i class="bi bi-collection"></i> Multi-Printer
+                                </button>
+                            </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="quality-tab" data-bs-toggle="tab" data-bs-target="#quality-settings" type="button" role="tab">
+                                        <i class="bi bi-image"></i> Print Quality
+                                </button>
+                            </li>
+                        </ul>
+                            
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="customizationTabsContent">
+                                <!-- Receipt Settings -->
+                                <div class="tab-pane fade show active" id="receipt-settings" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-lg-8">
+                                            <h4><i class="bi bi-receipt"></i> Receipt Customization</h4>
+                                            
+                                            <!-- Basic Settings -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-eye"></i> Display Options</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="receipt_show_logo" checked>
+                                                            <label class="form-check-label" for="receipt_show_logo">Show Company Logo</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="receipt_show_company_info" checked>
+                                                            <label class="form-check-label" for="receipt_show_company_info">Show Company Info</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="receipt_show_gst_number" checked>
+                                                            <label class="form-check-label" for="receipt_show_gst_number">Show GST Number</label>
+                                                    </div>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="receipt_show_order_date" checked>
+                                                            <label class="form-check-label" for="receipt_show_order_date">Show Order Date</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="receipt_show_customer_name">
+                                                            <label class="form-check-label" for="receipt_show_customer_name">Show Customer Name</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="receipt_cutting_line" checked>
+                                                            <label class="form-check-label" for="receipt_cutting_line">Show Cutting Line</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Logo & Branding -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-image"></i> Logo & Branding</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Logo Size</label>
+                                                        <select class="form-select" id="receipt_logo_size">
+                                                            <option value="60px">Small (60px)</option>
+                                                            <option value="80px" selected>Medium (80px)</option>
+                                                            <option value="100px">Large (100px)</option>
+                                                            <option value="120px">Extra Large (120px)</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Header Color</label>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="color-preview" id="receipt_color_preview"></div>
+                                                            <input type="color" class="form-control form-control-color" id="receipt_header_color" value="#000000">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Layout & Formatting -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-layout-text-window"></i> Layout & Formatting</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Font Size</label>
+                                                        <select class="form-select" id="receipt_font_size">
+                                                            <option value="10px">Small (10px)</option>
+                                                            <option value="11px" selected>Medium (11px)</option>
+                                                            <option value="12px">Large (12px)</option>
+                                                            <option value="14px">Extra Large (14px)</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Layout Style</label>
+                                                        <select class="form-select" id="receipt_layout_style">
+                                                            <option value="compact">Compact</option>
+                                                            <option value="default" selected>Standard</option>
+                                                            <option value="spacious">Spacious</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Custom Messages -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-chat-text"></i> Custom Messages</h6>
+                                                <div class="row">
+                                                    <div class="col-12">
+                                                        <label class="form-label">Footer Message</label>
+                                                        <textarea class="form-control" id="receipt_custom_message" rows="3" placeholder="Thank you for your business!"></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                        
+                                        <div class="col-lg-4">
+                                            <h5><i class="bi bi-eye"></i> Live Preview</h5>
+                                            <div class="preview-section">
+                                                <div class="preview-header">Preview</div>
+                                                <div class="thermal-preview" id="receiptPreview">
+                                                    <div class="thermal-line text-center" style="font-weight: bold;">RESTAURANT NAME</div>
+                                                    <div class="thermal-line text-center">123 Main Street</div>
+                                                    <div class="thermal-line text-center">Phone: 123-456-7890</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line">Order #12345</div>
+                                                    <div class="thermal-line">2025-12-25 20:30</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line">Item 1 x2    ₹100.00</div>
+                                                    <div class="thermal-line">Item 2 x1    ₹150.00</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line">Total:    ₹250.00</div>
+                                                    <div class="thermal-line text-center">Thank you!</div>
+                                            </div>
+                                        </div>
+                                            
+                                            <div class="mt-3">
+                                                <button class="btn btn-preview btn-custom w-100 mb-2" onclick="previewReceipt()">
+                                                    <i class="bi bi-eye"></i> Preview Receipt
+                                            </button>
+                                                <button class="btn btn-save btn-custom w-100" onclick="saveReceiptSettings()">
+                                                    <i class="bi bi-save"></i> Save Receipt Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                                
+                                <!-- Invoice Settings -->
+                                <div class="tab-pane fade" id="invoice-settings" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-lg-8">
+                                            <h4><i class="bi bi-file-earmark-text"></i> Invoice Customization</h4>
+                                            
+                                            <!-- Invoice Options -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-eye"></i> Display Options</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="invoice_show_company_logo" checked>
+                                                            <label class="form-check-label" for="invoice_show_company_logo">Show Company Logo</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="invoice_show_billing_address" checked>
+                                                            <label class="form-check-label" for="invoice_show_billing_address">Show Billing Address</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="invoice_terms_enabled" checked>
+                                                            <label class="form-check-label" for="invoice_terms_enabled">Show Terms & Conditions</label>
+                                                    </div>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="invoice_show_signature">
+                                                            <label class="form-check-label" for="invoice_show_signature">Show Signature Line</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="invoice_show_bank_details">
+                                                            <label class="form-check-label" for="invoice_show_bank_details">Show Bank Details</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="invoice_notes_enabled" checked>
+                                                            <label class="form-check-label" for="invoice_notes_enabled">Show Notes Section</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Invoice Layout -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-layout-text-window"></i> Layout Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Font Size</label>
+                                                        <select class="form-select" id="invoice_font_size">
+                                                            <option value="12px">Small (12px)</option>
+                                                            <option value="14px" selected>Medium (14px)</option>
+                                                            <option value="16px">Large (16px)</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Logo Size</label>
+                                                        <select class="form-select" id="invoice_logo_size">
+                                                            <option value="100px">Small (100px)</option>
+                                                            <option value="150px" selected>Medium (150px)</option>
+                                                            <option value="200px">Large (200px)</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Layout Style</label>
+                                                        <select class="form-select" id="invoice_layout_style">
+                                                            <option value="traditional">Traditional</option>
+                                                            <option value="modern" selected>Modern</option>
+                                                            <option value="minimal">Minimal</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Invoice Content -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-chat-text"></i> Content Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-12">
+                                                        <label class="form-label">Terms & Conditions</label>
+                                                        <textarea class="form-control" id="invoice_terms_text" rows="3" placeholder="Payment due within 30 days..."></textarea>
+                                                </div>
+                                            </div>
+                                                <div class="row mt-3">
+                                                    <div class="col-12">
+                                                        <label class="form-label">Footer Text</label>
+                                                        <input type="text" class="form-control" id="invoice_footer_text" placeholder="Thank you for your business!">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                        
+                                        <div class="col-lg-4">
+                                            <h5><i class="bi bi-eye"></i> Invoice Preview</h5>
+                                            <div class="preview-section">
+                                                <div class="preview-header">Preview</div>
+                                                <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; max-width: 300px;">
+                                                    <div style="text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px;">INVOICE</div>
+                                                    <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+                                                        <div>RESTAURANT NAME</div>
+                                                        <div>123 Main Street</div>
+                                                        <div>Phone: 123-456-7890</div>
+                                                </div>
+                                                    <div>Invoice #: INV-001</div>
+                                                    <div>Date: 2025-12-25</div>
+                                                    <div>Customer: John Doe</div>
+                                                    <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                                                        <tr style="border-bottom: 1px solid #ccc;">
+                                                            <th style="text-align: left;">Item</th>
+                                                            <th style="text-align: right;">Amount</th>
+                                                    </tr>
+                                                        <tr>
+                                                            <td>Service 1</td>
+                                                            <td style="text-align: right;">₹250.00</td>
+                                                    </tr>
+                                                        <tr style="border-top: 1px solid #ccc; font-weight: bold;">
+                                                            <td>Total</td>
+                                                            <td style="text-align: right;">₹250.00</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                            
+                                            <div class="mt-3">
+                                                <button class="btn btn-preview btn-custom w-100 mb-2" onclick="previewInvoice()">
+                                                    <i class="bi bi-eye"></i> Preview Invoice
+                                            </button>
+                                                <button class="btn btn-save btn-custom w-100" onclick="saveInvoiceSettings()">
+                                                    <i class="bi bi-save"></i> Save Invoice Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                                
+                                <!-- KOT Settings -->
+                                <div class="tab-pane fade" id="kot-settings" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-lg-8">
+                                            <h4><i class="bi bi-cup-hot"></i> KOT (Kitchen Order Ticket) Settings</h4>
+                                            
+                                            <!-- KOT Display Options -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-eye"></i> Display Options</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="kot_show_company_logo" checked>
+                                                            <label class="form-check-label" for="kot_show_company_logo">Show Company Logo</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="kot_show_special_instructions" checked>
+                                                            <label class="form-check-label" for="kot_show_special_instructions">Show Special Instructions</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="kot_priority_display" checked>
+                                                            <label class="form-check-label" for="kot_priority_display">Show Priority</label>
+                                                    </div>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="kot_show_cooking_time">
+                                                            <label class="form-check-label" for="kot_show_cooking_time">Show Cooking Time</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="kot_order_type_display" checked>
+                                                            <label class="form-check-label" for="kot_order_type_display">Show Order Type</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="kot_cutting_line" checked>
+                                                            <label class="form-check-label" for="kot_cutting_line">Show Cutting Line</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- KOT Formatting -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-gear"></i> Formatting Options</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Font Size</label>
+                                                        <select class="form-select" id="kot_font_size">
+                                                            <option value="10px">Small (10px)</option>
+                                                            <option value="11px" selected>Medium (11px)</option>
+                                                            <option value="12px">Large (12px)</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Logo Size</label>
+                                                        <select class="form-select" id="kot_logo_size">
+                                                            <option value="60px">Small (60px)</option>
+                                                            <option value="80px" selected>Medium (80px)</option>
+                                                            <option value="100px">Large (100px)</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Table Number Style</label>
+                                                        <select class="form-select" id="kot_table_number_style">
+                                                            <option value="normal">Normal</option>
+                                                            <option value="bold" selected>Bold</option>
+                                                            <option value="large">Large</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- KOT Layout -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-layout-text-window"></i> Layout Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Layout Style</label>
+                                                        <select class="form-select" id="kot_layout_style">
+                                                            <option value="default" selected>Standard</option>
+                                                            <option value="compact">Compact</option>
+                                                            <option value="kitchen_friendly">Kitchen Friendly</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Order Separation</label>
+                                                        <select class="form-select" id="kot_order_separation">
+                                                            <option value="line">Line</option>
+                                                            <option value="space" selected>Space</option>
+                                                            <option value="none">None</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                        
+                                        <div class="col-lg-4">
+                                            <h5><i class="bi bi-eye"></i> KOT Preview</h5>
+                                            <div class="preview-section">
+                                                <div class="preview-header">Preview</div>
+                                                <div class="thermal-preview" id="kotPreview">
+                                                    <div class="thermal-line text-center" style="font-weight: bold;">KITCHEN ORDER</div>
+                                                    <div class="thermal-line text-center">RESTAURANT NAME</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line">Table: 5</div>
+                                                    <div class="thermal-line">Order #12345</div>
+                                                    <div class="thermal-line">2025-12-25 20:30</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line" style="font-weight: bold;">MAIN COURSE</div>
+                                                    <div class="thermal-line">• Item 1 x2</div>
+                                                    <div class="thermal-line" style="font-size: 10px;">No onions</div>
+                                                    <div class="thermal-line">• Item 2 x1</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line text-center">URGENT</div>
+                                            </div>
+                                        </div>
+                                            
+                                            <div class="mt-3">
+                                                <button class="btn btn-preview btn-custom w-100 mb-2" onclick="previewKOT()">
+                                                    <i class="bi bi-eye"></i> Preview KOT
+                                            </button>
+                                                <button class="btn btn-save btn-custom w-100" onclick="saveKOTSettings()">
+                                                    <i class="bi bi-save"></i> Save KOT Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                                
+                                <!-- Thermal Settings -->
+                                <div class="tab-pane fade" id="thermal-settings" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-lg-8">
+                                            <h4><i class="bi bi-gear"></i> Thermal Printer Settings</h4>
+                                            
+                                            <!-- Printer Configuration -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-printer"></i> Printer Configuration</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Printer Name</label>
+                                                        <input type="text" class="form-control" id="thermal_printer_name" placeholder="Default Thermal Printer">
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Paper Width</label>
+                                                        <select class="form-select" id="thermal_paper_width">
+                                                            <option value="58mm">58mm</option>
+                                                            <option value="80mm" selected>80mm</option>
+                                                            <option value="112mm">112mm</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Print Quality -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-image"></i> Print Quality</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Print Density</label>
+                                                        <select class="form-select" id="thermal_print_density">
+                                                            <option value="light">Light</option>
+                                                            <option value="medium" selected>Medium</option>
+                                                            <option value="dark">Dark</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Print Speed</label>
+                                                        <select class="form-select" id="thermal_print_speed">
+                                                            <option value="slow">Slow</option>
+                                                            <option value="normal" selected>Normal</option>
+                                                            <option value="fast">Fast</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Line Spacing</label>
+                                                        <select class="form-select" id="thermal_line_spacing">
+                                                            <option value="1.2">1.2</option>
+                                                            <option value="1.5" selected>1.5</option>
+                                                            <option value="2.0">2.0</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Font Settings -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-fonts"></i> Font Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Font Family</label>
+                                                        <select class="form-select" id="thermal_font_family">
+                                                            <option value="monospace" selected>Monospace</option>
+                                                            <option value="serif">Serif</option>
+                                                            <option value="sans-serif">Sans-serif</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Font Size</label>
+                                                        <select class="form-select" id="thermal_font_size">
+                                                            <option value="10px">10px</option>
+                                                            <option value="11px">11px</option>
+                                                            <option value="12px" selected>12px</option>
+                                                            <option value="14px">14px</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Font Weight</label>
+                                                        <select class="form-select" id="thermal_font_weight">
+                                                            <option value="normal" selected>Normal</option>
+                                                            <option value="bold">Bold</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Logo Settings -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-image"></i> Logo Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="thermal_print_logo" checked>
+                                                            <label class="form-check-label" for="thermal_print_logo">Print Logo</label>
+                                                    </div>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Logo Size</label>
+                                                        <select class="form-select" id="thermal_logo_size">
+                                                            <option value="60px">Small (60px)</option>
+                                                            <option value="80px" selected>Medium (80px)</option>
+                                                            <option value="100px">Large (100px)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Margins & Spacing -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-arrows-angle-expand"></i> Margins & Spacing</h6>
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Top Margin</label>
+                                                        <select class="form-select" id="thermal_margin_top">
+                                                            <option value="3mm">3mm</option>
+                                                            <option value="5mm" selected>5mm</option>
+                                                            <option value="10mm">10mm</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Bottom Margin</label>
+                                                        <select class="form-select" id="thermal_margin_bottom">
+                                                            <option value="3mm">3mm</option>
+                                                            <option value="5mm" selected>5mm</option>
+                                                            <option value="10mm">10mm</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Left Margin</label>
+                                                        <select class="form-select" id="thermal_margin_left">
+                                                            <option value="2mm">2mm</option>
+                                                            <option value="3mm" selected>3mm</option>
+                                                            <option value="5mm">5mm</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Right Margin</label>
+                                                        <select class="form-select" id="thermal_margin_right">
+                                                            <option value="2mm">2mm</option>
+                                                            <option value="3mm" selected>3mm</option>
+                                                            <option value="5mm">5mm</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Advanced Settings -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-sliders"></i> Advanced Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="thermal_cut_paper" checked>
+                                                            <label class="form-check-label" for="thermal_cut_paper">Auto Cut Paper</label>
+                                                    </div>
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="thermal_partial_cut">
+                                                            <label class="form-check-label" for="thermal_partial_cut">Partial Cut</label>
+                                                    </div>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="thermal_beep_enabled">
+                                                            <label class="form-check-label" for="thermal_beep_enabled">Beep After Print</label>
+                                                    </div>
+                                                        <label class="form-label">Feed Lines After Print</label>
+                                                        <select class="form-select" id="thermal_feed_lines">
+                                                            <option value="0">0 lines</option>
+                                                            <option value="1" selected>1 line</option>
+                                                            <option value="2">2 lines</option>
+                                                            <option value="3">3 lines</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                        
+                                        <div class="col-lg-4">
+                                            <h5><i class="bi bi-eye"></i> Thermal Preview</h5>
+                                            <div class="preview-section">
+                                                <div class="preview-header">Preview</div>
+                                                <div class="thermal-preview" id="thermalPreview">
+                                                    <div class="thermal-line text-center">[LOGO]</div>
+                                                    <div class="thermal-line text-center" style="font-weight: bold;">RESTAURANT</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line">Order: #12345</div>
+                                                    <div class="thermal-line">Time: 20:30</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line">Test Print</div>
+                                                    <div class="thermal-line">Font: Monospace</div>
+                                                    <div class="thermal-line">Size: 12px</div>
+                                                    <div class="thermal-line">Density: Medium</div>
+                                                    <div class="thermal-line">------------------------</div>
+                                                    <div class="thermal-line text-center">Thermal OK</div>
+                                            </div>
+                                        </div>
+                                            
+                                            <div class="mt-3">
+                                                <button class="btn btn-preview btn-custom w-100 mb-2" onclick="previewThermal()">
+                                                    <i class="bi bi-eye"></i> Preview Thermal
+                                            </button>
+                                                <button class="btn btn-save btn-custom w-100" onclick="saveThermalSettings()">
+                                                    <i class="bi bi-save"></i> Save Thermal Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                                
+                                <!-- Multi-Printer Settings -->
+                                <div class="tab-pane fade" id="multi-printer-settings" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-lg-8">
+                                            <h4><i class="bi bi-collection"></i> Multi-Printer Configuration</h4>
+                                            
+                                            <!-- Printer Profiles -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-printer"></i> Printer Profiles</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="printer_profiles_enabled">
+                                                            <label class="form-check-label" for="printer_profiles_enabled">Enable Printer Profiles</label>
+                                                    </div>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Default Printer</label>
+                                                        <select class="form-select" id="default_printer_name">
+                                                            <option value="default" selected>Default Printer</option>
+                                                            <option value="receipt_printer">Receipt Printer</option>
+                                                            <option value="kitchen_printer">Kitchen Printer</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Task-Based Printer Assignment -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-arrow-right"></i> Task-Based Assignment</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Receipt Printer</label>
+                                                        <select class="form-select" id="receipt_printer_name">
+                                                            <option value="auto" selected>Auto Select</option>
+                                                            <option value="receipt_printer">Receipt Printer</option>
+                                                            <option value="default">Default Printer</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Invoice Printer</label>
+                                                        <select class="form-select" id="invoice_printer_name">
+                                                            <option value="auto" selected>Auto Select</option>
+                                                            <option value="invoice_printer">Invoice Printer</option>
+                                                            <option value="default">Default Printer</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                                <div class="row mt-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">KOT Printer</label>
+                                                        <select class="form-select" id="kot_printer_name">
+                                                            <option value="auto" selected>Auto Select</option>
+                                                            <option value="kitchen_printer">Kitchen Printer</option>
+                                                            <option value="bar_printer">Bar Printer</option>
+                                                            <option value="default">Default Printer</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Report Printer</label>
+                                                        <select class="form-select" id="report_printer_name">
+                                                            <option value="auto" selected>Auto Select</option>
+                                                            <option value="office_printer">Office Printer</option>
+                                                            <option value="default">Default Printer</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Auto Selection -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-robot"></i> Auto Selection</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="printer_auto_selection" checked>
+                                                            <label class="form-check-label" for="printer_auto_selection">Enable Auto Selection</label>
+                                                    </div>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="printer_fallback_enabled" checked>
+                                                            <label class="form-check-label" for="printer_fallback_enabled">Enable Fallback</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Priority Order -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-list-ol"></i> Printer Priority</h6>
+                                                <div class="row">
+                                                    <div class="col-12">
+                                                        <label class="form-label">Priority Order (comma separated)</label>
+                                                        <input type="text" class="form-control" id="printer_priority_order" value="receipt_printer, kitchen_printer, default">
+                                                        <small class="form-text text-muted">Order of printer preference when auto-selecting</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                        
+                                        <div class="col-lg-4">
+                                            <h5><i class="bi bi-diagram-3"></i> Printer Status</h5>
+                                            <div class="preview-section">
+                                                <div class="preview-header">Status</div>
+                                                <div id="printerStatusList">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Receipt Printer</span>
+                                                        <span class="badge bg-success">Online</span>
+                                                </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Kitchen Printer</span>
+                                                        <span class="badge bg-success">Online</span>
+                                                </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Invoice Printer</span>
+                                                        <span class="badge bg-warning">Offline</span>
+                                                </div>
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>Default Printer</span>
+                                                        <span class="badge bg-success">Online</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <div class="mt-3">
+                                                <button class="btn btn-preview btn-custom w-100 mb-2" onclick="testPrinters()">
+                                                    <i class="bi bi-play-circle"></i> Test All Printers
+                                            </button>
+                                                <button class="btn btn-save btn-custom w-100" onclick="saveMultiPrinterSettings()">
+                                                    <i class="bi bi-save"></i> Save Multi-Printer Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                                
+                                <!-- Print Quality Settings -->
+                                <div class="tab-pane fade" id="quality-settings" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-lg-8">
+                                            <h4><i class="bi bi-image"></i> Print Quality & Formatting</h4>
+                                            
+                                            <!-- Quality Settings -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-gear"></i> Quality Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">DPI Quality</label>
+                                                        <select class="form-select" id="print_quality_dpi">
+                                                            <option value="203" selected>203 DPI (Standard)</option>
+                                                            <option value="300">300 DPI (High)</option>
+                                                            <option value="600">600 DPI (Ultra)</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Contrast</label>
+                                                        <select class="form-select" id="print_contrast">
+                                                            <option value="low">Low</option>
+                                                            <option value="medium" selected>Medium</option>
+                                                            <option value="high">High</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Brightness</label>
+                                                        <select class="form-select" id="print_brightness">
+                                                            <option value="low">Low</option>
+                                                            <option value="medium" selected>Medium</option>
+                                                            <option value="high">High</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Speed Settings -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-speedometer"></i> Speed Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Draft Speed</label>
+                                                        <select class="form-select" id="print_speed_draft">
+                                                            <option value="slow">Slow</option>
+                                                            <option value="normal" selected>Normal</option>
+                                                            <option value="fast">Fast</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Normal Speed</label>
+                                                        <select class="form-select" id="print_speed_normal">
+                                                            <option value="slow">Slow</option>
+                                                            <option value="normal" selected>Normal</option>
+                                                            <option value="fast">Fast</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">High Speed</label>
+                                                        <select class="form-select" id="print_speed_high">
+                                                            <option value="slow">Slow</option>
+                                                            <option value="normal" selected>Normal</option>
+                                                            <option value="fast">Fast</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Media & Processing -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-file-earmark"></i> Media & Processing</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Color Mode</label>
+                                                        <select class="form-select" id="print_color_mode">
+                                                            <option value="monochrome" selected>Monochrome</option>
+                                                            <option value="grayscale">Grayscale</option>
+                                                            <option value="color">Color</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Media Type</label>
+                                                        <select class="form-select" id="print_media_type">
+                                                            <option value="thermal" selected>Thermal Paper</option>
+                                                            <option value="plain">Plain Paper</option>
+                                                            <option value="photo">Photo Paper</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Default Copies</label>
+                                                        <select class="form-select" id="print_copies_default">
+                                                            <option value="1" selected>1 Copy</option>
+                                                            <option value="2">2 Copies</option>
+                                                            <option value="3">3 Copies</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Layout Settings -->
+                                            <div class="setting-group">
+                                                <h6><i class="bi bi-layout-text-window"></i> Layout Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Page Orientation</label>
+                                                        <select class="form-select" id="print_page_orientation">
+                                                            <option value="portrait" selected>Portrait</option>
+                                                            <option value="landscape">Landscape</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Page Size</label>
+                                                        <select class="form-select" id="print_page_size">
+                                                            <option value="A4" selected>A4</option>
+                                                            <option value="A5">A5</option>
+                                                            <option value="Letter">Letter</option>
+                                                            <option value="Custom">Custom</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                                <div class="row mt-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Margins</label>
+                                                        <select class="form-select" id="print_margins">
+                                                            <option value="5mm">5mm</option>
+                                                            <option value="10mm" selected>10mm</option>
+                                                            <option value="15mm">15mm</option>
+                                                            <option value="20mm">20mm</option>
+                                                    </select>
+                                                </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Alignment</label>
+                                                        <select class="form-select" id="print_alignment">
+                                                            <option value="left">Left</option>
+                                                            <option value="center" selected>Center</option>
+                                                            <option value="right">Right</option>
+                                                            <option value="justify">Justify</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                        
+                                        <div class="col-lg-4">
+                                            <h5><i class="bi bi-eye"></i> Quality Preview</h5>
+                                            <div class="preview-section">
+                                                <div class="preview-header">Preview</div>
+                                                <div style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; max-width: 250px;">
+                                                    <div style="text-align: center; font-weight: bold; margin-bottom: 10px;">QUALITY TEST</div>
+                                                    <div style="border: 1px solid #000; padding: 5px; margin: 5px 0;">
+                                                        DPI: <span id="dpiPreview">203</span><br>
+                                                        Contrast: <span id="contrastPreview">Medium</span><br>
+                                                        Speed: <span id="speedPreview">Normal</span>
+                                                </div>
+                                                    <div style="font-size: 10px; margin-top: 10px;">
+                                                        This is a quality test print to verify settings.<br>
+                                                        Adjust quality settings as needed.
+                                                </div>
+                                            </div>
+                                        </div>
+                                            
+                                            <div class="mt-3">
+                                                <button class="btn btn-preview btn-custom w-100 mb-2" onclick="previewQuality()">
+                                                    <i class="bi bi-eye"></i> Preview Quality
+                                            </button>
+                                                <button class="btn btn-save btn-custom w-100" onclick="saveQualitySettings()">
+                                                    <i class="bi bi-save"></i> Save Quality Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
+                <!-- Export/Import Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="export-import-section">
+                            <h4><i class="bi bi-download"></i> Settings Management</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Export Settings</h6>
+                                    <p class="mb-3">Export all printer customization settings to a JSON file for backup or transfer.</p>
+                                    <button class="btn btn-light btn-custom" onclick="exportSettings()">
+                                        <i class="bi bi-download"></i> Export Settings
+                                </button>
+                            </div>
+                                <div class="col-md-6">
+                                    <h6>Import Settings</h6>
+                                    <p class="mb-3">Import printer customization settings from a JSON file.</p>
+                                    <input type="file" class="form-control" id="importFile" accept=".json">
+                                    <button class="btn btn-light btn-custom mt-2" onclick="importSettings()">
+                                        <i class="bi bi-upload"></i> Import Settings
+                                </button>
+                            </div>
+                        </div>
+                            <div class="row mt-4">
+                                <div class="col-12 text-center">
+                                    <button class="btn btn-warning btn-custom" onclick="resetToDefaults()">
+                                        <i class="bi bi-arrow-clockwise"></i> Reset All Settings to Defaults
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+        
+        <!-- Toast Container -->
+        <div class="toast-container"></div>
+        
+        <!-- Scripts -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Global variables
+            let currentSettings = {};
+            let originalSettings = {};
+            
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                loadAllSettings();
+                setupEventListeners();
+                updatePreview();
+            });
+            
+            // Setup event listeners
+            function setupEventListeners() {
+                // Color picker updates
+                document.getElementById('receipt_header_color').addEventListener('change', updateReceiptPreview);
+                
+                // Form changes update previews
+                document.querySelectorAll('input, select, textarea').forEach(element => {
+                    element.addEventListener('change', function() {
+                        updatePreview();
+                        markAsChanged();
+                    });
+                });
+                
+                // Tab change updates
+                document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+                    tab.addEventListener('shown.bs.tab', function() {
+                        updatePreview();
+                    });
+                });
+            }
+            
+            // Load all settings from server
+            async function loadAllSettings() {
+                try {
+                    showLoading(true);
+                    
+                    // Load all settings categories
+                    const endpoints = [
+                        '/printer-customization/receipt-settings',
+                        '/printer-customization/invoice-settings',
+                        '/printer-customization/kot-settings',
+                        '/printer-customization/thermal-settings',
+                        '/printer-customization/multi-printer-settings',
+                        '/printer-customization/print-quality-settings'
+                    ];
+                    
+                    for (const endpoint of endpoints) {
+                        const response = await fetch(endpoint);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Merge settings data
+                            Object.assign(currentSettings, data);
+                        }
+                    }
+                    
+                    originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    populateFormFields();
+                    
+                } catch (error) {
+                    console.error('Error loading settings:', error);
+                    showToast('Error loading settings', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            // Populate form fields with loaded settings
+            function populateFormFields() {
+                // Receipt settings
+                if (currentSettings.receipt_settings) {
+                    const settings = currentSettings.receipt_settings;
+                    setFormValue('receipt_show_logo', settings.receipt_show_company_logo === 'true');
+                    setFormValue('receipt_show_company_info', settings.receipt_show_company_info === 'true');
+                    setFormValue('receipt_show_gst_number', settings.receipt_show_gst_number === 'true');
+                    setFormValue('receipt_show_order_date', settings.receipt_show_order_date === 'true');
+                    setFormValue('receipt_show_customer_name', settings.receipt_show_customer_name === 'true');
+                    setFormValue('receipt_cutting_line', settings.receipt_cutting_line === 'true');
+                    setFormValue('receipt_logo_size', settings.receipt_logo_size || '80px');
+                    setFormValue('receipt_header_color', settings.receipt_header_color || '#000000');
+                    setFormValue('receipt_font_size', settings.receipt_font_size || '11px');
+                    setFormValue('receipt_layout_style', settings.receipt_layout_style || 'default');
+                    setFormValue('receipt_custom_message', settings.receipt_custom_message || '');
+                }
+                
+                // Thermal settings
+                if (currentSettings.thermal_settings) {
+                    const settings = currentSettings.thermal_settings;
+                    setFormValue('thermal_printer_name', settings.thermal_printer_name || 'Default Thermal Printer');
+                    setFormValue('thermal_paper_width', settings.thermal_paper_width || '80mm');
+                    setFormValue('thermal_print_density', settings.thermal_print_density || 'medium');
+                    setFormValue('thermal_print_speed', settings.thermal_print_speed || 'normal');
+                    setFormValue('thermal_font_family', settings.thermal_font_family || 'monospace');
+                    setFormValue('thermal_font_size', settings.thermal_font_size || '12px');
+                    setFormValue('thermal_font_weight', settings.thermal_font_weight || 'normal');
+                    setFormValue('thermal_line_spacing', settings.thermal_line_spacing || '1.5');
+                    setFormValue('thermal_print_logo', settings.thermal_print_logo === 'true');
+                    setFormValue('thermal_logo_size', settings.thermal_logo_size || '80px');
+                    setFormValue('thermal_margin_top', settings.thermal_margin_top || '5mm');
+                    setFormValue('thermal_margin_bottom', settings.thermal_margin_bottom || '5mm');
+                    setFormValue('thermal_margin_left', settings.thermal_margin_left || '3mm');
+                    setFormValue('thermal_margin_right', settings.thermal_margin_right || '3mm');
+                    setFormValue('thermal_cut_paper', settings.thermal_cut_paper === 'true');
+                    setFormValue('thermal_partial_cut', settings.thermal_partial_cut === 'true');
+                    setFormValue('thermal_beep_enabled', settings.thermal_beep_enabled === 'true');
+                    setFormValue('thermal_feed_lines', settings.thermal_feed_lines || '1');
+                }
+                
+                // Multi-printer settings
+                if (currentSettings.multi_printer_settings) {
+                    const settings = currentSettings.multi_printer_settings;
+                    setFormValue('printer_profiles_enabled', settings.printer_profiles_enabled === 'true');
+                    setFormValue('default_printer_name', settings.default_printer_name || 'default');
+                    setFormValue('receipt_printer_name', settings.receipt_printer_name || 'auto');
+                    setFormValue('invoice_printer_name', settings.invoice_printer_name || 'auto');
+                    setFormValue('kot_printer_name', settings.kot_printer_name || 'auto');
+                    setFormValue('report_printer_name', settings.report_printer_name || 'auto');
+                    setFormValue('printer_auto_selection', settings.printer_auto_selection === 'true');
+                    setFormValue('printer_fallback_enabled', settings.printer_fallback_enabled === 'true');
+                    setFormValue('printer_priority_order', settings.printer_priority_order || 'receipt_printer, kitchen_printer, default');
+                }
+            }
+            
+            // Helper function to set form values
+            function setFormValue(id, value) {
+                const element = document.getElementById(id);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = value;
+                    } else {
+                        element.value = value;
+                    }
+                }
+            }
+            
+            // Update preview based on current settings
+            function updatePreview() {
+                const activeTab = document.querySelector('.tab-pane.active');
+                if (activeTab) {
+                    const tabId = activeTab.id;
+                    switch(tabId) {
+                        case 'receipt-settings':
+                            updateReceiptPreview();
+                            break;
+                        case 'invoice-settings':
+                            updateInvoicePreview();
+                            break;
+                        case 'kot-settings':
+                            updateKOTPreview();
+                            break;
+                        case 'thermal-settings':
+                            updateThermalPreview();
+                            break;
+                        case 'quality-settings':
+                            updateQualityPreview();
+                            break;
+                    }
+                }
+            }
+            
+            // Preview functions
+            function previewReceipt() {
+                updateReceiptPreview();
+                showToast('Receipt preview updated', 'success');
+            }
+            
+            function previewInvoice() {
+                updateInvoicePreview();
+                showToast('Invoice preview updated', 'success');
+            }
+            
+            function previewKOT() {
+                updateKOTPreview();
+                showToast('KOT preview updated', 'success');
+            }
+            
+            function previewThermal() {
+                updateThermalPreview();
+                showToast('Thermal preview updated', 'success');
+            }
+            
+            function previewQuality() {
+                updateQualityPreview();
+                showToast('Quality preview updated', 'success');
+            }
+            
+            // Update preview functions
+            function updateReceiptPreview() {
+                const preview = document.getElementById('receiptPreview');
+                if (!preview) return;
+                
+                const logoSize = document.getElementById('receipt_logo_size')?.value || '80px';
+                const fontSize = document.getElementById('receipt_font_size')?.value || '11px';
+                const headerColor = document.getElementById('receipt_header_color')?.value || '#000000';
+                const customMessage = document.getElementById('receipt_custom_message')?.value || 'Thank you!';
+                
+                preview.innerHTML = `
+                    <div class="thermal-line text-center" style="font-weight: bold; color: ${headerColor}; font-size: ${fontSize};">RESTAURANT NAME</div>
+                    <div class="thermal-line text-center" style="font-size: ${fontSize};">123 Main Street</div>
+                    <div class="thermal-line text-center" style="font-size: ${fontSize};">Phone: 123-456-7890</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">------------------------</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">Order #12345</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">2025-12-25 20:30</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">------------------------</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">Item 1 x2    ₹100.00</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">Item 2 x1    ₹150.00</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">------------------------</div>
+                    <div class="thermal-line" style="font-size: ${fontSize};">Total:    ₹250.00</div>
+                    <div class="thermal-line text-center" style="font-size: ${fontSize};">${customMessage}</div>
+                `;
+            }
+            
+            function updateInvoicePreview() {
+                const preview = document.querySelector('#invoice-settings .preview-section div:last-child');
+                if (!preview) return;
+                
+                const fontSize = document.getElementById('invoice_font_size')?.value || '14px';
+                const layoutStyle = document.getElementById('invoice_layout_style')?.value || 'modern';
+                const footerText = document.getElementById('invoice_footer_text')?.value || 'Thank you for your business!';
+                
+                preview.style.fontSize = fontSize;
+                preview.innerHTML = `
+                    <div style="text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px;">INVOICE</div>
+                    <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+                        <div>RESTAURANT NAME</div>
+                        <div>123 Main Street</div>
+                        <div>Phone: 123-456-7890</div>
+                    </div>
+                    <div>Invoice #: INV-001</div>
+                    <div>Date: 2025-12-25</div>
+                    <div>Customer: John Doe</div>
+                    <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                        <tr style="border-bottom: 1px solid #ccc;">
+                            <th style="text-align: left;">Item</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                        <tr>
+                            <td>Service 1</td>
+                            <td style="text-align: right;">₹250.00</td>
+                        </tr>
+                        <tr style="border-top: 1px solid #ccc; font-weight: bold;">
+                            <td>Total</td>
+                            <td style="text-align: right;">₹250.00</td>
+                        </tr>
+                    </table>
+                    <div style="text-align: center; margin-top: 20px; font-style: italic;">${footerText}</div>
+                `;
+            }
+            
+            function updateKOTPreview() {
+                const preview = document.getElementById('kotPreview');
+                if (!preview) return;
+                
+                const fontSize = document.getElementById('kot_font_size')?.value || '11px';
+                const tableStyle = document.getElementById('kot_table_number_style')?.value || 'bold';
+                
+                let tableStyleCSS = 'font-weight: normal;';
+                if (tableStyle === 'bold') tableStyleCSS = 'font-weight: bold;';
+                if (tableStyle === 'large') tableStyleCSS = 'font-size: 14px; font-weight: bold;';
+                
+                preview.innerHTML = `
+                    <div class="thermal-line text-center" style="font-weight: bold;">KITCHEN ORDER</div>
+                    <div class="thermal-line text-center">RESTAURANT NAME</div>
+                    <div class="thermal-line">------------------------</div>
+                    <div class="thermal-line" style="${tableStyleCSS}">Table: 5</div>
+                    <div class="thermal-line">Order #12345</div>
+                    <div class="thermal-line">2025-12-25 20:30</div>
+                    <div class="thermal-line">------------------------</div>
+                    <div class="thermal-line" style="font-weight: bold;">MAIN COURSE</div>
+                    <div class="thermal-line">• Item 1 x2</div>
+                    <div class="thermal-line" style="font-size: 10px;">No onions</div>
+                    <div class="thermal-line">• Item 2 x1</div>
+                    <div class="thermal-line">------------------------</div>
+                    <div class="thermal-line text-center">URGENT</div>
+                `;
+            }
+            
+            function updateThermalPreview() {
+                const preview = document.getElementById('thermalPreview');
+                if (!preview) return;
+                
+                const fontSize = document.getElementById('thermal_font_size')?.value || '12px';
+                const fontFamily = document.getElementById('thermal_font_family')?.value || 'monospace';
+                const printDensity = document.getElementById('thermal_print_density')?.value || 'medium';
+                
+                preview.style.fontSize = fontSize;
+                preview.style.fontFamily = fontFamily;
+                preview.innerHTML = `
+                    <div class="thermal-line text-center">[LOGO]</div>
+                    <div class="thermal-line text-center" style="font-weight: bold;">RESTAURANT</div>
+                    <div class="thermal-line">------------------------</div>
+                    <div class="thermal-line">Order: #12345</div>
+                    <div class="thermal-line">Time: 20:30</div>
+                    <div class="thermal-line">------------------------</div>
+                    <div class="thermal-line">Test Print</div>
+                    <div class="thermal-line">Font: ${fontFamily}</div>
+                    <div class="thermal-line">Size: ${fontSize}</div>
+                    <div class="thermal-line">Density: ${printDensity}</div>
+                    <div class="thermal-line">------------------------</div>
+                    <div class="thermal-line text-center">Thermal OK</div>
+                `;
+            }
+            
+            function updateQualityPreview() {
+                const dpi = document.getElementById('print_quality_dpi')?.value || '203';
+                const contrast = document.getElementById('print_contrast')?.value || 'medium';
+                const speed = document.getElementById('print_speed_normal')?.value || 'normal';
+                
+                document.getElementById('dpiPreview').textContent = dpi;
+                document.getElementById('contrastPreview').textContent = contrast;
+                document.getElementById('speedPreview').textContent = speed;
+            }
+            
+            // Save functions
+            async function saveReceiptSettings() {
+                if (!validateForm('receipt-settings')) return;
+                
+                try {
+                    showLoading(true);
+                    const settings = collectFormData('receipt-settings');
+                    
+                    const response = await fetch('/printer-customization/save-receipt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('Receipt settings saved successfully', 'success');
+                        markAsSaved();
+                    } else {
+                        showToast(data.message || 'Error saving receipt settings', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving receipt settings:', error);
+                    showToast('Error saving receipt settings', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            async function saveInvoiceSettings() {
+                if (!validateForm('invoice-settings')) return;
+                
+                try {
+                    showLoading(true);
+                    const settings = collectFormData('invoice-settings');
+                    
+                    const response = await fetch('/printer-customization/save-invoice', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('Invoice settings saved successfully', 'success');
+                        markAsSaved();
+                    } else {
+                        showToast(data.message || 'Error saving invoice settings', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving invoice settings:', error);
+                    showToast('Error saving invoice settings', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            async function saveKOTSettings() {
+                if (!validateForm('kot-settings')) return;
+                
+                try {
+                    showLoading(true);
+                    const settings = collectFormData('kot-settings');
+                    
+                    const response = await fetch('/printer-customization/save-kot', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('KOT settings saved successfully', 'success');
+                        markAsSaved();
+                    } else {
+                        showToast(data.message || 'Error saving KOT settings', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving KOT settings:', error);
+                    showToast('Error saving KOT settings', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            async function saveThermalSettings() {
+                if (!validateForm('thermal-settings')) return;
+                
+                try {
+                    showLoading(true);
+                    const settings = collectFormData('thermal-settings');
+                    
+                    const response = await fetch('/printer-customization/save-thermal', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('Thermal settings saved successfully', 'success');
+                        markAsSaved();
+                    } else {
+                        showToast(data.message || 'Error saving thermal settings', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving thermal settings:', error);
+                    showToast('Error saving thermal settings', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            async function saveMultiPrinterSettings() {
+                if (!validateForm('multi-printer-settings')) return;
+                
+                try {
+                    showLoading(true);
+                    const settings = collectFormData('multi-printer-settings');
+                    
+                    const response = await fetch('/printer-customization/save-multi-printer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('Multi-printer settings saved successfully', 'success');
+                        markAsSaved();
+                    } else {
+                        showToast(data.message || 'Error saving multi-printer settings', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving multi-printer settings:', error);
+                    showToast('Error saving multi-printer settings', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            async function saveQualitySettings() {
+                if (!validateForm('quality-settings')) return;
+                
+                try {
+                    showLoading(true);
+                    const settings = collectFormData('quality-settings');
+                    
+                    const response = await fetch('/printer-customization/save-quality', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('Quality settings saved successfully', 'success');
+                        markAsSaved();
+                    } else {
+                        showToast(data.message || 'Error saving quality settings', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving quality settings:', error);
+                    showToast('Error saving quality settings', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            // Test and utility functions
+            async function testPrinters() {
+                try {
+                    showLoading(true);
+                    showToast('Testing all printers...', 'info');
+                    
+                    const response = await fetch('/printer-customization/test-printers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        updatePrinterStatus(data.printer_status);
+                        showToast('Printer test completed', 'success');
+                    } else {
+                        showToast(data.message || 'Error testing printers', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error testing printers:', error);
+                    showToast('Error testing printers', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+            
+            function updatePrinterStatus(status) {
+                const statusList = document.getElementById('printerStatusList');
+                if (!statusList || !status) return;
+                
+                let html = '';
+                for (const [printer, info] of Object.entries(status)) {
+                    const badgeClass = info.online ? 'bg-success' : 'bg-danger';
+                    const statusText = info.online ? 'Online' : 'Offline';
+                    html += `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>${printer}</span>
+                            <span class="badge ${badgeClass}">${statusText}</span>
+                        </div>
+                    `;
+                }
+                statusList.innerHTML = html;
+            }
+            
+            // Export/Import functions
+            function exportSettings() {
+                try {
+                    const allSettings = {
+                        receipt_settings: collectFormData('receipt-settings'),
+                        invoice_settings: collectFormData('invoice-settings'),
+                        kot_settings: collectFormData('kot-settings'),
+                        thermal_settings: collectFormData('thermal-settings'),
+                        multi_printer_settings: collectFormData('multi-printer-settings'),
+                        quality_settings: collectFormData('quality-settings'),
+                        export_date: new Date().toISOString(),
+                        version: '1.0'
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(allSettings, null, 2)], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `printer_settings_${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    
+                    showToast('Settings exported successfully', 'success');
+                } catch (error) {
+                    console.error('Error exporting settings:', error);
+                    showToast('Error exporting settings', 'error');
+                }
+            }
+            
+            function importSettings() {
+                const fileInput = document.getElementById('importFile');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    showToast('Please select a file to import', 'warning');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const settings = JSON.parse(e.target.result);
+                        
+                        if (!confirm('Importing settings will overwrite current configuration. Continue?')) {
+                            return;
+                        }
+                        
+                        showLoading(true);
+                        
+                        const response = await fetch('/printer-customization/import-settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(settings)
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showToast('Settings imported successfully', 'success');
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            showToast(data.message || 'Error importing settings', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error importing settings:', error);
+                        showToast('Error importing settings: Invalid file format', 'error');
+                    } finally {
+                        showLoading(false);
+                        fileInput.value = '';
+                    }
+                };
+                
+                reader.readAsText(file);
+            }
+            
+            function resetToDefaults() {
+                if (!confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+                    return;
+                }
+                
+                try {
+                    showLoading(true);
+                    
+                    fetch('/printer-customization/reset-defaults', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('Settings reset to defaults', 'success');
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            showToast(data.message || 'Error resetting settings', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error resetting settings:', error);
+                        showToast('Error resetting settings', 'error');
+                    })
+                    .finally(() => {
+                        showLoading(false);
+                    });
+                } catch (error) {
+                    console.error('Error resetting settings:', error);
+                    showToast('Error resetting settings', 'error');
+                    showLoading(false);
+                }
+            }
+            
+            // Helper functions
+            function collectFormData(tabId) {
+                const tab = document.getElementById(tabId);
+                if (!tab) return {};
+                
+                const formData = {};
+                const inputs = tab.querySelectorAll('input, select, textarea');
+                
+                inputs.forEach(input => {
+                    if (input.type === 'checkbox') {
+                        formData[input.id] = input.checked;
+                    } else {
+                        formData[input.id] = input.value;
+                    }
+                });
+                
+                return formData;
+            }
+            
+            function validateForm(tabId) {
+                const tab = document.getElementById(tabId);
+                if (!tab) return true;
+                
+                const requiredFields = tab.querySelectorAll('[required]');
+                for (const field of requiredFields) {
+                    if (!field.value.trim()) {
+                        showToast(`Please fill in: ${field.labels[0]?.textContent || field.id}`, 'warning');
+                        field.focus();
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+            
+            function markAsChanged() {
+                document.body.classList.add('settings-changed');
+            }
+            
+            function markAsSaved() {
+                document.body.classList.remove('settings-changed');
+                originalSettings = JSON.parse(JSON.stringify(currentSettings));
+            }
+            
+            function showLoading(show) {
+                const spinners = document.querySelectorAll('.loading-spinner');
+                spinners.forEach(spinner => {
+                    spinner.style.display = show ? 'block' : 'none';
+                });
+                
+                // Disable buttons during loading
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(button => {
+                    button.disabled = show;
+                    if (show) {
+                        button.dataset.originalText = button.innerHTML;
+                        button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+                    } else if (button.dataset.originalText) {
+                        button.innerHTML = button.dataset.originalText;
+                        delete button.dataset.originalText;
+                    }
+                });
+            }
+            
+            function showToast(message, type = 'info') {
+                const toastContainer = document.querySelector('.toast-container');
+                if (!toastContainer) return;
+                
+                const toast = document.createElement('div');
+                toast.className = `alert alert-${type} alert-dismissible fade show`;
+                toast.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                
+                toastContainer.appendChild(toast);
+                
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 5000);
+            }
+            
+            // Initialize color picker preview
+            document.addEventListener('DOMContentLoaded', function() {
+                const colorPicker = document.getElementById('receipt_header_color');
+                const colorPreview = document.getElementById('receipt_color_preview');
+                
+                if (colorPicker && colorPreview) {
+                    colorPreview.style.backgroundColor = colorPicker.value;
+                    colorPicker.addEventListener('change', function() {
+                        colorPreview.style.backgroundColor = this.value;
+                    });
+                }
+            });
+            
+        </script>
+    </body>
+</html>

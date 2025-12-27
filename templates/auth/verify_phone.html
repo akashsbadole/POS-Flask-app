@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Phone Number - {{ config.get('APP_NAME', 'POS System') }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .verify-phone-container {
+                min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .verify-phone-card {
+                background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .verify-header {
+                text-align: center;
+            margin-bottom: 2rem;
+        }
+        .verify-icon {
+                font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .form-floating {
+                margin-bottom: 1rem;
+        }
+        .btn-verify {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-verify:hover {
+                transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        .phone-input-group {
+                position: relative;
+        }
+        .country-code {
+                position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            z-index: 10;
+        }
+        .phone-input {
+                padding-left: 45px;
+        }
+        .loading {
+                display: none;
+        }
+        .loading.show {
+                display: inline-block;
+        }
+        .alert {
+                border-radius: 10px;
+            border: none;
+        }
+        .alert-success {
+                background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: #155724;
+        }
+        .alert-error {
+                background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #721c24;
+        }
+        .info-box {
+                background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+        <div class="verify-phone-container">
+            <div class="verify-phone-card">
+                <div class="verify-header">
+                    <i class="fas fa-phone verify-icon"></i>
+                <h2>Verify Phone Number</h2>
+                <p class="text-muted">Add and verify your phone number for mobile OTP login</p>
+            </div>
+
+            <div class="info-box">
+                    <i class="fas fa-info-circle me-2 text-primary"></i>
+                <strong>Why verify your phone?</strong>
+                <ul class="mt-2 mb-0 small">
+                        <li>Enable mobile OTP login</li>
+                    <li>Enhanced account security</li>
+                    <li>Quick access without passwords</li>
+                </ul>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alert-container"></div>
+
+            <form id="verifyPhoneForm" method="POST" action="">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="form-floating">
+                        <div class="phone-input-group">
+                            <i class="fas fa-phone country-code"></i>
+                        {{ form.phone(class="form-control phone-input", placeholder="Enter phone number") }}
+                    </div>
+                    {{ form.phone.label(class="form-label") }}
+                    {% for error in form.phone.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="btn btn-verify w-100" id="submitBtn">
+                        <span class="btn-text">Send Verification Code</span>
+                    <span class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Sending...
+                    </span>
+                </button>
+            </form>
+
+            <div class="text-center mt-3">
+                    <a href="{{ url_for('auth.profile') }}" class="text-decoration-none small">
+                        <i class="fas fa-arrow-left me-1"></i>
+                    Back to Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('verifyPhoneForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const alertContainer = document.getElementById('alert-container');
+            
+            // Phone number formatting
+     const phoneInput = document.querySelector('input[name="phone"]');
+     if (phoneInput) {
+         phoneInput.addEventListener('input', function(e) {
+             let value = e.target.value.replace(/\\D/g, '');
+             if (value.length > 0) {
+                 if (value.startsWith('1') && value.length > 1) {
+                     value = '+' + value;
+                 } else if (!value.startsWith('+')) {
+                     value = '+' + value;
+                 }
+             }
+             e.target.value = value;
+         });
+     }
+// 
+     // Form submission
+     form.addEventListener('submit', function(e) {
+         e.preventDefault();
+         
+         // Show loading state
+         submitBtn.disabled = true;
+         submitBtn.querySelector('.btn-text').style.display = 'none';
+         submitBtn.querySelector('.loading').classList.add('show');
+         
+         // Clear previous alerts
+         alertContainer.innerHTML = '';
+         
+         // Get form data
+         const formData = new FormData(form);
+         
+         // Submit via AJAX
+         fetch('{{ url_for("auth.verify_phone") }}', {
+             method: 'POST',
+             headers: {
+                 'X-Requested-With': 'XMLHttpRequest',
+                 'X-CSRFToken': formData.get('csrf_token')
+             },
+             body: formData
+         })
+         .then(response => response.json())
+         .then(data => {
+             // Reset button state
+             submitBtn.disabled = false;
+             submitBtn.querySelector('.btn-text').style.display = 'inline';
+             submitBtn.querySelector('.loading').classList.remove('show');
+             
+             if (data.success) {
+                 // Show success message
+                 showAlert('success', data.message);
+                 
+                 // Redirect after short delay
+                 setTimeout(() => {
+                     if (data.redirect) {
+                         window.location.href = data.redirect;
+                     }
+                 }, 1500);
+             } else {
+                 // Show error message
+                 let errorMessage = data.message || 'An error occurred. Please try again.';
+                 if (data.errors) {
+                     errorMessage = Object.values(data.errors).flat().join('<br>');
+                 }
+                 showAlert('error', errorMessage);
+             }
+         })
+         .catch(error => {
+             console.error('Error:', error);
+             
+             // Reset button state
+             submitBtn.disabled = false;
+             submitBtn.querySelector('.btn-text').style.display = 'inline';
+             submitBtn.querySelector('.loading').classList.remove('show');
+             
+             showAlert('error', 'An unexpected error occurred. Please try again.');
+         });
+     });
+     
+     // Helper function to show alerts
+     function showAlert(type, message) {
+         const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+         const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+         
+         const alertHtml = `
+             <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                 <i class="fas fa-${icon} me-2"></i>
+                 ${message}
+                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+             </div>
+         `;
+         
+         alertContainer.innerHTML = alertHtml;
+         
+         // Auto-dismiss success alerts
+         if (type === 'success') {
+             setTimeout(() => {
+                 const alert = alertContainer.querySelector('.alert');
+                 if (alert) {
+                     const bsAlert = new bootstrap.Alert(alert);
+                     bsAlert.close();
+                 }
+             }, 5000);
+         }
+     }
+ });
+     </script>
+ </body>
+ </html>

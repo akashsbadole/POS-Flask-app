@@ -440,6 +440,78 @@
   color: #6B7280;
 }
 
+/* ===== Mobile OTP Option ===== */
+.mobile-otp-divider {
+  text-align: center;
+  margin: 1.5rem 0;
+  position: relative;
+}
+
+.mobile-otp-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #E5E7EB, transparent);
+}
+
+.mobile-otp-divider span {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0 1rem;
+  color: #6B7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  position: relative;
+}
+
+.mobile-otp-option {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.mobile-otp-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all var(--login-transition-fast);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  border: 2px solid transparent;
+}
+
+.mobile-otp-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  text-decoration: none;
+}
+
+.mobile-otp-button:active {
+  transform: translateY(0);
+}
+
+.mobile-otp-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+}
+
+.mobile-otp-info {
+  display: block;
+  margin-top: 0.5rem;
+  color: #6B7280;
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
 /* ===== Right Section - Features List ===== */
 .features-section {
   flex: 1.2;

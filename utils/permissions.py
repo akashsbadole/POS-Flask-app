@@ -406,6 +406,39 @@ def require_admin(message=None):
     """Decorator to require admin or super admin role"""
     return require_role_or_higher('admin')(lambda f: f)
 
+def require_super_admin(message=None):
+    """Decorator to require super admin role only"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            try:
+                if not current_user or not current_user.is_authenticated:
+                    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+                        return jsonify({'error': 'Authentication required'}), 401
+                    flash('Please log in to access this page.', 'warning')
+                    return redirect(url_for('auth.login'))
+            except RuntimeError:
+                pass
+            
+            if not current_user or not current_user.is_super_admin():
+                try:
+                    logger.warning(f"User {current_user.username if current_user else 'Unknown'} attempted to access {request.endpoint} without super admin role")
+                    
+                    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+                        return jsonify({
+                            'error': 'Super admin access required',
+                            'message': message or 'Super admin privileges required for this action'
+                        }), 403
+                    
+                    flash(message or 'Super admin privileges required for this action.', 'error')
+                    return redirect(url_for('dashboard.index'))
+                except RuntimeError:
+                    abort(403)
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
 def require_manager(message=None):
     """Decorator to require manager or higher role"""
     return require_role_or_higher('manager')(lambda f: f)
@@ -413,6 +446,65 @@ def require_manager(message=None):
 def require_chef(message=None):
     """Decorator to require chef or higher role"""
     return require_role_or_higher('chef')(lambda f: f)
+
+def require_user_management_permission(message=None):
+    """Decorator to require user management permission"""
+    return require_permission(Permissions.MANAGE_USERS, message)
+
+def require_admin_only_user_management(message=None):
+    """Decorator to restrict user management to admin level only (not managers)"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            try:
+                if not current_user or not current_user.is_authenticated:
+                    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+                        return jsonify({'error': 'Authentication required'}), 401
+                    flash('Please log in to access this page.', 'warning')
+                    return redirect(url_for('auth.login'))
+            except RuntimeError:
+                pass
+            
+            if not current_user or not current_user.is_admin():
+                try:
+                    logger.warning(f"User {current_user.username if current_user else 'Unknown'} attempted to access {request.endpoint} without admin role")
+                    
+                    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+                        return jsonify({
+                            'error': 'Admin access required',
+                            'message': message or 'Administrator privileges required for user management'
+                        }), 403
+                    
+                    flash(message or 'Administrator privileges required for user management.', 'error')
+                    return redirect(url_for('dashboard.index'))
+                except RuntimeError:
+                    abort(403)
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def check_user_management_permission(user_to_manage, admin_user=None):
+    """Check if admin can manage specific user"""
+    if not admin_user or not admin_user.is_admin():
+        return False, "Insufficient permissions"
+    
+    if not user_to_manage:
+        return False, "User not found"
+    
+    # Super admin can manage everyone
+    if admin_user.is_super_admin():
+        return True, "Permission granted"
+    
+    # Regular admin cannot manage other admins or super admins
+    if user_to_manage.is_admin():
+        return False, "Regular admins cannot manage other administrators"
+    
+    # Cannot manage own account for certain actions
+    if user_to_manage.id == admin_user.id:
+        return False, "Cannot perform this action on your own account"
+    
+    return True, "Permission granted"
 
 def get_user_permissions(user=None):
     """Get all permissions for a user"""

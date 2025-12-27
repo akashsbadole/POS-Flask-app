@@ -12,12 +12,38 @@ from datetime import datetime, date
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
-from models import db, create_tables
+from models import db, create_tables, validate_database_config, get_database_info
 from models.user import User
 from models.category import Category
 from models.menu_item import MenuItem
 from models.table import Table
 from models.settings import Settings
+
+def validate_config():
+    """Validate database configuration"""
+    app = create_app()
+    with app.app_context():
+        if not validate_database_config(app):
+            print("ERROR: Database configuration is invalid!")
+            print("Please check your database settings.")
+            return False
+        
+        db_info = get_database_info()
+        print(f"Database Type: {db_info['type']}")
+        print(f"Database Version: {db_info['version']}")
+        return True
+
+def create_postgresql_extensions():
+    """Create PostgreSQL extensions if needed"""
+    try:
+        from sqlalchemy import text
+        with db.engine.connect() as connection:
+            # Create UUID extension
+            connection.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
+            connection.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
+        print("PostgreSQL extensions created successfully")
+    except Exception as e:
+        print(f"Warning: Could not create PostgreSQL extensions: {str(e)}")
 
 def create_initial_data():
     """Create initial data for the POS system"""
@@ -188,6 +214,15 @@ def main():
     app = create_app()
     
     with app.app_context():
+        # Validate database configuration
+        if not validate_config():
+            return 1
+        
+        # Create PostgreSQL extensions if using PostgreSQL
+        db_info = get_database_info()
+        if db_info['type'] == 'PostgreSQL':
+            create_postgresql_extensions()
+        
         # Create tables
         create_tables()
         print("Database tables created successfully")
@@ -203,6 +238,9 @@ def main():
     print("   Username: admin")
     print("   Password: admin123")
     print("\nPlease change the default password after first login!")
+    
+    return 0
 
 if __name__ == '__main__':
-    main()
+    exit_code = main()
+    sys.exit(exit_code)

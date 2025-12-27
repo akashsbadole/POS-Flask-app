@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+{% block title %}Inventory Analytics - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports-modern.css') }}">
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<!-- Date Range Picker -->
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat/dayjs.customParseFormat.min.js"></script>
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="inventory-analytics-dashboard" x-data="inventoryAnalyticsDashboard()">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="dashboard-title-section">
+        <h1 class="dashboard-title">
+          <i class="bi bi-box-seam text-warning"></i>
+          Inventory Analytics
+        </h1>
+        <p class="dashboard-subtitle">Real-time inventory tracking and stock management insights</p>
+      </div>
+      <div class="dashboard-actions">
+        <button @click="refreshData()" class="btn btn-outline-primary btn-sm" :disabled="isLoading">
+          <i class="bi bi-arrow-clockwise" :class="{ 'spinning': isLoading }"></i>
+          Refresh
+        </button>
+        <button @click="triggerRestockAlert()" class="btn btn-outline-warning btn-sm">
+          <i class="bi bi-bell"></i>
+          Restock Alert
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-download"></i> Export
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" @click="exportData('pdf')"><i class="bi bi-file-pdf"></i> PDF Report</a></li>
+            <li><a class="dropdown-item" href="#" @click="exportData('csv')"><i class="bi bi-file-spreadsheet"></i> CSV Data</a></li>
+            <li><a class="dropdown-item" href="#" @click="exportData('excel')"><i class="bi bi-file-earmark-excel"></i> Excel</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time Alerts -->
+  <div class="alerts-section" x-show="alerts.length > 0">
+    <div class="alerts-grid">
+      <template x-for="alert in alerts" :key="alert.id">
+        <div class="alert-card" :class="'alert-' + alert.type">
+          <div class="alert-icon">
+            <i :class="getAlertIcon(alert.type)"></i>
+          </div>
+          <div class="alert-content">
+            <h4 class="alert-title" x-text="alert.title"></h4>
+            <p class="alert-message" x-text="alert.message"></p>
+            <div class="alert-meta">
+              <small x-text="alert.timestamp"></small>
+              <button @click="dismissAlert(alert.id)" class="btn btn-sm btn-link">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Inventory KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-warning">
+      <div class="kpi-icon">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="inventoryData.lowStockCount">0</div>
+        <div class="kpi-label">Low Stock Items</div>
+        <div class="kpi-change neutral">
+          <i class="bi bi-exclamation-circle"></i>
+          <span>Need attention</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-danger">
+      <div class="kpi-icon">
+        <i class="bi bi-x-circle"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="inventoryData.outOfStockCount">0</div>
+        <div class="kpi-label">Out of Stock</div>
+        <div class="kpi-change negative">
+          <i class="bi bi-arrow-down"></i>
+          <span>Critical</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-success">
+      <div class="kpi-icon">
+        <i class="bi bi-check-circle"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="inventoryData.totalItems">0</div>
+        <div class="kpi-label">Total Items</div>
+        <div class="kpi-change positive">
+          <i class="bi bi-arrow-up"></i>
+          <span x-text="inventoryData.healthPercentage.toFixed(0) + '% healthy'"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-info">
+      <div class="kpi-icon">
+        <i class="bi bi-currency-rupee"></i>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value" x-text="formatCurrency(inventoryData.totalValue)">₹0</div>
+        <div class="kpi-label">Inventory Value</div>
+        <div class="kpi-change positive">
+          <i class="bi bi-arrow-up"></i>
+          <span x-text="(inventoryData.valueGrowth || 0) + '%'"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inventory Charts -->
+  <div class="charts-grid">
+    <!-- Stock Level Overview -->
+    <div class="chart-container chart-large">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-bar-chart"></i>
+          Stock Level Overview
+        </h3>
+        <div class="chart-controls">
+          <select class="form-select form-select-sm" x-model="charts.stockView" @change="updateStockChart()">
+            <option value="current">Current Stock</option>
+            <option value="trend">Stock Trend</option>
+            <option value="category">By Category</option>
+          </select>
+          <button @click="exportChart('stockChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="stockChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Stock Distribution -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-pie-chart"></i>
+          Stock Distribution
+        </h3>
+        <div class="chart-controls">
+          <button @click="exportChart('distributionChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="distributionChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Category Performance -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-graph-up"></i>
+          Category Performance
+        </h3>
+        <div class="chart-controls">
+          <button @click="exportChart('categoryChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Turnover Rate -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="bi bi-arrow-repeat"></i>
+          Turnover Rate
+        </h3>
+        <div class="chart-controls">
+          <button @click="exportChart('turnoverChart')" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="turnoverChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inventory Tables -->
+  <div class="tables-section">
+    <!-- Low Stock Items -->
+    <div class="table-container">
+      <div class="table-header">
+        <h3 class="table-title">
+          <i class="bi bi-exclamation-triangle text-warning"></i>
+          Low Stock Items
+        </h3>
+        <div class="table-actions">
+          <button @click="generatePurchaseOrder()" class="btn btn-warning btn-sm">
+            <i class="bi bi-file-earmark-plus"></i>
+            Generate PO
+          </button>
+          <button @click="refreshLowStock()" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="table table-hover" id="lowStockTable">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Current Stock</th>
+              <th>Min Stock</th>
+              <th>Reorder Qty</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="item in lowStockItems" :key="item.id">
+              <tr>
+                <td>
+                  <div class="item-info">
+                    <strong x-text="item.name"></strong>
+                    <small class="text-muted d-block" x-text="item.sku"></small>
+                  </div>
+                </td>
+                <td>
+                  <span class="category-badge" x-text="item.category"></span>
+                </td>
+                <td>
+                  <span class="stock-level" :class="getStockClass(item.currentStock, item.minStock)" 
+                        x-text="item.currentStock"></span>
+                </td>
+                <td>
+                  <span x-text="item.minStock"></span>
+                </td>
+                <td>
+                  <input type="number" class="form-control form-control-sm" 
+                         :value="item.reorderQuantity" @change="updateReorderQty(item.id, $event.target.value)"
+                         style="width: 80px;">
+                </td>
+                <td>
+                  <span class="status-badge" :class="getStatusClass(item.status)" x-text="item.status"></span>
+                </td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <button @click="restockItem(item.id)" class="btn btn-outline-success btn-sm">
+                      <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <button @click="editItem(item.id)" class="btn btn-outline-primary btn-sm">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Inventory Movement -->
+    <div class="table-container">
+      <div class="table-header">
+        <h3 class="table-title">
+          <i class="bi bi-arrow-left-right"></i>
+          Recent Movements
+        </h3>
+        <div class="table-actions">
+          <select class="form-select form-select-sm" x-model="movementFilter" @change="updateMovements()">
+            <option value="all">All Movements</option>
+            <option value="in">Stock In</option>
+            <option value="out">Stock Out</option>
+            <option value="adjustment">Adjustments</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="table table-hover" id="movementsTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Quantity</th>
+              <th>Reference</th>
+              <th>User</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="movement in recentMovements" :key="movement.id">
+              <tr>
+                <td>
+                  <small x-text="formatDateTime(movement.timestamp)"></small>
+                </td>
+                <td>
+                  <strong x-text="movement.itemName"></strong>
+                </td>
+                <td>
+                  <span class="movement-badge" :class="'movement-' + movement.type" x-text="movement.type"></span>
+                </td>
+                <td>
+                  <span :class="movement.quantity > 0 ? 'text-success' : 'text-danger'" 
+                        x-text="movement.quantity"></span>
+                </td>
+                <td>
+                  <small x-text="movement.reference"></small>
+                </td>
+                <td>
+                  <small x-text="movement.user"></small>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock Analysis -->
+  <div class="analysis-section">
+    <h3 class="section-title">
+      <i class="bi bi-search"></i>
+      Stock Analysis
+    </h3>
+    <div class="analysis-grid">
+      <!-- ABC Analysis -->
+      <div class="analysis-card">
+        <h4>
+          <i class="bi bi-sort-alpha-down"></i>
+          ABC Analysis
+        </h4>
+        <div class="abc-breakdown">
+          <div class="abc-item abc-a">
+            <span class="abc-label">Category A</span>
+            <span class="abc-value">80% Revenue</span>
+            <span class="abc-count" x-text="analysisData.abc.categoryA.count + ' items'"></span>
+          </div>
+          <div class="abc-item abc-b">
+            <span class="abc-label">Category B</span>
+            <span class="abc-value">15% Revenue</span>
+            <span class="abc-count" x-text="analysisData.abc.categoryB.count + ' items'"></span>
+          </div>
+          <div class="abc-item abc-c">
+            <span class="abc-label">Category C</span>
+            <span class="abc-value">5% Revenue</span>
+            <span class="abc-count" x-text="analysisData.abc.categoryC.count + ' items'"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fast Moving Items -->
+      <div class="analysis-card">
+        <h4>
+          <i class="bi bi-lightning"></i>
+          Fast Moving Items
+        </h4>
+        <div class="fast-moving-list">
+          <template x-for="item in analysisData.fastMoving" :key="item.id">
+            <div class="fast-moving-item">
+              <span class="item-name" x-text="item.name"></span>
+              <span class="turnover-rate" x-text="'Turnover: ' + item.turnoverRate + 'x/month'"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Slow Moving Items -->
+      <div class="analysis-card">
+        <h4>
+          <i class="bi bi-hourglass-split"></i>
+          Slow Moving Items
+        </h4>
+        <div class="slow-moving-list">
+          <template x-for="item in analysisData.slowMoving" :key="item.id">
+            <div class="slow-moving-item">
+              <span class="item-name" x-text="item.name"></span>
+              <span class="days-since" x-text="item.daysSinceMovement + ' days'"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Stock Value by Category -->
+      <div class="analysis-card">
+        <h4>
+          <i class="bi bi-pie-chart"></i>
+          Value Distribution
+        </h4>
+        <div class="value-distribution">
+          <template x-for="category in analysisData.valueByCategory" :key="category.name">
+            <div class="value-item">
+              <span class="category-name" x-text="category.name"></span>
+              <div class="progress">
+                <div class="progress-bar" :style="'width: ' + category.percentage + '%'"></div>
+              </div>
+              <span class="category-value" x-text="formatCurrency(category.value)"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-overlay" x-show="isLoading" x-transition>
+    <div class="loading-content">
+      <div class="spinner-border text-warning" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="loading-text">Loading inventory data...</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/inventory-analytics-dashboard.js') }}"></script>
+{% endblock %}

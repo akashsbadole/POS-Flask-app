@@ -257,6 +257,30 @@
   .status-success { background: #28a745; }
   .status-warning { background: #ffc107; }
   .status-danger { background: #dc3545; }
+  
+  .btn-outline-warning {
+    color: #ffc107;
+    border-color: #ffc107;
+  }
+  
+  .btn-outline-warning:hover {
+    background-color: #ffc107;
+    color: white;
+  }
+  
+  .btn-outline-info {
+    color: #17a2b8;
+    border-color: #17a2b8;
+  }
+  
+  .btn-outline-info:hover {
+    background-color: #17a2b8;
+    color: white;
+  }
+  
+  .me-2 {
+    margin-right: 0.5rem;
+  }
 </style>
 {% endblock %} {% block content %}
 <div class="settings-container" x-data="settingsManager()">
@@ -604,27 +628,30 @@ function settingsManager() {
   return {
     activeTab: 'restaurant',
     settings: {
-      restaurant_name: '{{ settings.restaurant_name or "" }}',
-      restaurant_address: '{{ settings.restaurant_address or "" }}',
-      restaurant_phone: '{{ settings.restaurant_phone or "" }}',
-      restaurant_email: '{{ settings.restaurant_email or "" }}',
-      gst_number: '{{ settings.gst_number or "" }}',
-      currency_symbol: '{{ settings.currency_symbol or "₹" }}',
-      tax_rate: {{ settings.tax_rate or 5.0 }},
-      enable_tax: {{ 'true' if settings.enable_tax == 'true' else 'false' }},
-      receipt_footer: '{{ settings.receipt_footer or "" }}',
-      decimal_places: '{{ settings.decimal_places or "2" }}',
-      low_stock_threshold: {{ settings.low_stock_threshold or 20 }},
-      auto_deduct_stock: {{ 'true' if settings.auto_deduct_stock == 'true' else 'false' }},
-      auto_backup: {{ 'true' if settings.auto_backup == 'true' else 'false' }},
-      backup_time: '{{ settings.backup_time or "02:00" }}',
-      last_backup: '{{ settings.last_backup or "Never" }}',
-      backup_retention_days: {{ settings.backup_retention_days or 7 }},
-      session_timeout: {{ settings.session_timeout or 8 }},
-      items_per_page: {{ settings.items_per_page or 50 }}
+      restaurant_name: '',
+      restaurant_address: '',
+      restaurant_phone: '',
+      restaurant_email: '',
+      gst_number: '',
+      currency_symbol: '₹',
+      tax_rate: 5.0,
+      enable_tax: false,
+      receipt_footer: '',
+      decimal_places: '2',
+      low_stock_threshold: 20,
+      auto_deduct_stock: false,
+      auto_backup: false,
+      backup_time: '02:00',
+      last_backup: 'Never',
+      backup_retention_days: 7,
+      session_timeout: 8,
+      items_per_page: 50
     },
     
-    emailSettings: {{ email_settings | tojson }},
+    emailSettings: {},
+    
+    backupStatusClass: 'status-danger',
+    backupStatusText: 'Loading...',
     
     taxBreakdown: {
       cgst: 2.5,

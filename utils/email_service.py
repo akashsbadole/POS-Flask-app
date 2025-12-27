@@ -287,6 +287,260 @@ class EmailService:
             logger.error(f"Error queuing backup notification: {e}")
             return False, f"Failed to queue notification: {str(e)}"
     
+    def send_password_reset_email(self, email: str, reset_url: str, username: str) -> Tuple[bool, str]:
+        """Send password reset email"""
+        try:
+            subject = "Password Reset Request - Restaurant POS"
+            body = self.get_password_reset_email_template(reset_url, username)
+            
+            # Send email synchronously for password reset (don't queue)
+            success, message = self._send_email_sync(
+                subject=subject,
+                body=body,
+                recipients=[email]
+            )
+            
+            if success:
+                # Add to history
+                history_item = EmailHistory(
+                    id=f"reset_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    subject=subject,
+                    recipients=[email],
+                    sent_at=datetime.now(),
+                    status="sent"
+                )
+                self.email_history.append(history_item)
+                self.save_email_history()
+            
+            return success, message
+        
+        except Exception as e:
+            logger.error(f"Error sending password reset email: {e}")
+            return False, f"Failed to send password reset email: {str(e)}"
+    
+    def send_otp_email(self, email: str, otp_code: str, template_type: str = 'otp_login', user_id: int = None) -> Tuple[bool, str]:
+        """Send OTP email"""
+        try:
+            # Get user info if user_id provided
+            username = "User"
+            if user_id:
+                from models import User
+                user = User.query.get(user_id)
+                if user:
+                    username = user.username
+            
+            subject = self.get_otp_email_subject(template_type)
+            body = self.get_otp_email_template(otp_code, username, template_type)
+            
+            # Send email synchronously for OTP (don't queue)
+            success, message = self._send_email_sync(
+                subject=subject,
+                body=body,
+                recipients=[email]
+            )
+            
+            if success:
+                # Add to history
+                history_item = EmailHistory(
+                    id=f"otp_{template_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    subject=subject,
+                    recipients=[email],
+                    sent_at=datetime.now(),
+                    status="sent"
+                )
+                self.email_history.append(history_item)
+                self.save_email_history()
+            
+            return success, message
+        
+        except Exception as e:
+            logger.error(f"Error sending OTP email: {e}")
+            return False, f"Failed to send OTP email: {str(e)}"
+    
+    def get_otp_email_subject(self, template_type: str) -> str:
+        """Get email subject based on OTP type"""
+        subject_map = {
+            'otp_login': 'Login Verification Code - Restaurant POS',
+            'otp_verification': 'Email Verification Code - Restaurant POS',
+            'otp_reset': 'Password Reset Code - Restaurant POS'
+        }
+        return subject_map.get(template_type, 'Verification Code - Restaurant POS')
+    
+    def get_otp_email_template(self, otp_code: str, username: str, template_type: str) -> str:
+        """Get OTP email template"""
+        # Get footer for emails
+        footer_html = self._get_email_footer()
+        
+        if template_type == 'otp_login':
+            return self._get_otp_login_template(otp_code, username, footer_html)
+        elif template_type == 'otp_verification':
+            return self._get_otp_verification_template(otp_code, username, footer_html)
+        elif template_type == 'otp_reset':
+            return self._get_otp_reset_template(otp_code, username, footer_html)
+        else:
+            return self._get_otp_login_template(otp_code, username, footer_html)
+    
+    def _get_otp_login_template(self, otp_code: str, username: str, footer_html: str) -> str:
+        """Get OTP login email template"""
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin: 0;">Login Verification Code</h1>
+                    <p style="color: #666; margin: 5px 0 0 0;">Restaurant POS System</p>
+                </div>
+                
+                <div style="background-color: #007bff20; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
+                    <h2 style="margin: 0; color: #007bff;">🔐 Security Verification</h2>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">Hello {username},</p>
+                    
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        We received a login request for your Restaurant POS System account. 
+                        To complete the login process, please use the verification code below:
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <div style="background-color: #f8f9fa; border: 2px solid #007bff; border-radius: 10px; padding: 20px; display: inline-block;">
+                        <p style="margin: 0; color: #666; font-size: 14px;">Your verification code:</p>
+                        <p style="margin: 10px 0 0 0; color: #007bff; font-size: 32px; font-weight: bold; letter-spacing: 4px;">{otp_code}</p>
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #856404;">Important Security Information:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #856404;">
+                        <li>This code will expire in <strong>10 minutes</strong></li>
+                        <li>The code can only be used once</li>
+                        <li>If you didn't attempt to login, please ignore this email</li>
+                        <li>Never share this code with anyone</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>This is an automated security message from Restaurant POS System.</strong><br>
+                        Please do not reply to this email.
+                    </p>
+                </div>
+                
+                {footer_html}
+            </div>
+        </body>
+        </html>
+        """
+    
+    def _get_otp_verification_template(self, otp_code: str, username: str, footer_html: str) -> str:
+        """Get OTP verification email template"""
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin: 0;">Email Verification</h1>
+                    <p style="color: #666; margin: 5px 0 0 0;">Restaurant POS System</p>
+                </div>
+                
+                <div style="background-color: #28a74520; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
+                    <h2 style="margin: 0; color: #28a745;">✅ Verify Your Email</h2>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">Hello {username},</p>
+                    
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        Thank you for registering with Restaurant POS System. 
+                        To complete your registration, please verify your email address using the code below:
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <div style="background-color: #f8f9fa; border: 2px solid #28a745; border-radius: 10px; padding: 20px; display: inline-block;">
+                        <p style="margin: 0; color: #666; font-size: 14px;">Your verification code:</p>
+                        <p style="margin: 10px 0 0 0; color: #28a745; font-size: 32px; font-weight: bold; letter-spacing: 4px;">{otp_code}</p>
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #0c5460;">Verification Instructions:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #0c5460;">
+                        <li>This code will expire in <strong>10 minutes</strong></li>
+                        <li>The code can only be used once</li>
+                        <li>Enter this code on the verification page to complete your registration</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>This is an automated message from Restaurant POS System.</strong><br>
+                        Please do not reply to this email.
+                    </p>
+                </div>
+                
+                {footer_html}
+            </div>
+        </body>
+        </html>
+        """
+    
+    def _get_otp_reset_template(self, otp_code: str, username: str, footer_html: str) -> str:
+        """Get OTP reset email template"""
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin: 0;">Password Reset Code</h1>
+                    <p style="color: #666; margin: 5px 0 0 0;">Restaurant POS System</p>
+                </div>
+                
+                <div style="background-color: #dc354520; border-left: 4px solid #dc3545; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
+                    <h2 style="margin: 0; color: #dc3545;">🔒 Password Reset Request</h2>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">Hello {username},</p>
+                    
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        We received a request to reset your password for the Restaurant POS System. 
+                        Use the code below to create a new password:
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <div style="background-color: #f8f9fa; border: 2px solid #dc3545; border-radius: 10px; padding: 20px; display: inline-block;">
+                        <p style="margin: 0; color: #666; font-size: 14px;">Your reset code:</p>
+                        <p style="margin: 10px 0 0 0; color: #dc3545; font-size: 32px; font-weight: bold; letter-spacing: 4px;">{otp_code}</p>
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #856404;">Security Information:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #856404;">
+                        <li>This code will expire in <strong>10 minutes</strong></li>
+                        <li>The code can only be used once</li>
+                        <li>If you didn't request a password reset, please ignore this email</li>
+                        <li>Your password will remain unchanged until you create a new one</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>This is an automated security message from Restaurant POS System.</strong><br>
+                        Please do not reply to this email.
+                    </p>
+                </div>
+                
+                {footer_html}
+            </div>
+        </body>
+        </html>
+        """
+    
     def _send_email_sync(self, subject: str, body: str, recipients: List[str], 
                          attachments: List[str] = None) -> Tuple[bool, str]:
         """Send email synchronously"""
@@ -499,6 +753,77 @@ class EmailService:
                 <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
                     <p style="margin: 0; color: #666;">
                         <strong>This is an automated message from your POS Backup System.</strong><br>
+                        Please do not reply to this email.
+                    </p>
+                </div>
+                
+                {footer_html}
+            </div>
+        </body>
+        </html>
+        """
+    
+    def get_password_reset_email_template(self, reset_url: str, username: str) -> str:
+        """Get password reset email template"""
+        # Get footer for emails
+        footer_html = self._get_email_footer()
+        
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin: 0;">Password Reset Request</h1>
+                    <p style="color: #666; margin: 5px 0 0 0;">Restaurant POS System</p>
+                </div>
+                
+                <div style="background-color: #dc354520; border-left: 4px solid #dc3545; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
+                    <h2 style="margin: 0; color: #dc3545;">
+                        🔒 Security Alert
+                    </h2>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">Hello {username},</p>
+                    
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        We received a request to reset your password for the Restaurant POS System. If you made this request, 
+                        click the button below to set a new password:
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" 
+                       style="display: inline-block; background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; border: none;">
+                        Reset Password
+                    </a>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #856404;">Important Security Information:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #856404;">
+                        <li>This link will expire in <strong>1 hour</strong></li>
+                        <li>The link can only be used once</li>
+                        <li>If you didn't request this reset, please ignore this email</li>
+                        <li>Your password will remain unchanged until you create a new one</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 14px; line-height: 1.5;">
+                        <strong>For your security, this link cannot be used to access your account.</strong><br>
+                        You will need to enter your new password after clicking the link above.
+                    </p>
+                    
+                    <p style="color: #666; font-size: 14px; line-height: 1.5;">
+                        If the button doesn't work, copy and paste this URL into your browser:<br>
+                        <span style="background-color: #f8f9fa; padding: 8px; border-radius: 3px; font-family: monospace; font-size: 12px; word-break: break-all;">{reset_url}</span>
+                    </p>
+                </div>
+                
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>This is an automated security message from Restaurant POS System.</strong><br>
                         Please do not reply to this email.
                     </p>
                 </div>

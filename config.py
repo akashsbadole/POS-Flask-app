@@ -4,50 +4,35 @@ from datetime import timedelta
 class Config:
     """Base configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///restaurant_pos.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Session configuration
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
-    SESSION_COOKIE_SECURE = False  # Set to True in production
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    # Twilio SMS Configuration
+    TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+    TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+    TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+    TWILIO_VERIFY_SERVICE_SID = os.environ.get('TWILIO_VERIFY_SERVICE_SID')
+    TWILIO_ENABLED = os.environ.get('TWILIO_ENABLED', 'false').lower() in ['true', '1', 'yes']
     
-    # Upload configuration
-    UPLOAD_FOLDER = 'uploads'
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    # Database configuration - supports both SQLite and PostgreSQL
+    # Check DATABASE_URL first, then construct based on DATABASE_TYPE
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'sqlite').lower()
     
-    # GST Configuration
-    CGST_RATE = 0.025  # 2.5%
-    SGST_RATE = 0.025  # 2.5%
-    TOTAL_GST_RATE = 0.05  # 5%
-    
-    # Currency
-    CURRENCY_SYMBOL = '₹'
-    DECIMAL_PLACES = 2
-    
-    # Pagination
-    ITEMS_PER_PAGE = 50
-    
-    # Export settings
-    EXPORT_FOLDER = 'exports'
-    
-    # POS Settings
-    DEFAULT_RESTAURANT_NAME = 'Restaurant POS'
-    DEFAULT_TAX_RATE = 5.0
-    
-    # Cache settings
-    CACHE_TYPE = 'simple'
-    CACHE_DEFAULT_TIMEOUT = 300
-    
-    # Security headers
-    SECURITY_HEADERS = {
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'X-XSS-Protection': '1; mode=block',
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-        'Referrer-Policy': 'strict-origin-when-cross-origin'
-    }
+    if DATABASE_URL:
+        # Use DATABASE_URL if provided
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    elif DATABASE_TYPE == 'postgresql':
+        # PostgreSQL configuration
+        POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
+        POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
+        POSTGRES_USER = os.environ.get('POSTGRES_USER', 'postgres')
+        POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', '')
+        POSTGRES_DB = os.environ.get('POSTGRES_DB', 'restaurant_pos')
+        SQLALCHEMY_DATABASE_URI = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+    else:
+        # Default SQLite configuration
+        SQLITE_DATABASE_PATH = os.environ.get('SQLITE_DATABASE_PATH', 'restaurant_pos.db')
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{SQLITE_DATABASE_PATH}'
 
 class DevelopmentConfig(Config):
     """Development configuration"""

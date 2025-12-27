@@ -17,7 +17,20 @@ from pathlib import Path
 import sqlite3
 import zlib
 
-from config.performance_config import get_performance_config
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import performance config with fallback
+try:
+    from config.performance_config import get_performance_config
+except ImportError:
+    # Fallback for when config module is not available
+    class MockConfig:
+        def get_setting(self, key, default=None):
+            return default
+    def get_performance_config():
+        return MockConfig()
 
 class CacheLevel:
     """Base cache level class"""

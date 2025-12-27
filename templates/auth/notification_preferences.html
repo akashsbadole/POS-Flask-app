@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}Notification Preferences - {{ public_settings.get('restaurant_name', 'Restaurant POS') }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .preferences-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .preferences-card {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 2rem;
+    }
+    
+    .preferences-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .preferences-header h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+    
+    .preferences-header p {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+    
+    .preference-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .preference-section h3 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .preference-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .preference-item:last-child {
+        border-bottom: none;
+    }
+    
+    .preference-info h4 {
+        font-size: 1rem;
+        font-weight: 500;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+    
+    .preference-info p {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin: 0;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 34px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: #10b981;
+    }
+    
+    input:focus + .toggle-slider {
+        box-shadow: 0 0 1px #10b981;
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+    
+    .form-errors {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-errors ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        color: #dc2626;
+        font-size: 0.875rem;
+    }
+    
+    .form-errors li {
+        padding: 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .form-errors li::before {
+        content: "⚠";
+        color: #dc2626;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    .btn-save {
+        background: #10b981;
+        border-color: #10b981;
+        color: white;
+        padding: 0.75rem 2rem;
+    }
+    
+    .btn-save:hover {
+        background: #059669;
+        border-color: #059669;
+        color: white;
+    }
+    
+    .btn-cancel {
+        background: white;
+        border-color: #6c757d;
+        color: #6c757d;
+        padding: 0.75rem 2rem;
+    }
+    
+    .btn-cancel:hover {
+        background: #f8f9fa;
+        border-color: #5c636a;
+        color: #5c636a;
+    }
+    
+    @media (max-width: 768px) {
+        .preferences-card {
+            padding: 1.5rem;
+        }
+        
+        .preference-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="preferences-container">
+    <div class="preferences-card">
+        <div class="preferences-header">
+            <h2>Notification Preferences</h2>
+            <p>Choose how you want to be notified about different activities</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %} 
+        {% if messages %} 
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category or 'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %} 
+        {% endif %} 
+        {% endwith %}
+        
+        <form method="POST" id="preferencesForm">
+            {{ form.hidden_tag() }}
+            
+            <!-- Display form errors -->
+            {% if form.errors %}
+            <div class="form-errors">
+                <strong>Please fix the following errors:</strong>
+                <ul>
+                    {% for field, errors in form.errors.items() %}
+                        {% for error in errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <!-- Email Notifications Section -->
+            <div class="preference-section">
+                <h3>
+                    <i class="bi bi-envelope"></i>
+                    Email Notifications
+                </h3>
+                
+                <div class="preference-item">
+                    <div class="preference-info">
+                        <h4>General Email Notifications</h4>
+                        <p>Receive notifications via email about important updates and activities</p>
+                    </div>
+                    <label class="toggle-switch">
+                        {{ form.email_notifications() }}
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-info">
+                        <h4>Order Updates</h4>
+                        <p>Get notified when there are updates to your orders or order status changes</p>
+                    </div>
+                    <label class="toggle-switch">
+                        {{ form.order_updates() }}
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-info">
+                        <h4>Marketing Emails</h4>
+                        <p>Receive promotional content, special offers, and newsletters</p>
+                    </div>
+                    <label class="toggle-switch">
+                        {{ form.marketing_emails() }}
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-info">
+                        <h4>System Alerts</h4>
+                        <p>Critical system notifications and security alerts</p>
+                    </div>
+                    <label class="toggle-switch">
+                        {{ form.system_alerts() }}
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Additional Settings Section -->
+            <div class="preference-section">
+                <h3>
+                    <i class="bi bi-gear"></i>
+                    Additional Settings
+                </h3>
+                
+                <div class="preference-item">
+                    <div class="preference-info">
+                        <h4>Email Frequency</h4>
+                        <p>How often would you like to receive summary emails?</p>
+                    </div>
+                    <select class="form-select" style="width: auto; min-width: 150px;">
+                        <option>Immediate</option>
+                        <option>Daily Digest</option>
+                        <option>Weekly Summary</option>
+                        <option>Never</option>
+                    </select>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-info">
+                        <h4>Quiet Hours</h4>
+                        <p>Set hours when you don't want to receive non-critical notifications</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="time" class="form-control" style="width: 120px;" value="22:00">
+                        <span style="color: #6b7280;">to</span>
+                        <input type="time" class="form-control" style="width: 120px;" value="08:00">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-primary btn-save">
+                    <i class="bi bi-check-circle"></i> Save Preferences
+                </button>
+                <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-secondary btn-cancel">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('preferencesForm');
+        
+        // Toggle switch enhancement
+        const toggles = document.querySelectorAll('input[type="checkbox"]');
+        toggles.forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const slider = this.nextElementSibling;
+                if (this.checked) {
+                    slider.style.backgroundColor = '#10b981';
+                } else {
+                    slider.style.backgroundColor = '#ccc';
+                }
+            });
+            
+            // Initialize toggle states
+            const slider = toggle.nextElementSibling;
+            if (toggle.checked) {
+                slider.style.backgroundColor = '#10b981';
+            } else {
+                slider.style.backgroundColor = '#ccc';
+            }
+        });
+        
+        form.addEventListener('submit', function(e) {
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+            submitBtn.disabled = true;
+            
+            // Submit form normally
+            // You can enhance this with AJAX submission later
+            // form.submit();
+        });
+        
+        // Show confirmation before unchecking critical notifications
+        const criticalToggles = ['system_alerts'];
+        criticalToggles.forEach(toggleId => {
+            const toggle = document.getElementById(toggleId);
+            if (toggle) {
+                toggle.addEventListener('change', function() {
+                    if (!this.checked) {
+                        const confirmed = confirm(
+                            'Are you sure you want to disable system alerts? ' +
+                            'You may miss important security notifications.'
+                        );
+                        if (!confirmed) {
+                            this.checked = true;
+                            const slider = this.nextElementSibling;
+                            slider.style.backgroundColor = '#10b981';
+                        }
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

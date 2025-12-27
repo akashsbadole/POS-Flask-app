@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Create Backup Job{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('backup.index') }}">Backup</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('backup.jobs') }}">Jobs</a></li>
+                    <li class="breadcrumb-item active">Create</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-plus"></i> Create Backup Job
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Basic Information</h5>
+                                <div class="form-group">
+                                    <label for="name">Job Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                    <small class="form-text text-muted">A descriptive name for this backup job</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="description">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                                    <small class="form-text text-muted">Optional description of what this job does</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="backup_type">Backup Type <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="backup_type" name="backup_type" required>
+                                        <option value="full">Full Backup</option>
+                                        <option value="database">Database Only</option>
+                                        <option value="configuration">Configuration Only</option>
+                                        <option value="user_data">User Data Only</option>
+                                        <option value="logs">Logs Only</option>
+                                        <option value="incremental">Incremental</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5>Schedule & Retention</h5>
+                                <div class="form-group">
+                                    <label for="schedule_cron">Schedule</label>
+                                    <select class="form-control" id="schedule_cron" name="schedule_cron">
+                                        <option value="">Manual Only</option>
+                                        <option value="@daily">Daily at 2:00 AM</option>
+                                        <option value="@weekly">Weekly (Sunday 2:00 AM)</option>
+                                        <option value="@monthly">Monthly (1st 2:00 AM)</option>
+                                    </select>
+                                    <small class="form-text text-muted">Leave empty for manual execution only</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="retention_days">Retention Period (days)</label>
+                                    <input type="number" class="form-control" id="retention_days" name="retention_days" value="30" min="1">
+                                    <small class="form-text text-muted">How long to keep backups from this job</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Backup Options</h5>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="compression_enabled" name="compression_enabled" checked>
+                                        <label class="custom-control-label" for="compression_enabled">Enable Compression</label>
+                                    </div>
+                                    <small class="form-text text-muted">Compress backup files to save storage space</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="encryption_enabled" name="encryption_enabled" checked>
+                                        <label class="custom-control-label" for="encryption_enabled">Enable Encryption</label>
+                                    </div>
+                                    <small class="form-text text-muted">Encrypt backup files for security</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5>Include Components</h5>
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="include_config" name="include_config" checked>
+                                        <label class="custom-control-label" for="include_config">Configuration Files</label>
+                                    </div>
+                                    <small class="form-text text-muted">Backup configuration files</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="include_user_data" name="include_user_data" checked>
+                                        <label class="custom-control-label" for="include_user_data">User Data</label>
+                                    </div>
+                                    <small class="form-text text-muted">Backup user uploads and data files</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="include_logs" name="include_logs">
+                                        <label class="custom-control-label" for="include_logs">Log Files</label>
+                                    </div>
+                                    <small class="form-text text-muted">Backup application log files</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="enabled" name="enabled" checked>
+                                        <label class="custom-control-label" for="enabled">Enable Job</label>
+                                    </div>
+                                    <small class="form-text text-muted">Enable this job for automatic execution</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Create Backup Job
+                            </button>
+                            <a href="{{ url_for('backup.jobs') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-actions {
+    text-align: right;
+    margin-top: 20px;
+}
+
+.custom-control-label {
+    font-weight: 500;
+}
+
+h5 {
+    color: #495057;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+</style>
+{% endblock %}

@@ -1,5 +1,5 @@
 {% extends "auth/auth-base.html" %} 
-{% block title %}Login - Restaurant POS{% endblock %} 
+{% block title %}Login - {{ white_label_settings.get('company_name', public_settings.get('restaurant_name', 'Restaurant POS')) }}{% endblock %} 
 
 {% block content %}
 <div class="modern-login-container">
@@ -8,14 +8,21 @@
         <div class="login-card">
             <!-- Logo Section -->
             <div class="login-logo">
-                <img src="{{ url_for('static', filename='images/pos-logo.png') }}" alt="{{ public_settings.get('restaurant_name', 'Restaurant POS') }}">
-                <h2>{{ public_settings.get('restaurant_name', 'Restaurant POS') }}</h2>
+                {% if white_label_settings.get('logo_show_in_login', 'true') == 'true' and white_label_settings.get('logo_login_path') %}
+                    <img src="{{ url_for('static', filename=white_label_settings.logo_login_path) }}" alt="{{ white_label_settings.get('company_name', public_settings.get('restaurant_name', 'Restaurant POS')) }}" style="height: {{ white_label_settings.get('logo_height_login', '60px') }};">
+                {% else %}
+                    <i class="bi bi-shop" style="font-size: 48px; color: var(--brand-primary, #007bff); margin-bottom: 20px;"></i>
+                {% endif %}
+                <h2>{{ white_label_settings.get('company_name', public_settings.get('restaurant_name', 'Restaurant POS')) }}</h2>
+                {% if white_label_settings.get('company_tagline') %}
+                    <p class="login-tagline">{{ white_label_settings.get('company_tagline') }}</p>
+                {% endif %}
             </div>
             
             <!-- Login Header -->
             <div class="login-header">
-                <h1 class="login-title">Welcome Back</h1>
-                <p class="login-subtitle">Sign in to manage your restaurant operations</p>
+                <h1 class="login-title">{{ white_label_settings.get('login_title', 'Welcome Back') }}</h1>
+                <p class="login-subtitle">{{ white_label_settings.get('login_subtitle', 'Sign in to manage your restaurant operations') }}</p>
             </div>
             
             <!-- Flash Messages -->
@@ -58,7 +65,7 @@
                         <span class="checkbox-custom"></span>
                         <span class="checkbox-label">Remember me</span>
                     </label>
-                    <a href="#" class="forgot-password">Forgot Password?</a>
+                    <a href="{{ url_for('auth.forgot_password') }}" class="forgot-password">Forgot Password?</a>
                 </div>
                 
                 <!-- Submit Button -->
@@ -68,9 +75,45 @@
                 </button>
             </form>
             
+            <!-- Alternative Login Methods -->
+            <div class="otp-divider">
+                <span>or try these quick login options</span>
+            </div>
+            
+            <div class="otp-options">
+                <!-- Mobile OTP Option -->
+                <div class="otp-option">
+                    <a href="{{ url_for('auth.mobile_login') }}" class="otp-button mobile-otp">
+                        <div class="otp-icon">
+                            <i class="bi bi-phone"></i>
+                        </div>
+                        <div class="otp-content">
+                            <span class="otp-title">Mobile OTP</span>
+                            <small class="otp-info">Quick login via SMS</small>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Email OTP Option -->
+                <div class="otp-option">
+                    <a href="{{ url_for('auth.email_login') }}" class="otp-button email-otp">
+                        <div class="otp-icon">
+                            <i class="bi bi-envelope"></i>
+                        </div>
+                        <div class="otp-content">
+                            <span class="otp-title">Email OTP</span>
+                            <small class="otp-info">Secure login via email</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
             <!-- Login Footer -->
             <div class="login-footer">
-                <p class="mb-0">&copy; 2025 {{ public_settings.get('restaurant_name', 'Restaurant POS') }}. All rights reserved.</p>
+                <p class="mb-0">&copy; 2025 {{ white_label_settings.get('company_name', public_settings.get('restaurant_name', 'Restaurant POS')) }}. All rights reserved.</p>
+                {% if white_label_settings.get('company_registration_number') %}
+                <small class="text-muted">Reg. No: {{ white_label_settings.get('company_registration_number') }}</small>
+                {% endif %}
                 {% if debug %}
                 <small class="text-muted">Debug: User accounts may need to be created first</small>
                 {% endif %}
@@ -467,4 +510,144 @@
         });
     });
 </script>
+
+<style>
+/* OTP Options Styling */
+.otp-divider {
+    position: relative;
+    text-align: center;
+    margin: 30px 0 20px 0;
+}
+
+.otp-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #dee2e6, transparent);
+}
+
+.otp-divider span {
+    background: white;
+    padding: 0 20px;
+    color: #6c757d;
+    font-size: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.otp-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.otp-option {
+    width: 100%;
+}
+
+.otp-button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #495057;
+    background: white;
+    transition: all 0.3s ease;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.otp-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.otp-button:hover::before {
+    left: 100%;
+}
+
+.otp-button:hover {
+    border-color: var(--brand-primary, #007bff);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+    color: var(--brand-primary, #007bff);
+}
+
+.otp-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.mobile-otp .otp-icon {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.email-otp .otp-icon {
+    background: linear-gradient(135deg, #007bff, #6f42c1);
+    color: white;
+}
+
+.otp-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.otp-title {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.otp-info {
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.otp-button:hover .otp-info {
+    color: var(--brand-primary, #007bff);
+}
+
+/* Mobile responsiveness for OTP options */
+@media (max-width: 768px) {
+    .otp-options {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .otp-button {
+        padding: 14px 16px;
+    }
+    
+    .otp-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+}
+</style>
 {% endblock %}

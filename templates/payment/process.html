@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Payment - {{ order.order_number }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pos.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Razorpay Checkout -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    
+    <!-- Stripe -->
+    <script src="https://js.stripe.com/v3/"></script>
+    
+    <style>
+        .payment-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .order-summary {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .payment-method-card {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .payment-method-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 8px rgba(0,123,255,0.2);
+        }
+        
+        .payment-method-card.selected {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .payment-method-card i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+        
+        .gateway-section {
+            margin-bottom: 30px;
+        }
+        
+        .gateway-section h4 {
+            color: #495057;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        
+        .customer-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .processing-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .processing-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 300px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="payment-container">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-credit-card me-2"></i>Process Payment</h2>
+                <a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Order
+                </a>
+            </div>
+            
+            <!-- Error/Success Messages -->
+            <div id="message-container"></div>
+            
+            <!-- Order Summary -->
+            <div class="order-summary">
+                <h4><i class="fas fa-receipt me-2"></i>Order Summary</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Order Number:</strong> {{ order.order_number }}<br>
+                        <strong>Customer:</strong> {{ order.customer_name_decrypted or 'Walk-in' }}<br>
+                        <strong>Mobile:</strong> {{ order.customer_mobile_decrypted or 'N/A' }}<br>
+                        <strong>Order Type:</strong> {{ order.order_type }}
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="mb-2"><strong>Subtotal:</strong> {{ order.formatted_subtotal }}</div>
+                        <div class="mb-2"><strong>CGST (2.5%):</strong> {{ order.formatted_cgst }}</div>
+                        <div class="mb-2"><strong>SGST (2.5%):</strong> {{ order.formatted_sgst }}</div>
+                        {% if order.discount_amount > 0 %}
+                        <div class="mb-2"><strong>Discount:</strong> {{ order.formatted_discount }}</div>
+                        {% endif %}
+                        <hr>
+                        <div class="h5"><strong>Total Amount:</strong> {{ order.formatted_grand_total }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Customer Information -->
+            {% if not order.customer_name_decrypted %}
+            <div class="customer-info">
+                <h5><i class="fas fa-info-circle me-2"></i>Customer Information</h5>
+                <p class="mb-2">Add customer details for better service:</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="customerName" placeholder="Customer Name" value="{{ order.customer_name_decrypted or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="tel" class="form-control" id="customerMobile" placeholder="Mobile Number" value="{{ order.customer_mobile_decrypted or '' }}">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Payment Method Selection -->
+            <div class="gateway-section">
+                <h4><i class="fas fa-university me-2"></i>Select Payment Gateway</h4>
+                <div class="payment-methods" id="paymentGateways">
+                    <!-- Gateways will be loaded dynamically -->
+                </div>
+            </div>
+            
+            <!-- Payment Method Details -->
+            <div class="gateway-section">
+                <h4><i class="fas fa-credit-card me-2"></i>Payment Method</h4>
+                <div id="paymentMethodDetails">
+                    <p class="text-muted">Select a payment gateway to view available payment methods.</p>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="text-center">
+                <button type="button" class="btn btn-primary btn-lg me-3" id="processPaymentBtn" disabled>
+                    <i class="fas fa-lock me-2"></i>Process Payment
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Processing Overlay -->
+    <div class="processing-overlay" id="processingOverlay">
+        <div class="processing-content">
+            <div class="spinner"></div>
+            <h5>Processing Payment...</h5>
+            <p class="text-muted">Please wait while we process your payment.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let availableGateways = [];
+        let selectedGateway = null;
+        let selectedPaymentMethod = null;
+        
+        // Load available payment gateways
+        async function loadPaymentGateways() {
+            try {
+                const response = await fetch('/payment/methods');
+                const result = await response.json();
+                
+                if (result.success) {
+                    availableGateways = result.gateways;
+                    displayGateways();
+                } else {
+                    showMessage('Failed to load payment gateways', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading gateways:', error);
+                showMessage('Error loading payment gateways', 'error');
+            }
+        }
+        
+        // Display available gateways
+        function displayGateways() {
+            const container = document.getElementById('paymentGateways');
+            container.innerHTML = '';
+            
+            if (availableGateways.length === 0) {
+                container.innerHTML = '<p class="text-muted">No payment gateways configured.</p>';
+                return;
+            }
+            
+            availableGateways.forEach(gateway => {
+                const card = document.createElement('div');
+                card.className = 'payment-method-card';
+                card.onclick = () => selectGateway(gateway);
+                
+                const iconClass = getGatewayIcon(gateway.name);
+                const testModeBadge = gateway.is_test_mode ? '<span class="badge bg-warning ms-2">Test Mode</span>' : '';
+                
+                card.innerHTML = `
+                    <i class="${iconClass}"></i>
+                    <h5>${gateway.display_name}</h5>
+                    <p class="text-muted mb-2">${gateway.supported_payment_methods.join(', ')}</p>
+                    ${testModeBadge}
+                    <small class="text-muted">Fee: ${gateway.transaction_fee_percentage}% + ₹${gateway.transaction_fee_fixed}</small>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        // Get gateway icon class
+        function getGatewayIcon(gatewayName) {
+            const icons = {
+                'razorpay': 'fab fa-razorpay text-danger',
+                'stripe': 'fab fa-stripe text-primary',
+                'paypal': 'fab fa-paypal text-info'
+            };
+            return icons[gatewayName] || 'fas fa-credit-card';
+        }
+        
+        // Select gateway
+        function selectGateway(gateway) {
+            // Remove previous selection
+            document.querySelectorAll('.payment-method-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Select current gateway
+            event.currentTarget.classList.add('selected');
+            selectedGateway = gateway;
+            
+            // Enable process button
+            document.getElementById('processPaymentBtn').disabled = false;
+            
+            // Display payment method details
+            displayPaymentMethodDetails(gateway);
+        }
+        
+        // Display payment method details for selected gateway
+        function displayPaymentMethodDetails(gateway) {
+            const container = document.getElementById('paymentMethodDetails');
+            
+            let methodsHTML = `
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <h6><i class="fas fa-info-circle me-2"></i>Gateway Information</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Currency:</strong> ${gateway.supported_currencies.join(', ')}</li>
+                            <li><strong>Transaction Fee:</strong> ${gateway.transaction_fee_percentage}% + ₹${gateway.transaction_fee_fixed}</li>
+                            <li><strong>Min Amount:</strong> ${gateway.min_amount ? '₹' + gateway.min_amount : 'No minimum'}</li>
+                            <li><strong>Max Amount:</strong> ${gateway.max_amount ? '₹' + gateway.max_amount : 'No maximum'}</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            // Add gateway-specific payment methods
+            if (gateway.name === 'razorpay') {
+                methodsHTML += `
+                    <div class="row">
+                        <div class="col-12">
+                            <h6><i class="fas fa-list me-2"></i>Available Payment Methods</h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-credit-card text-primary mb-2"></i>
+                                            <h6>Credit/Debit Card</h6>
+                                            <small class="text-muted">Visa, Mastercard, RuPay</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-mobile-alt text-success mb-2"></i>
+                                            <h6>UPI</h6>
+                                            <small class="text-muted">Google Pay, PhonePe, Paytm</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-wallet text-warning mb-2"></i>
+                                            <h6>Wallet</h6>
+                                            <small class="text-muted">Paytm, Mobikwik</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (gateway.name === 'stripe') {
+                methodsHTML += `
+                    <div class="row">
+                        <div class="col-12">
+                            <h6><i class="fas fa-list me-2"></i>Payment Method</h6>
+                            <div id="stripe-payment-element"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = methodsHTML;
+            
+            // Initialize Stripe Elements if Stripe is selected
+            if (gateway.name === 'stripe' && gateway.client_secret) {
+                initializeStripeElements(gateway);
+            }
+        }
+        
+        // Initialize Stripe Elements
+        function initializeStripeElements(gateway) {
+            if (!window.Stripe) {
+                console.error('Stripe.js not loaded');
+                return;
+            }
+            
+            const stripe = Stripe(gateway.publishable_key);
+            const elements = stripe.elements({
+                clientSecret: gateway.client_secret,
+                appearance: {
+                    theme: 'stripe'
+                }
+            });
+            
+            const paymentElement = elements.create('payment');
+            paymentElement.mount('#stripe-payment-element');
+        }
+        
+        // Process payment
+        async function processPayment() {
+            if (!selectedGateway) {
+                showMessage('Please select a payment gateway', 'error');
+                return;
+            }
+            
+            showProcessingOverlay(true);
+            
+            try {
+                const orderData = {
+                    order_id: {{ order.id }},
+                    gateway_name: selectedGateway.name,
+                    payment_method_type: selectedPaymentMethod,
+                    customer_details: {
+                        name: document.getElementById('customerName')?.value,
+                        mobile: document.getElementById('customerMobile')?.value
+                    }
+                };
+                
+                const response = await fetch('/payment/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (selectedGateway.name === 'razorpay') {
+                        await processRazorpayPayment(result.data);
+                    } else if (selectedGateway.name === 'stripe') {
+                        await processStripePayment(result.data);
+                    } else {
+                        showMessage('Unsupported payment gateway', 'error');
+                    }
+                } else {
+                    showMessage(result.message || 'Payment processing failed', 'error');
+                }
+            } catch (error) {
+                console.error('Payment processing error:', error);
+                showMessage('Payment processing failed. Please try again.', 'error');
+            } finally {
+                showProcessingOverlay(false);
+            }
+        }
+        
+        // Process Razorpay payment
+        async function processRazorpayPayment(paymentData) {
+            const options = {
+                key: paymentData.client_config.key,
+                amount: paymentData.client_config.amount,
+                currency: paymentData.client_config.currency,
+                name: paymentData.client_config.name,
+                description: paymentData.client_config.description,
+                image: paymentData.client_config.image,
+                order_id: paymentData.order_id,
+                prefill: paymentData.client_config.prefill,
+                notes: paymentData.client_config.notes,
+                theme: {
+                    color: '#007bff'
+                },
+                modal: {
+                    ondismiss: function() {
+                        showMessage('Payment cancelled by user', 'error');
+                    }
+                }
+            };
+            
+            const rzp = new Razorpay(options);
+            
+            rzp.on('payment.success', function(response) {
+                confirmPayment(response.razorpay_payment_id, 'razorpay');
+            });
+            
+            rzp.on('payment.error', function(response) {
+                showMessage('Payment failed: ' + response.error.description, 'error');
+            });
+            
+            rzp.open();
+        }
+        
+        // Process Stripe payment
+        async function processStripePayment(paymentData) {
+            if (!window.Stripe) {
+                showMessage('Stripe.js not loaded', 'error');
+                return;
+            }
+            
+            const stripe = Stripe(paymentData.publishable_key);
+            
+            const { error } = await stripe.confirmPayment({
+                clientSecret: paymentData.client_secret,
+                confirmParams: {
+                    return_url: `${window.location.origin}/payment/success/${paymentData.payment_id}`,
+                },
+            });
+            
+            if (error) {
+                showMessage('Payment failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Confirm payment
+        async function confirmPayment(gatewayTransactionId, gatewayName) {
+            try {
+                const confirmData = {
+                    payment_id: {{ order.id }}, // This should be the payment ID from the process response
+                    gateway_transaction_id: gatewayTransactionId,
+                    gateway_name: gatewayName
+                };
+                
+                const response = await fetch('/payment/confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(confirmData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.redirect_url) {
+                    window.location.href = result.redirect_url;
+                } else {
+                    showMessage(result.message || 'Payment confirmation failed', 'error');
+                }
+            } catch (error) {
+                console.error('Payment confirmation error:', error);
+                showMessage('Payment confirmation failed', 'error');
+            }
+        }
+        
+        // Show/hide processing overlay
+        function showProcessingOverlay(show) {
+            document.getElementById('processingOverlay').style.display = show ? 'flex' : 'none';
+        }
+        
+        // Show message
+        function showMessage(message, type) {
+            const container = document.getElementById('message-container');
+            const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+            
+            container.innerHTML = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+        
+        // Event listeners
+        document.getElementById('processPaymentBtn').addEventListener('click', processPayment);
+        
+        // Load gateways on page load
+        document.addEventListener('DOMContentLoaded', loadPaymentGateways);
+    </script>
+</body>
+</html>

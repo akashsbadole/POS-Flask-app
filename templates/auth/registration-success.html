@@ -1,0 +1,170 @@
+{% extends "auth/auth-base.html" %}
+
+{% block title %}Registration Successful - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-container {
+        max-width: 500px;
+        margin: 4rem auto;
+        background: #fff;
+        padding: 3rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .success-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        border-radius: 50%;
+        margin: 0 auto 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+    }
+
+    .success-container h2 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+
+    .success-container p {
+        color: #7f8c8d;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+    }
+
+    .next-steps {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin: 2rem 0;
+        text-align: left;
+    }
+
+    .next-steps h3 {
+        color: #34495e;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .next-steps ol {
+        color: #7f8c8d;
+        padding-left: 1.5rem;
+    }
+
+    .next-steps li {
+        margin-bottom: 0.5rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #2980b9, #1f5f8b);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        text-align: left;
+    }
+
+    .alert-info {
+        background-color: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+    }
+
+    @media (max-width: 768px) {
+        .success-container {
+            margin: 2rem 1rem;
+            padding: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-icon">
+        <i class="fas fa-check"></i>
+    </div>
+    
+    <h2>Registration Successful!</h2>
+    
+    <p>Thank you for registering with our Restaurant POS System. Your account has been created successfully.</p>
+    
+    <div class="next-steps">
+        <h3>What's Next?</h3>
+        <ol>
+            <li><strong>Check your email</strong> - We've sent a verification link to your email address</li>
+            <li><strong>Verify your email</strong> - Click the link in the email to verify your account</li>
+            <li><strong>Wait for approval</strong> - Our admin team will review and approve your registration</li>
+            <li><strong>Start using the system</strong> - Once approved, you can login and start using the POS system</li>
+        </ol>
+    </div>
+    
+    <div class="alert alert-info">
+        <strong>Important:</strong> Your account is not yet active. You need to verify your email address and wait for admin approval before you can login.
+    </div>
+    
+    <p>Need help? Contact our support team or check your email for the verification link.</p>
+    
+    <a href="{{ url_for('auth.login') }}" class="btn-primary">Go to Login</a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add some interactive elements
+    console.log('Registration success page loaded');
+    
+    // Add click animation to the check icon
+    const successIcon = document.querySelector('.success-icon');
+    if (successIcon) {
+        successIcon.style.animation = 'bounce 1s ease-in-out';
+    }
+    
+    // CSS for bounce animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                transform: translate3d(0,-30px,0);
+            }
+            70% {
+                transform: translate3d(0,-15px,0);
+            }
+            90% {
+                transform: translate3d(0,-4px,0);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

@@ -8,6 +8,7 @@ from flask_migrate import Migrate
 from flask_compress import Compress
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
 
 # Import models and utilities
 from models import db, init_db, create_tables, validate_database_config, get_database_info
@@ -33,6 +34,16 @@ from routes.import_export import import_export_bp
 from routes.white_label import white_label_bp
 from routes.footer_settings import footer_settings_bp
 from routes.email import email_bp
+from routes.registration import registration_bp
+from routes.payment import payment_bp
+from routes.payment_gateway_config import payment_config_bp
+from routes.order_modification import order_modification_bp
+from routes.websocket import websocket_bp, init_websocket
+from routes.kitchen_display import kitchen_display_bp
+from routes.supplier_management import supplier_bp
+
+# Import analytics system
+from routes.analytics import analytics_bp
 
 # Import backup system
 from routes.backup import backup_bp
@@ -72,6 +83,17 @@ def init_extensions(app):
     
     # Database
     init_db(app)
+    
+    # WebSocket/SocketIO
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+    app.socketio = socketio
+    
+    # Initialize WebSocket handlers
+    init_websocket(app, socketio)
+    
+    # Initialize modification WebSocket integration
+    from utils.websocket_integration import init_modification_websocket
+    init_modification_websocket(socketio)
     
     # CSRF Protection
     csrf = CSRFProtect(app)
@@ -129,6 +151,16 @@ def register_blueprints(app):
         (white_label_bp, None),
         (footer_settings_bp, None),
         (email_bp, None),
+        (registration_bp, None),
+        (payment_bp, None),
+        (payment_config_bp, None),
+        (websocket_bp, '/ws'),
+        (kitchen_display_bp, None),
+        (order_modification_bp, None),
+        # Supplier management
+        (supplier_bp, None),
+        # Analytics system
+        (analytics_bp, None),
         # Backup system
         (backup_bp, None)
     ]

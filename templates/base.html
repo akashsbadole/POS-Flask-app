@@ -8,10 +8,29 @@
       {% block title %}{{ white_label_settings.get('company_name', public_settings.get('restaurant_name', 'Restaurant POS')) }}{% endblock %}
     </title>
     
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
     <!-- Dynamic Favicon -->
     {% set favicon_path = white_label_settings.get('logo_favicon_path', 'images/favicon.ico') %}
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename=favicon_path) }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+    
+    <!-- PWA Theme Color -->
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="msapplication-TileColor" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Restaurant POS">
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-config" content="{{ url_for('static', filename='browserconfig.xml') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/android-chrome-144x144.png') }}">
+    
+    <!-- Mobile Specific Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
     
     <!-- White Label Custom CSS -->
     {% if white_label_settings.get('custom_css_enabled') == 'true' %}
@@ -44,6 +63,12 @@
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     
+    <!-- Mobile-First Responsive CSS Framework -->
+    <link
+      href="{{ url_for('static', filename='css/mobile-responsive.css') }}"
+      rel="stylesheet"
+    />
+    
     <!-- Modern POS CSS Framework -->
     <link
       href="{{ url_for('static', filename='css/modern-pos.css') }}"
@@ -61,6 +86,12 @@
       href="{{ url_for('static', filename='css/pos-billing.css') }}"
       rel="stylesheet"
     />
+    
+    <!-- PWA-Specific Styles -->
+    <link
+      href="{{ url_for('static', filename='css/pwa-styles.css') }}"
+      rel="stylesheet"
+    />
 
     {% block extra_css %}{% endblock %}
     
@@ -72,15 +103,39 @@
     />
     {% endif %}
   </head>
-  <body x-data="posApp()" x-init="init()" class="modern-pos-container">
-    <!-- Modern Header -->
-    <header class="modern-header">
+  <body x-data="posApp()" x-init="init()" class="modern-pos-container mobile-responsive">
+    <!-- Skip Navigation Link for Accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- Mobile PWA Install Prompt -->
+    <div id="pwa-install-prompt" class="pwa-install-prompt" style="display: none;">
+      <div class="pwa-install-content">
+        <div class="pwa-install-icon">
+          <i class="bi bi-phone"></i>
+        </div>
+        <div class="pwa-install-text">
+          <h4>Install Restaurant POS</h4>
+          <p>Install our app for a better mobile experience</p>
+        </div>
+        <div class="pwa-install-actions">
+          <button id="pwa-install-btn" class="btn btn-primary btn-sm">Install</button>
+          <button id="pwa-dismiss-btn" class="btn btn-ghost btn-sm">Not Now</button>
+        </div>
+      </div>
+    </div>
+    <!-- Mobile-Responsive Header -->
+    <header class="modern-header mobile-header" x-data="{ mobileMenuOpen: false, pwaInstallPrompt: false }">
+      <!-- Mobile Menu Toggle -->
+      <button @click="mobileMenuOpen = !mobileMenuOpen" class="mobile-menu-toggle d-lg-none" aria-label="Toggle mobile menu">
+        <i class="bi" :class="mobileMenuOpen ? 'bi-x' : 'bi-list'"></i>
+      </button>
       <div class="modern-header-content">
         <!-- Left: Logo and Order Tabs -->
         <div class="d-flex align-items-center">
           <div class="modern-logo">
             {% if white_label_settings.get('logo_show_in_header', 'true') == 'true' and white_label_settings.get('logo_header_path') %}
-              <img src="{{ url_for('static', filename=white_label_settings.logo_header_path) }}" alt="{{ white_label_settings.get('company_name', 'Restaurant POS') }}" style="height: {{ white_label_settings.get('logo_height_header', '40px') }}; margin-right: 10px;">
+              {% set logo_height = white_label_settings.get('logo_height_header', '40px') %}
+              <img src="{{ url_for('static', filename=white_label_settings.logo_header_path) }}" alt="{{ white_label_settings.get('company_name', 'Restaurant POS') }}" style="height: {{ logo_height }}; margin-right: 10px;" loading="lazy">
             {% else %}
               <i class="bi bi-shop"></i>
             {% endif %}
@@ -208,16 +263,21 @@
     <!-- Modern Main Content Layout -->
     <div class="modern-main-content">
       <div class="modern-content-wrapper">
-        <!-- Modern Sidebar -->
-        <aside class="modern-sidebar" x-data="{sidebarOpen: true}" :class="{'collapsed': !sidebarOpen}">
+        <!-- Mobile-Responsive Sidebar -->
+        <aside class="modern-sidebar mobile-sidebar" x-data="{sidebarOpen: true, mobileMenuOpen: false}" :class="{'collapsed': !sidebarOpen, 'open': mobileMenuOpen}" @click.away="mobileMenuOpen = false">
           <div class="modern-sidebar-header">
             <div class="modern-logo">
               <i class="bi bi-list"></i>
               <span x-show="sidebarOpen">Menu</span>
             </div>
-            <button @click="sidebarOpen = !sidebarOpen" class="modern-btn modern-btn-ghost modern-btn-sm">
-              <i class="bi" :class="sidebarOpen ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
-            </button>
+            <div class="d-flex gap-2">
+              <button @click="sidebarOpen = !sidebarOpen" class="modern-btn modern-btn-ghost modern-btn-sm d-none d-lg-flex">
+                <i class="bi" :class="sidebarOpen ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
+              </button>
+              <button @click="mobileMenuOpen = false" class="modern-btn modern-btn-ghost modern-btn-sm d-lg-none">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
           </div>
           
           <nav class="modern-sidebar-nav">
@@ -268,7 +328,12 @@
         </aside>
 
         <!-- Main Workspace -->
-        <main class="modern-workspace">
+        <main class="modern-workspace mobile-main-content" id="main-content" x-data="{ offlineMode: !navigator.onLine }">
+          <!-- Offline Mode Indicator -->
+          <div x-show="offlineMode" class="offline-indicator">
+            <i class="bi bi-wifi-off"></i>
+            <span>Working offline - changes will sync when connection is restored</span>
+          </div>
           <!-- Modern Flash Messages -->
           <div class="flash-messages">
             {% with messages = get_flashed_messages(with_categories=true) %} {% if
@@ -316,8 +381,34 @@
           {% block content %}{% endblock %}
         </main>
 
+        <!-- Mobile Bottom Navigation (Hidden on Desktop) -->
+        <nav class="mobile-bottom-nav d-lg-none">
+          <a href="{{ url_for('dashboard.index') }}" class="mobile-bottom-nav-item">
+            <i class="bi bi-house mobile-bottom-nav-icon"></i>
+            <span class="mobile-bottom-nav-label">Dashboard</span>
+          </a>
+          <a href="{{ url_for('orders.new_order') }}" class="mobile-bottom-nav-item">
+            <i class="bi bi-plus-circle mobile-bottom-nav-icon"></i>
+            <span class="mobile-bottom-nav-label">New Order</span>
+          </a>
+          <a href="{{ url_for('kot.index') }}" class="mobile-bottom-nav-item">
+            <i class="bi bi-receipt mobile-bottom-nav-icon"></i>
+            <span class="mobile-bottom-nav-label">Kitchen</span>
+          </a>
+          <a href="{{ url_for('orders.list_orders') }}" class="mobile-bottom-nav-item">
+            <i class="bi bi-list-ul mobile-bottom-nav-icon"></i>
+            <span class="mobile-bottom-nav-label">Orders</span>
+          </a>
+          {% if current_user.is_authenticated and current_user.role == 'admin' %}
+          <button @click="showMobileSettings = !showMobileSettings" class="mobile-bottom-nav-item">
+            <i class="bi bi-gear mobile-bottom-nav-icon"></i>
+            <span class="mobile-bottom-nav-label">Settings</span>
+          </button>
+          {% endif %}
+        </nav>
+        
         <!-- Right Panel (for POS screens) -->
-        <aside class="modern-right-panel" x-data="{rightPanelOpen: true}" x-show="rightPanelOpen">
+        <aside class="modern-right-panel d-none d-lg-block" x-data="{rightPanelOpen: true}" x-show="rightPanelOpen">
           <!-- Dynamic right panel content will be loaded here -->
           <div class="p-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -331,7 +422,9 @@
               <a href="{{ url_for('orders.new_order') }}" class="modern-btn modern-btn-primary">
                 <i class="bi bi-plus-circle"></i> New Order
               </a>
-              <button onclick="window.open('{{ url_for('kot.kot_window') }}', 'kot_window', 'width=1400,height=800,scrollbars=yes,resizable=yes');" class="modern-btn modern-btn-warning">
+              <button onclick="window.open('{{ url_for('kot.kot_window') }}', 'kot_window', 'width=1400,height=800,scrollbars=yes,resizable=yes');" class="modern-btn modern-btn-warning" aria-label="Open KOT window">
+                <i class="bi bi-window"></i> KOT Window
+              </button>
                 <i class="bi bi-window"></i> KOT Window
               </button>
               <a href="{{ url_for('dashboard.index') }}" class="modern-btn modern-btn-info">
@@ -408,8 +501,25 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/static/sw.js')
+            .then(function(registration) {
+              console.log('ServiceWorker registration successful');
+            })
+            .catch(function(error) {
+              console.log('ServiceWorker registration failed');
+            });
+        });
+      }
+    </script>
+    
     <!-- Global Utility Functions -->
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <!-- Mobile Optimizer -->
+    <script src="{{ url_for('static', filename='js/mobile-optimizer.js') }}"></script>
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/pos.js') }}"></script>
 

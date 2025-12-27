@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+from decimal import Decimal
 
 class Config:
     """Base configuration"""
@@ -68,6 +69,32 @@ class ProductionConfig(Config):
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     
+    # Payment Gateway Configuration
+    RAZORPAY_API_KEY = os.environ.get('RAZORPAY_API_KEY')
+    RAZORPAY_SECRET_KEY = os.environ.get('RAZORPAY_SECRET_KEY')
+    RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
+    RAZORPAY_ENABLED = os.environ.get('RAZORPAY_ENABLED', 'false').lower() in ['true', '1', 'yes']
+    RAZORPAY_TEST_MODE = os.environ.get('RAZORPAY_TEST_MODE', 'true').lower() in ['true', '1', 'yes']
+    
+    STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
+    STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
+    STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
+    STRIPE_ENABLED = os.environ.get('STRIPE_ENABLED', 'false').lower() in ['true', '1', 'yes']
+    STRIPE_TEST_MODE = os.environ.get('STRIPE_TEST_MODE', 'true').lower() in ['true', '1', 'yes']
+    
+    # Payment Security Settings
+    PAYMENT_DATA_RETENTION_DAYS = int(os.environ.get('PAYMENT_DATA_RETENTION_DAYS', 365))
+    DAILY_PAYMENT_LIMIT = Decimal(os.environ.get('DAILY_PAYMENT_LIMIT', '100000'))
+    PAYMENT_RATE_LIMIT_PER_MINUTE = int(os.environ.get('PAYMENT_RATE_LIMIT_PER_MINUTE', 10))
+    
+    # Redis Configuration for Rate Limiting
+    REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+    
+    # Payment Gateway URLs
+    PAYMENT_SUCCESS_URL = os.environ.get('PAYMENT_SUCCESS_URL')
+    PAYMENT_FAILURE_URL = os.environ.get('PAYMENT_FAILURE_URL')
+    PAYMENT_WEBHOOK_BASE_URL = os.environ.get('PAYMENT_WEBHOOK_BASE_URL')
+    
     # Logging
     LOG_LEVEL = 'INFO'
     LOG_FILE = 'logs/production.log'
@@ -85,6 +112,28 @@ class ProductionConfig(Config):
     BACKUP_ENABLED = True
     BACKUP_INTERVAL_HOURS = 24
     BACKUP_RETENTION_DAYS = 30
+    
+    # Payment Gateway Features
+    PAYMENT_GATEWAYS_ENABLED = True
+    PAYMENT_REFUNDS_ENABLED = True
+    PAYMENT_SPLIT_ENABLED = False  # For future implementation
+    PAYMENT_RECURRING_ENABLED = False  # For future implementation
+    PAYMENT_MULTI_CURRENCY = True
+    
+    # PCI Compliance Settings
+    PCI_DSS_COMPLIANT = True
+    ENCRYPT_PAYMENT_DATA = True
+    LOG_PAYMENT_EVENTS = True
+    AUDIT_PAYMENT_ACCESS = True
+    
+    # Webhook Security
+    WEBHOOK_SIGNATURE_VERIFICATION = True
+    WEBHOOK_IP_WHITELIST = os.environ.get('WEBHOOK_IP_WHITELIST', '').split(',') if os.environ.get('WEBHOOK_IP_WHITELIST') else []
+    
+    # Payment Method Configuration
+    DEFAULT_CURRENCY = 'INR'
+    SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR']
+    PAYMENT_TIMEOUT_MINUTES = 15
 
 class TestingConfig(Config):
     """Testing configuration"""

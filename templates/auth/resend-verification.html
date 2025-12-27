@@ -1,0 +1,362 @@
+{% extends "auth/auth-base.html" %}
+
+{% block title %}Resend Verification - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .resend-container {
+        max-width: 400px;
+        margin: 3rem auto;
+        background: #fff;
+        padding: 3rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .resend-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        border-radius: 50%;
+        margin: 0 auto 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+    }
+
+    .resend-container h2 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+
+    .resend-container p {
+        color: #7f8c8d;
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+        text-align: left;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #34495e;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-control.is-invalid {
+        border-color: #e74c3c;
+    }
+
+    .form-control.is-valid {
+        border-color: #27ae60;
+    }
+
+    .invalid-feedback {
+        color: #e74c3c;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .valid-feedback {
+        color: #27ae60;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #2980b9, #1f5f8b);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-primary:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-secondary {
+        background: #95a5a6;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 1rem;
+    }
+
+    .btn-secondary:hover {
+        background: #7f8c8d;
+        color: white;
+        text-decoration: none;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-info {
+        background-color: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .alert-error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+
+    .loading-spinner {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .back-link {
+        margin-top: 1rem;
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+
+    .back-link a {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .back-link a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+        .resend-container {
+            margin: 2rem 1rem;
+            padding: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="resend-container">
+    <div class="resend-icon">
+        <i class="fas fa-redo"></i>
+    </div>
+    
+    <h2>Resend Verification Email</h2>
+    
+    <p>Enter your email address and we'll send you a new verification email to verify your account.</p>
+    
+    <div id="alert-container"></div>
+    
+    <form id="resend-form" method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control", placeholder="Enter your email address") }}
+            <div class="invalid-feedback"></div>
+            <div class="valid-feedback"></div>
+        </div>
+        
+        {{ form.submit(class="btn-primary", id="resend-btn") }}
+    </form>
+    
+    <div class="back-link">
+        <a href="{{ url_for('auth.login') }}">Back to Login</a>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('resend-form');
+    const resendBtn = document.getElementById('resend-btn');
+    const alertContainer = document.getElementById('alert-container');
+    const emailField = document.querySelector('input[name="email"]');
+    
+    // Show alert
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.textContent = message;
+        alertContainer.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+    
+    // Set field error
+    function setFieldError(field, message) {
+        field.classList.remove('is-valid');
+        field.classList.add('is-invalid');
+        const feedback = field.parentNode.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.textContent = message;
+        }
+    }
+    
+    // Set field success
+    function setFieldSuccess(field, message) {
+        field.classList.remove('is-invalid');
+        field.classList.add('is-valid');
+        const feedback = field.parentNode.querySelector('.valid-feedback');
+        if (feedback) {
+            feedback.textContent = message;
+        }
+    }
+    
+    // Clear field validation
+    function clearFieldValidation(field) {
+        field.classList.remove('is-invalid', 'is-valid');
+        const invalidFeedback = field.parentNode.querySelector('.invalid-feedback');
+        const validFeedback = field.parentNode.querySelector('.valid-feedback');
+        if (invalidFeedback) invalidFeedback.textContent = '';
+        if (validFeedback) validFeedback.textContent = '';
+    }
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Clear previous alerts
+        alertContainer.innerHTML = '';
+        
+        // Get email
+        const email = emailField.value.trim();
+        
+        if (!email) {
+            setFieldError(emailField, 'Email address is required');
+            return;
+        }
+        
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            setFieldError(emailField, 'Please enter a valid email address');
+            return;
+        }
+        
+        // Disable resend button
+        resendBtn.disabled = true;
+        resendBtn.innerHTML = '<span class="loading-spinner"></span>Sending...';
+        
+        // Prepare form data
+        const formData = new FormData(form);
+        
+        // Submit form via AJAX
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                clearFieldValidation(emailField);
+                
+                // Reset form
+                form.reset();
+            } else {
+                showAlert(data.message, 'error');
+                if (data.errors && data.errors.email) {
+                    setFieldError(emailField, data.errors.email[0]);
+                } else {
+                    setFieldError(emailField, data.message);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Resend verification error:', error);
+            showAlert('An unexpected error occurred. Please try again.', 'error');
+        })
+        .finally(() => {
+            // Re-enable resend button
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Verification Email';
+        });
+    });
+    
+    // Real-time email validation
+    emailField.addEventListener('input', function() {
+        clearFieldValidation(this);
+    });
+    
+    emailField.addEventListener('blur', function() {
+        const email = this.value.trim();
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (emailRegex.test(email)) {
+                setFieldSuccess(this, 'Valid email address');
+            } else {
+                setFieldError(this, 'Please enter a valid email address');
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

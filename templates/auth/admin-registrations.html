@@ -1,0 +1,670 @@
+{% extends "base.html" %}
+
+{% block title %}Registration Management - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 300;
+    }
+
+    .page-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+        font-size: 1.1rem;
+    }
+
+    .content-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+    .filters-section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .filters-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #34495e;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #2980b9, #1f5f8b);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .registrations-grid {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .registration-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .registration-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .registration-header {
+        display: flex;
+        justify-content: between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .registration-info {
+        flex: 1;
+    }
+
+    .registration-username {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .registration-fullname {
+        color: #7f8c8d;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .registration-email {
+        color: #3498db;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    .status-verified {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .status-pending_approval {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .registration-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .detail-item {
+        text-align: center;
+    }
+
+    .detail-label {
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+
+    .detail-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .registration-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+
+    .btn-approve {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-approve:hover {
+        background: linear-gradient(135deg, #229954, #27ae60);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-reject {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-reject:hover {
+        background: linear-gradient(135deg, #c0392b, #a93226);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-details {
+        background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-details:hover {
+        background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(149, 165, 166, 0.3);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 3rem;
+        color: #7f8c8d;
+    }
+
+    .loading-spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #7f8c8d;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .alert-error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        background-color: #fff;
+        margin: 5% auto;
+        padding: 2rem;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        position: relative;
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #e1e8ed;
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    .modal-close {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        font-size: 1.5rem;
+        font-weight: bold;
+        cursor: pointer;
+        color: #7f8c8d;
+    }
+
+    .modal-close:hover {
+        color: #2c3e50;
+    }
+
+    @media (max-width: 768px) {
+        .filters-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .registration-header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .registration-details {
+            grid-template-columns: 1fr;
+        }
+        
+        .registration-actions {
+            justify-content: stretch;
+        }
+        
+        .registration-actions .btn {
+            flex: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="content-container">
+        <h1>Registration Management</h1>
+        <p>Review and manage user registrations</p>
+    </div>
+</div>
+
+<div class="content-container">
+    <div id="alert-container"></div>
+    
+    <div class="filters-section">
+        <div class="filters-row">
+            <div class="form-group">
+                <label for="status-filter">Status</label>
+                <select id="status-filter" class="form-control">
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="verified" {% if status_filter == 'verified' %}selected{% endif %}>Verified</option>
+                    <option value="pending_approval" {% if status_filter == 'pending_approval' %}selected{% endif %}>Pending Approval</option>
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="search-term">Search</label>
+                <input type="text" id="search-term" class="form-control" placeholder="Search by username, email, or name..." value="{{ search_term }}">
+            </div>
+            
+            <div class="form-group">
+                <button id="apply-filters" class="btn-primary">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="registrations-container">
+        {% if registrations %}
+        <div class="registrations-grid">
+            {% for user in registrations %}
+            <div class="registration-card" data-user-id="{{ user.id }}">
+                <div class="registration-header">
+                    <div class="registration-info">
+                        <h3 class="registration-username">{{ user.username }}</h3>
+                        <p class="registration-fullname">{{ user.full_name or 'No name provided' }}</p>
+                        <p class="registration-email">{{ user.email_decrypted or 'No email' }}</p>
+                    </div>
+                    <span class="status-badge status-{{ user.registration_status|replace('_', '-') }}">
+                        {{ user.registration_status|replace('_', ' ')|title }}
+                    </span>
+                </div>
+                
+                <div class="registration-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Phone</div>
+                        <div class="detail-value">{{ user.phone or 'Not provided' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Role</div>
+                        <div class="detail-value">{{ user.get_role_display_name(user.role) }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Registered</div>
+                        <div class="detail-value">{{ user.registration_timestamp.strftime('%Y-%m-%d') if user.registration_timestamp else 'Unknown' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Email Verified</div>
+                        <div class="detail-value">
+                            {% if user.email_verified %}
+                                <i class="fas fa-check" style="color: #27ae60;"></i> Yes
+                            {% else %}
+                                <i class="fas fa-times" style="color: #e74c3c;"></i> No
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="registration-actions">
+                    <button class="btn-details" onclick="showRegistrationDetails({{ user.id }})">
+                        <i class="fas fa-info-circle"></i> Details
+                    </button>
+                    
+                    {% if user.registration_status in ['verified', 'pending_approval'] %}
+                    <button class="btn-approve" onclick="approveRegistration({{ user.id }})">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                    <button class="btn-reject" onclick="rejectRegistration({{ user.id }})">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users"></i>
+            <h3>No registrations found</h3>
+            <p>No user registrations match the current filters.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal for registration details -->
+<div id="details-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Registration Details</h2>
+            <span class="modal-close" onclick="closeModal('details-modal')">&times;</span>
+        </div>
+        <div id="details-content">
+            <!-- Details will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal for approval/rejection -->
+<div id="action-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="action-title">Approve Registration</h2>
+            <span class="modal-close" onclick="closeModal('action-modal')">&times;</span>
+        </div>
+        <form id="action-form">
+            <div class="form-group">
+                <label for="action-notes">Notes (optional)</label>
+                <textarea id="action-notes" class="form-control" rows="3" placeholder="Add any notes about this decision..."></textarea>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button type="button" class="btn-secondary" onclick="closeModal('action-modal')">Cancel</button>
+                <button type="submit" class="btn-primary" id="action-submit-btn">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentAction = null;
+let currentUserId = null;
+
+// Show alert
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alert-container');
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.textContent = message;
+    alertContainer.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// Close modal
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    if (modalId === 'action-modal') {
+        document.getElementById('action-notes').value = '';
+        document.getElementById('action-form').reset();
+    }
+}
+
+// Show registration details
+function showRegistrationDetails(userId) {
+    fetch(`/admin/registrations/${userId}/details`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.registration;
+                const detailsContent = document.getElementById('details-content');
+                detailsContent.innerHTML = `
+                    <div class="registration-details" style="margin-bottom: 1rem;">
+                        <div class="detail-item">
+                            <div class="detail-label">Username</div>
+                            <div class="detail-value">${user.username}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Email</div>
+                            <div class="detail-value">${user.email}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Phone</div>
+                            <div class="detail-value">${user.registration_ip_address || 'Not provided'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">IP Address</div>
+                            <div class="detail-value">${user.registration_ip_address || 'Not recorded'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Status</div>
+                            <div class="detail-value">${user.registration_status}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Email Verified</div>
+                            <div class="detail-value">${user.email_verified ? 'Yes' : 'No'}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <div class="detail-label">User Agent</div>
+                        <div class="detail-value" style="font-size: 0.8rem; word-break: break-all;">${user.registration_user_agent || 'Not recorded'}</div>
+                    </div>
+                `;
+                document.getElementById('details-modal').style.display = 'block';
+            } else {
+                showAlert('Failed to load registration details', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading registration details:', error);
+            showAlert('An error occurred while loading details', 'error');
+        });
+}
+
+// Approve registration
+function approveRegistration(userId) {
+    currentAction = 'approve';
+    currentUserId = userId;
+    document.getElementById('action-title').textContent = 'Approve Registration';
+    document.getElementById('action-submit-btn').textContent = 'Approve';
+    document.getElementById('action-submit-btn').className = 'btn-approve';
+    document.getElementById('action-modal').style.display = 'block';
+}
+
+// Reject registration
+function rejectRegistration(userId) {
+    currentAction = 'reject';
+    currentUserId = userId;
+    document.getElementById('action-title').textContent = 'Reject Registration';
+    document.getElementById('action-submit-btn').textContent = 'Reject';
+    document.getElementById('action-submit-btn').className = 'btn-reject';
+    document.getElementById('action-modal').style.display = 'block';
+}
+
+// Handle action form submission
+document.getElementById('action-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const notes = document.getElementById('action-notes').value;
+    const submitBtn = document.getElementById('action-submit-btn');
+    
+    // Disable submit button
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+    
+    fetch(`/admin/registrations/${currentUserId}/approve`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            action: currentAction,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            closeModal('action-modal');
+            // Refresh the page after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Action error:', error);
+        showAlert('An error occurred while processing the request', 'error');
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = currentAction === 'approve' ? 'Approve' : 'Reject';
+    });
+});
+
+// Apply filters
+document.getElementById('apply-filters').addEventListener('click', function() {
+    const statusFilter = document.getElementById('status-filter').value;
+    const searchTerm = document.getElementById('search-term').value;
+    
+    const params = new URLSearchParams();
+    if (statusFilter !== 'pending') params.set('status', statusFilter);
+    if (searchTerm) params.set('search', searchTerm);
+    
+    window.location.href = `?${params.toString()}`;
+});
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

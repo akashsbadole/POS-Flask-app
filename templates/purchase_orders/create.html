@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Purchase Order - Restaurant POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .po-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .item-row {
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+        .item-row:hover {
+            border-left-color: #28a745;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .supplier-selector {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .supplier-selector:hover {
+            background: #e9ecef;
+            border-color: #007bff;
+        }
+        .supplier-selector.selected {
+            background: #d1ecf1;
+            border-color: #0c5460;
+        }
+        .total-summary {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            position: sticky;
+            top: 20px;
+        }
+        .form-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .inventory-search {
+            position: relative;
+        }
+        .inventory-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        .inventory-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .inventory-result-item:hover {
+            background: #f0f0f0;
+        }
+        .approval-workflow {
+            border-left: 4px solid #ffc107;
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="po-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2><i class="fas fa-file-invoice me-2"></i>Create Purchase Order</h2>
+                    <p class="mb-0">Generate a new purchase order for supplier procurement</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light me-2" onclick="saveDraft()">
+                        <i class="fas fa-save me-1"></i>Save Draft
+                    </button>
+                    <button class="btn btn-success" onclick="submitForApproval()">
+                        <i class="fas fa-paper-plane me-1"></i>Submit for Approval
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <form id="purchaseOrderForm">
+            <div class="row">
+                <!-- Main Form -->
+                <div class="col-lg-8">
+                    <!-- Supplier Selection -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-truck me-2"></i>Supplier Information</h5>
+                        <div id="supplierSelection">
+                            <div class="supplier-selector" onclick="showSupplierModal()">
+                                <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                                <p class="text-muted mb-0">Click to select a supplier</p>
+                            </div>
+                        </div>
+                        <input type="hidden" id="supplierId" name="supplier_id">
+                    </div>
+
+                    <!-- Order Details -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-info-circle me-2"></i>Order Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Expected Delivery Date</label>
+                                    <input type="date" class="form-control" id="expectedDeliveryDate" name="expected_delivery_date">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Priority</label>
+                                    <select class="form-select" id="priority" name="priority">
+                                        <option value="normal">Normal</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Delivery Address</label>
+                            <textarea class="form-control" id="deliveryAddress" name="delivery_address" rows="2" 
+                                      placeholder="Enter delivery address or leave blank to use default"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Special Instructions</label>
+                            <textarea class="form-control" id="specialInstructions" name="special_instructions" rows="2" 
+                                      placeholder="Any special instructions for the supplier"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Items Section -->
+                    <div class="form-section">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-list me-2"></i>Order Items</h5>
+                            <button type="button" class="btn btn-primary" onclick="showAddItemModal()">
+                                <i class="fas fa-plus me-1"></i>Add Item
+                            </button>
+                        </div>
+                        
+                        <div id="itemsContainer">
+                            <!-- Items will be added here -->
+                            <div class="text-center text-muted py-4" id="noItemsMessage">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <p>No items added yet. Click "Add Item" to start.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approval Workflow -->
+                    <div class="form-section" id="approvalSection" style="display: none;">
+                        <h5><i class="fas fa-user-check me-2"></i>Approval Workflow</h5>
+                        <div class="approval-workflow">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="requiresApproval" name="requires_approval" checked>
+                                        <label class="form-check-label" for="requiresApproval">
+                                            Require approval before sending to supplier
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Approval Level</label>
+                                    <select class="form-select" id="approvalLevel" name="approval_level">
+                                        <option value="1">Level 1 (Manager)</option>
+                                        <option value="2">Level 2 (Senior Manager)</option>
+                                        <option value="3">Level 3 (Director)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Sidebar -->
+                <div class="col-lg-4">
+                    <div class="total-summary">
+                        <h5><i class="fas fa-calculator me-2"></i>Order Summary</h5>
+                        <div id="summaryContent">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                <p>Add items to see summary</p>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-primary" onclick="previewPO()">
+                                <i class="fas fa-eye me-1"></i>Preview PO
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="calculateTotals()">
+                                <i class="fas fa-calculator me-1"></i>Recalculate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Supplier Selection Modal -->
+    <div class="modal fade" id="supplierModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Supplier</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="supplierSearch" 
+                               placeholder="Search suppliers..." onkeyup="filterSuppliers()">
+                    </div>
+                    <div id="suppliersList">
+                        <!-- Suppliers will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div class="modal fade" id="addItemModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Item to Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addItemForm">
+                        <div class="mb-3">
+                            <label class="form-label">Item Name *</label>
+                            <div class="inventory-search">
+                                <input type="text" class="form-control" id="itemSearch" 
+                                       placeholder="Search inventory or enter item name..." onkeyup="searchInventory()">
+                                <div class="inventory-results" id="inventoryResults" style="display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Quantity *</label>
+                                    <input type="number" class="form-control" id="itemQuantity" min="0.1" step="0.1" value="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Unit Price *</label>
+                                    <input type="number" class="form-control" id="itemPrice" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="itemDescription" rows="2"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Unit of Measure</label>
+                                    <select class="form-select" id="itemUnit">
+                                        <option value="pcs">Pieces</option>
+                                        <option value="kg">Kilograms</option>
+                                        <option value="g">Grams</option>
+                                        <option value="l">Liters</option>
+                                        <option value="ml">Milliliters</option>
+                                        <option value="box">Boxes</option>
+                                        <option value="pack">Packs</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Expected Delivery</label>
+                                    <input type="date" class="form-control" id="itemExpectedDate">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addItemToOrder()">Add Item</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedSupplier = null;
+        let orderItems = [];
+        let inventoryItems = [];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default delivery date to 3 days from now
+            const deliveryDate = new Date();
+            deliveryDate.setDate(deliveryDate.getDate() + 3);
+            document.getElementById('expectedDeliveryDate').value = deliveryDate.toISOString().split('T')[0];
+            
+            // Load inventory items for search
+            loadInventoryItems();
+            
+            // Check if supplier ID is provided in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const supplierId = urlParams.get('supplier_id');
+            if (supplierId) {
+                loadSupplier(parseInt(supplierId));
+            }
+        });
+
+        // Load inventory items for search
+        async function loadInventoryItems() {
+            try {
+                const response = await fetch('/inventory/data');
+                const data = await response.json();
+                
+                if (data.success) {
+                    inventoryItems = data.items;
+                }
+            } catch (error) {
+                console.error('Error loading inventory items:', error);
+            }
+        }
+
+        // Show supplier modal
+        function showSupplierModal() {
+            loadSuppliersForModal();
+            const modal = new bootstrap.Modal(document.getElementById('supplierModal'));
+            modal.show();
+        }
+
+        // Load suppliers for modal
+        async function loadSuppliersForModal() {
+            try {
+                const response = await fetch('/suppliers?status=active');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displaySuppliersInModal(data.suppliers);
+                }
+            } catch (error) {
+                console.error('Error loading suppliers:', error);
+            }
+        }
+
+        // Display suppliers in modal
+        function displaySuppliersInModal(suppliers) {
+            const container = document.getElementById('suppliersList');
+            
+            if (suppliers.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted py-3">No active suppliers found</div>';
+                return;
+            }
+
+            container.innerHTML = suppliers.map(supplier => `
+                <div class="card mb-2 supplier-card" style="cursor: pointer;" onclick="selectSupplier(${supplier.id})">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h6 class="mb-1">${supplier.name}</h6>
+                                <small class="text-muted">${supplier.business_name || 'No business name'}</small><br>
+                                <small><i class="fas fa-envelope me-1"></i>${supplier.email || 'No email'}</small>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <span class="badge bg-secondary">${supplier.category_name || 'Uncategorized'}</span><br>
+                                ${supplier.overall_rating > 0 ? `
+                                    <small class="text-muted">
+                                        <i class="fas fa-star text-warning"></i> ${supplier.overall_rating.toFixed(1)}
+                                    </small>
+                                ` : '<small class="text-muted">No rating</small>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Select supplier
+        async function selectSupplier(supplierId) {
+            try {
+                const response = await fetch(`/suppliers/${supplierId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    selectedSupplier = data.supplier;
+                    displaySelectedSupplier();
+                    bootstrap.Modal.getInstance(document.getElementById('supplierModal')).hide();
+                    
+                    // Show approval section if total amount suggests approval needed
+                    checkApprovalRequirements();
+                }
+            } catch (error) {
+                console.error('Error loading supplier:', error);
+            }
+        }
+
+        // Display selected supplier
+        function displaySelectedSupplier() {
+            const container = document.getElementById('supplierSelection');
+            const supplierIdInput = document.getElementById('supplierId');
+            
+            supplierIdInput.value = selectedSupplier.id;
+            
+            container.innerHTML = `
+                <div class="supplier-selector selected">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6 class="mb-1">${selectedSupplier.name}</h6>
+                            <small class="text-muted">${selectedSupplier.business_name || 'No business name'}</small><br>
+                            <small><i class="fas fa-envelope me-1"></i>${selectedSupplier.email || 'No email'}</small><br>
+                            <small><i class="fas fa-phone me-1"></i>${selectedSupplier.phone || 'No phone'}</small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge bg-secondary mb-2">${selectedSupplier.category_name || 'Uncategorized'}</span><br>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSupplierSelection()">
+                                <i class="fas fa-times me-1"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Clear supplier selection
+        function clearSupplierSelection() {
+            selectedSupplier = null;
+            document.getElementById('supplierId').value = '';
+            document.getElementById('supplierSelection').innerHTML = `
+                <div class="supplier-selector" onclick="showSupplierModal()">
+                    <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">Click to select a supplier</p>
+                </div>
+            `;
+        }
+
+        // Filter suppliers in modal
+        function filterSuppliers() {
+            const search = document.getElementById('supplierSearch').value.toLowerCase();
+            const cards = document.querySelectorAll('#suppliersList .supplier-card');
+            
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(search) ? 'block' : 'none';
+            });
+        }
+
+        // Show add item modal
+        function showAddItemModal() {
+            if (!selectedSupplier) {
+                alert('Please select a supplier first');
+                return;
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('addItemModal'));
+            modal.show();
+        }
+
+        // Search inventory
+        function searchInventory() {
+            const searchTerm = document.getElementById('itemSearch').value.toLowerCase();
+            const resultsDiv = document.getElementById('inventoryResults');
+            
+            if (searchTerm.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            const results = inventoryItems.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) ||
+                (item.description && item.description.toLowerCase().includes(searchTerm))
+            ).slice(0, 5);
+            
+            if (results.length === 0) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            resultsDiv.innerHTML = results.map(item => `
+                <div class="inventory-result-item" onclick="selectInventoryItem('${item.id}', '${item.name}', ${item.price})">
+                    <strong>${item.name}</strong><br>
+                    <small class="text-muted">₹${item.price} | Stock: ${item.stock_quantity}</small>
+                </div>
+            `).join('');
+            
+            resultsDiv.style.display = 'block';
+        }
+
+        // Select inventory item
+        function selectInventoryItem(itemId, itemName, itemPrice) {
+            document.getElementById('itemSearch').value = itemName;
+            document.getElementById('itemPrice').value = itemPrice;
+            document.getElementById('inventoryResults').style.display = 'none';
+        }
+
+        // Add item to order
+        function addItemToOrder() {
+            const itemName = document.getElementById('itemSearch').value;
+            const quantity = parseFloat(document.getElementById('itemQuantity').value);
+            const unitPrice = parseFloat(document.getElementById('itemPrice').value);
+            const description = document.getElementById('itemDescription').value;
+            const unit = document.getElementById('itemUnit').value;
+            const expectedDate = document.getElementById('itemExpectedDate').value;
+            
+            if (!itemName || !quantity || !unitPrice) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            const item = {
+                id: Date.now(), // Temporary ID for frontend
+                item_name: itemName,
+                quantity: quantity,
+                unit_price: unitPrice,
+                total_price: quantity * unitPrice,
+                description: description,
+                unit_of_measure: unit,
+                expected_delivery_date: expectedDate
+            };
+            
+            orderItems.push(item);
+            displayItems();
+            updateSummary();
+            
+            // Close modal and reset form
+            bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
+            document.getElementById('addItemForm').reset();
+        }
+
+        // Display items in the order
+        function displayItems() {
+            const container = document.getElementById('itemsContainer');
+            const noItemsMessage = document.getElementById('noItemsMessage');
+            
+            if (orderItems.length === 0) {
+                noItemsMessage.style.display = 'block';
+                return;
+            }
+            
+            noItemsMessage.style.display = 'none';
+            
+            container.innerHTML = orderItems.map((item, index) => `
+                <div class="card item-row mb-3">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <h6 class="mb-1">${item.item_name}</h6>
+                                ${item.description ? `<small class="text-muted">${item.description}</small>` : ''}
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <div>
+                                    <input type="number" class="form-control form-control-sm" 
+                                           value="${item.quantity}" min="0.1" step="0.1" 
+                                           onchange="updateItemQuantity(${index}, this.value)">
+                                    <small class="text-muted">${item.unit_of_measure}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <div>
+                                    <input type="number" class="form-control form-control-sm" 
+                                           value="${item.unit_price}" min="0" step="0.01" 
+                                           onchange="updateItemPrice(${index}, this.value)">
+                                    <small class="text-muted">per ${item.unit_of_measure}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong>₹${item.total_price.toFixed(2)}</strong>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="removeItem(${index})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update item quantity
+        function updateItemQuantity(index, newQuantity) {
+            orderItems[index].quantity = parseFloat(newQuantity);
+            orderItems[index].total_price = orderItems[index].quantity * orderItems[index].unit_price;
+            displayItems();
+            updateSummary();
+        }
+
+        // Update item price
+        function updateItemPrice(index, newPrice) {
+            orderItems[index].unit_price = parseFloat(newPrice);
+            orderItems[index].total_price = orderItems[index].quantity * orderItems[index].unit_price;
+            displayItems();
+            updateSummary();
+        }
+
+        // Remove item
+        function removeItem(index) {
+            if (confirm('Are you sure you want to remove this item?')) {
+                orderItems.splice(index, 1);
+                displayItems();
+                updateSummary();
+            }
+        }
+
+        // Update summary
+        function updateSummary() {
+            const summaryContent = document.getElementById('summaryContent');
+            
+            if (orderItems.length === 0) {
+                summaryContent.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                        <p>Add items to see summary</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const subtotal = orderItems.reduce((sum, item) => sum + item.total_price, 0);
+            const tax = subtotal * 0.05; // 5% GST
+            const total = subtotal + tax;
+            
+            summaryContent.innerHTML = `
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <span>Subtotal:</span>
+                        <span>₹${subtotal.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <span>GST (5%):</span>
+                        <span>₹${tax.toFixed(2)}</span>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <strong>Total:</strong>
+                        <strong>₹${total.toFixed(2)}</strong>
+                    </div>
+                </div>
+                <div class="text-muted">
+                    <small>Items: ${orderItems.length}</small><br>
+                    <small>Total Quantity: ${orderItems.reduce((sum, item) => sum + item.quantity, 0)}</small>
+                </div>
+            `;
+            
+            // Check if approval is required based on amount
+            checkApprovalRequirements();
+        }
+
+        // Check approval requirements
+        function checkApprovalRequirements() {
+            const approvalSection = document.getElementById('approvalSection');
+            const subtotal = orderItems.reduce((sum, item) => sum + item.total_price, 0);
+            
+            // Show approval section if amount > 5000 or explicitly required
+            if (subtotal > 5000) {
+                approvalSection.style.display = 'block';
+                
+                // Auto-set approval level based on amount
+                const approvalLevel = document.getElementById('approvalLevel');
+                if (subtotal > 25000) {
+                    approvalLevel.value = '3';
+                } else if (subtotal > 10000) {
+                    approvalLevel.value = '2';
+                } else {
+                    approvalLevel.value = '1';
+                }
+            } else {
+                approvalSection.style.display = 'none';
+            }
+        }
+
+        // Save draft
+        function saveDraft() {
+            if (!selectedSupplier) {
+                alert('Please select a supplier');
+                return;
+            }
+            
+            if (orderItems.length === 0) {
+                alert('Please add at least one item');
+                return;
+            }
+            
+            submitPO('draft');
+        }
+
+        // Submit for approval
+        function submitForApproval() {
+            if (!selectedSupplier) {
+                alert('Please select a supplier');
+                return;
+            }
+            
+            if (orderItems.length === 0) {
+                alert('Please add at least one item');
+                return;
+            }
+            
+            const requiresApproval = document.getElementById('requiresApproval').checked;
+            submitPO(requiresApproval ? 'pending' : 'approved');
+        }
+
+        // Submit purchase order
+        async function submitPO(status) {
+            const formData = new FormData();
+            formData.append('supplier_id', selectedSupplier.id);
+            formData.append('status', status);
+            formData.append('items', JSON.stringify(orderItems));
+            
+            // Add form fields
+            const expectedDate = document.getElementById('expectedDeliveryDate').value;
+            if (expectedDate) formData.append('expected_delivery_date', expectedDate);
+            
+            const priority = document.getElementById('priority').value;
+            if (priority) formData.append('priority', priority);
+            
+            const deliveryAddress = document.getElementById('deliveryAddress').value;
+            if (deliveryAddress) formData.append('delivery_address', deliveryAddress);
+            
+            const specialInstructions = document.getElementById('specialInstructions').value;
+            if (specialInstructions) formData.append('special_instructions', specialInstructions);
+            
+            const requiresApproval = document.getElementById('requiresApproval').checked;
+            formData.append('requires_approval', requiresApproval);
+            
+            const approvalLevel = document.getElementById('approvalLevel').value;
+            if (approvalLevel) formData.append('approval_level', approvalLevel);
+            
+            try {
+                const response = await fetch('/suppliers/purchase-orders', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`Purchase order ${status === 'draft' ? 'saved as draft' : 'submitted'} successfully!`);
+                    window.location.href = `/suppliers/purchase-orders/${result.purchase_order.id}`;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('Error creating purchase order: ' + error.message);
+            }
+        }
+
+        // Preview PO
+        function previewPO() {
+            // This would open a preview modal or window
+            alert('Preview functionality would show a formatted PO view');
+        }
+
+        // Calculate totals
+        function calculateTotals() {
+            updateSummary();
+            alert('Totals recalculated!');
+        }
+
+        // Load supplier by ID (for URL parameter)
+        async function loadSupplier(supplierId) {
+            try {
+                const response = await fetch(`/suppliers/${supplierId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    selectedSupplier = data.supplier;
+                    displaySelectedSupplier();
+                    checkApprovalRequirements();
+                }
+            } catch (error) {
+                console.error('Error loading supplier:', error);
+            }
+        }
+
+        // Close inventory results when clicking outside
+        document.addEventListener('click', function(event) {
+            const results = document.getElementById('inventoryResults');
+            const search = document.getElementById('itemSearch');
+            
+            if (!search.contains(event.target) && !results.contains(event.target)) {
+                results.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

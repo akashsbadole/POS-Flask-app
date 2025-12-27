@@ -10,7 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email.utils import formataddr
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import json
 import threading
@@ -356,6 +356,99 @@ class EmailService:
         except Exception as e:
             logger.error(f"Error sending OTP email: {e}")
             return False, f"Failed to send OTP email: {str(e)}"
+    
+    def send_registration_verification_email(self, email: str, username: str, verification_url: str) -> Tuple[bool, str]:
+        """Send registration verification email"""
+        try:
+            subject = "Verify Your Email - Restaurant POS Registration"
+            body = self.get_registration_verification_template(verification_url, username)
+            
+            # Send email synchronously for registration verification
+            success, message = self._send_email_sync(
+                subject=subject,
+                body=body,
+                recipients=[email]
+            )
+            
+            if success:
+                # Add to history
+                history_item = EmailHistory(
+                    id=f"registration_verification_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    subject=subject,
+                    recipients=[email],
+                    sent_at=datetime.now(),
+                    status="sent"
+                )
+                self.email_history.append(history_item)
+                self.save_email_history()
+            
+            return success, message
+        
+        except Exception as e:
+            logger.error(f"Error sending registration verification email: {e}")
+            return False, f"Failed to send registration verification email: {str(e)}"
+    
+    def send_registration_approval_email(self, email: str, username: str) -> Tuple[bool, str]:
+        """Send registration approval email"""
+        try:
+            subject = "Registration Approved - Restaurant POS System"
+            body = self.get_registration_approval_template(username)
+            
+            # Send email synchronously for registration approval
+            success, message = self._send_email_sync(
+                subject=subject,
+                body=body,
+                recipients=[email]
+            )
+            
+            if success:
+                # Add to history
+                history_item = EmailHistory(
+                    id=f"registration_approval_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    subject=subject,
+                    recipients=[email],
+                    sent_at=datetime.now(),
+                    status="sent"
+                )
+                self.email_history.append(history_item)
+                self.save_email_history()
+            
+            return success, message
+        
+        except Exception as e:
+            logger.error(f"Error sending registration approval email: {e}")
+            return False, f"Failed to send registration approval email: {str(e)}"
+    
+    def send_registration_rejection_email(self, email: str, username: str, reason: str) -> Tuple[bool, str]:
+        """Send registration rejection email"""
+        try:
+            subject = "Registration Update - Restaurant POS System"
+            body = self.get_registration_rejection_template(username, reason)
+            
+            # Send email synchronously for registration rejection
+            success, message = self._send_email_sync(
+                subject=subject,
+                body=body,
+                recipients=[email]
+            )
+            
+            if success:
+                # Add to history
+                history_item = EmailHistory(
+                    id=f"registration_rejection_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    subject=subject,
+                    recipients=[email],
+                    sent_at=datetime.now(),
+                    status="sent"
+                )
+                self.email_history.append(history_item)
+                self.save_email_history()
+            
+            return success, message
+        
+        except Exception as e:
+            logger.error(f"Error sending registration rejection email: {e}")
+            return False, f"Failed to send registration rejection email: {str(e)}"
     
     def get_otp_email_subject(self, template_type: str) -> str:
         """Get email subject based on OTP type"""
@@ -825,6 +918,183 @@ class EmailService:
                     <p style="margin: 0; color: #666;">
                         <strong>This is an automated security message from Restaurant POS System.</strong><br>
                         Please do not reply to this email.
+                    </p>
+                </div>
+                
+                {footer_html}
+            </div>
+        </body>
+        </html>
+        """
+    
+    def get_registration_verification_template(self, verification_url: str, username: str) -> str:
+        """Get registration verification email template"""
+        # Get footer for emails
+        footer_html = self._get_email_footer()
+        
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin: 0;">Email Verification</h1>
+                    <p style="color: #666; margin: 5px 0 0 0;">Restaurant POS System</p>
+                </div>
+                
+                <div style="background-color: #28a74520; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
+                    <h2 style="margin: 0; color: #28a745;">🎉 Welcome to Restaurant POS System</h2>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">Hello {username},</p>
+                    
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        Thank you for registering with our Restaurant POS System! To complete your registration 
+                        and activate your account, please verify your email address by clicking the button below:
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{verification_url}" 
+                       style="display: inline-block; background-color: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; border: none; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                        Verify Email Address
+                    </a>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #0c5460;">Verification Instructions:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #0c5460;">
+                        <li>Click the <strong>"Verify Email Address"</strong> button above</li>
+                        <li>This link will expire in <strong>24 hours</strong></li>
+                        <li>After verification, your registration will be <strong>pending admin approval</strong></li>
+                        <li>You'll receive another email once your account is approved</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 14px; line-height: 1.5;">
+                        If the button doesn't work, copy and paste this URL into your browser:<br>
+                        <span style="background-color: #f8f9fa; padding: 8px; border-radius: 3px; font-family: monospace; font-size: 12px; word-break: break-all;">{verification_url}</span>
+                    </p>
+                </div>
+                
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>This is an automated message from Restaurant POS System.</strong><br>
+                        Please do not reply to this email.
+                    </p>
+                </div>
+                
+                {footer_html}
+            </div>
+        </body>
+        </html>
+        """
+    
+    def get_registration_approval_template(self, username: str) -> str:
+        """Get registration approval email template"""
+        # Get footer for emails
+        footer_html = self._get_email_footer()
+        
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin: 0;">Registration Approved!</h1>
+                    <p style="color: #666; margin: 5px 0 0 0;">Restaurant POS System</p>
+                </div>
+                
+                <div style="background-color: #28a74520; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
+                    <h2 style="margin: 0; color: #28a745;">🎉 Welcome to Restaurant POS System!</h2>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">Hello {username},</p>
+                    
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        Great news! Your registration has been approved and your account is now <strong>active</strong>. 
+                        You can now log into the Restaurant POS System and start using all the features available to you.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{'#'}" 
+                       style="display: inline-block; background-color: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; border: none; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                        Login to Your Account
+                    </a>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #155724;">What's Next:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #155724;">
+                        <li>Log into your account with your username and password</li>
+                        <li>Complete your profile setup</li>
+                        <li>Explore the features available to your role</li>
+                        <li>Start managing your restaurant operations efficiently</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>Welcome to Restaurant POS System!</strong><br>
+                        If you have any questions, please contact our support team.
+                    </p>
+                </div>
+                
+                {footer_html}
+            </div>
+        </body>
+        </html>
+        """
+    
+    def get_registration_rejection_template(self, username: str, reason: str) -> str:
+        """Get registration rejection email template"""
+        # Get footer for emails
+        footer_html = self._get_email_footer()
+        
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin: 0;">Registration Update</h1>
+                    <p style="color: #666; margin: 5px 0 0 0;">Restaurant POS System</p>
+                </div>
+                
+                <div style="background-color: #dc354520; border-left: 4px solid #dc3545; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
+                    <h2 style="margin: 0; color: #dc3545;">Registration Update Required</h2>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">Hello {username},</p>
+                    
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        Thank you for your interest in registering for the Restaurant POS System. 
+                        After reviewing your registration, we need to request some additional information 
+                        or clarification before we can approve your account.
+                    </p>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #721c24;">Reason for Update:</h4>
+                    <p style="margin: 0; color: #721c24; line-height: 1.5;">{reason}</p>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 5px;">
+                    <h4 style="margin: 0 0 10px 0; color: #0c5460;">Next Steps:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #0c5460;">
+                        <li>Review the reason provided above</li>
+                        <li>Update your registration information if needed</li>
+                        <li>Contact our support team if you have questions</li>
+                        <li>Re-submit your registration with the requested changes</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>If you have any questions about this update, please contact our support team.</strong><br>
+                        We appreciate your interest in Restaurant POS System.
                     </p>
                 </div>
                 

@@ -89,6 +89,21 @@ class User(UserMixin, db.Model):
     password_expiry_date = db.Column(db.DateTime, nullable=True)  # Force password change
     must_change_password = db.Column(db.Boolean, default=False)
     
+    # Self-registration fields
+    registration_status = db.Column(db.String(20), default='pending')  # pending, verified, approved, rejected
+    registration_timestamp = db.Column(db.DateTime, nullable=True)  # When user registered
+    email_verified = db.Column(db.Boolean, default=False)  # Email verification status
+    email_verification_token = db.Column(db.String(255), nullable=True)  # Email verification token
+    email_verification_expires = db.Column(db.DateTime, nullable=True)  # Email verification expiry
+    email_verification_attempts = db.Column(db.Integer, default=0)  # Email verification attempts
+    registration_ip_address = db.Column(db.String(45), nullable=True)  # IP address during registration
+    registration_user_agent = db.Column(db.Text, nullable=True)  # User agent during registration
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Admin who approved
+    approved_at = db.Column(db.DateTime, nullable=True)  # Approval timestamp
+    rejection_reason = db.Column(db.Text, nullable=True)  # Reason for rejection
+    registration_attempts = db.Column(db.Integer, default=0)  # Registration attempt counter
+    last_registration_attempt = db.Column(db.DateTime, nullable=True)  # Last registration attempt
+    
     # Relationships
     orders = db.relationship('Order', backref='created_by_user', lazy=True)
     
@@ -777,6 +792,247 @@ class User(UserMixin, db.Model):
             user.clear_password_reset_token()
         
         return len(expired_users)
+    
+    # Self-Registration Methods
+    def can_register(self, ip_address=None, user_agent=None):
+        """Check if user can register (rate limiting)"""
+        # Check if rate limit is exceeded
+        if self.registration_attempts >= 5:
+            # Check if 1 hour has passed since last attempt
+            if self.last_registration_attempt:
+                time_since_last = datetime.utcnow() - self.last_registration_attempt
+                if time_since_last < timedelta(hours=1):
+                    remaining_time = timedelta(hours=1) - time_since_last
+                    return False, f"Too many registration attempts. Try again in {int(remaining_time.total_seconds() / 60)} minutes"
+        
+        return True, "Can register"
+    
+    def initiate_registration(self, email, ip_address=None, user_agent=None):
+        """Initiate self-registration process"""
+        # Check if user can register
+        can_register, message = self.can_register(ip_address, user_agent)
+        if not can_register:
+            return False, message
+        
+        # Check if username is available
+        if User.query.filter_by(username=self.username).first() and self.id is None:
+            return False, "Username already exists"
+        
+        # Check if email is already registered
+        existing_user = User.get_by_email_encrypted(email)
+        if existing_user:
+            return False, "Email already registered"
+        
+        # Set registration data
+        self.registration_status = 'pending'
+        self.registration_timestamp = datetime.utcnow()
+        self.registration_ip_address = ip_address
+        self.registration_user_agent = user_agent
+        self.registration_attempts += 1
+        self.last_registration_attempt = datetime.utcnow()
+        
+        # Generate email verification token
+        self.generate_email_verification_token()
+        
+        # Store encrypted email
+        self.email = self._encrypt_email(email)
+        
+        # Set initial status - pending verification
+        self.account_status = 'pending_verification'
+        
+        db.session.commit()
+        
+        return True, "Registration initiated successfully"
+    
+    def generate_email_verification_token(self):
+        """Generate email verification token"""
+        import secrets
+        
+        # Generate a secure token
+        token = secrets.token_urlsafe(32)
+        
+        # Set token expiration to 24 hours from now
+        expires_at = datetime.utcnow() + timedelta(hours=24)
+        
+        # Update user with token and expiration
+        self.email_verification_token = token
+        self.email_verification_expires = expires_at
+        
+        db.session.commit()
+        
+        return token
+    
+    def validate_email_verification_token(self, token):
+        """Validate email verification token"""
+        if not self.email_verification_token or not self.email_verification_expires:
+            return False, "No verification token found"
+        
+        # Check if token matches
+        if self.email_verification_token != token:
+            return False, "Invalid token"
+        
+        # Check if token has expired
+        if datetime.utcnow() > self.email_verification_expires:
+            self.clear_email_verification_token()
+            db.session.commit()
+            return False, "Token has expired"
+        
+        return True, "Token is valid"
+    
+    def increment_email_verification_attempts(self):
+        """Increment email verification attempts"""
+        self.email_verification_attempts += 1
+        db.session.commit()
+    
+    def can_verify_email(self):
+        """Check if user can verify email (rate limiting)"""
+        # Check if rate limit is exceeded
+        if self.email_verification_attempts >= 5:
+            return False, "Too many verification attempts. Please request a new verification email."
+        
+        return True, "Can verify email"
+    
+    def clear_email_verification_token(self):
+        """Clear email verification token"""
+        self.email_verification_token = None
+        self.email_verification_expires = None
+        self.email_verification_attempts = 0
+        db.session.commit()
+    
+    def verify_email(self, token):
+        """Verify email using verification token"""
+        # Validate token
+        is_valid, message = self.validate_email_verification_token(token)
+        if not is_valid:
+            return False, message
+        
+        # Check if user can verify
+        can_verify, message = self.can_verify_email()
+        if not can_verify:
+            return False, message
+        
+        # Mark email as verified
+        self.email_verified = True
+        self.registration_status = 'verified'
+        
+        # Clear verification token
+        self.clear_email_verification_token()
+        
+        # Update account status
+        self.account_status = 'pending_approval'
+        
+        db.session.commit()
+        
+        return True, "Email verified successfully"
+    
+    def resend_verification_email(self):
+        """Resend verification email"""
+        # Clear existing token and generate new one
+        self.clear_email_verification_token()
+        token = self.generate_email_verification_token()
+        
+        return True, token
+    
+    def approve_registration(self, admin_user, admin_notes=None):
+        """Approve user registration"""
+        if not admin_user or not admin_user.is_admin():
+            return False, "Insufficient permissions"
+        
+        if self.registration_status not in ['verified', 'pending']:
+            return False, "User is not in a registrable state"
+        
+        # Update user status
+        self.registration_status = 'approved'
+        self.account_status = 'active'
+        self.is_active = True
+        self.approved_by = admin_user.id
+        self.approved_at = datetime.utcnow()
+        
+        if admin_notes:
+            admin_note = f"[{datetime.utcnow().isoformat()}] {admin_user.username}: Registration approved. {admin_notes}"
+            if self.admin_notes:
+                self.admin_notes = f"{self.admin_notes}\n{admin_note}"
+            else:
+                self.admin_notes = admin_note
+        
+        db.session.commit()
+        
+        # Log the action
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Admin {admin_user.username} approved registration for {self.username}")
+        
+        return True, "Registration approved successfully"
+    
+    def reject_registration(self, admin_user, reason, admin_notes=None):
+        """Reject user registration"""
+        if not admin_user or not admin_user.is_admin():
+            return False, "Insufficient permissions"
+        
+        if self.registration_status not in ['verified', 'pending', 'pending_approval']:
+            return False, "User is not in a registrable state"
+        
+        # Update user status
+        self.registration_status = 'rejected'
+        self.account_status = 'rejected'
+        self.is_active = False
+        self.rejection_reason = reason
+        
+        if admin_notes:
+            admin_note = f"[{datetime.utcnow().isoformat()}] {admin_user.username}: Registration rejected. Reason: {reason}. {admin_notes}"
+        else:
+            admin_note = f"[{datetime.utcnow().isoformat()}] {admin_user.username}: Registration rejected. Reason: {reason}"
+        
+        if self.admin_notes:
+            self.admin_notes = f"{self.admin_notes}\n{admin_note}"
+        else:
+            self.admin_notes = admin_note
+        
+        db.session.commit()
+        
+        # Log the action
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Admin {admin_user.username} rejected registration for {self.username}. Reason: {reason}")
+        
+        return True, "Registration rejected successfully"
+    
+    def get_registration_info(self):
+        """Get registration information for admin review"""
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email_decrypted,
+            'registration_status': self.registration_status,
+            'registration_timestamp': self.registration_timestamp.isoformat() if self.registration_timestamp else None,
+            'email_verified': self.email_verified,
+            'registration_ip_address': self.registration_ip_address,
+            'registration_user_agent': self.registration_user_agent,
+            'approved_by': self.approved_by,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'rejection_reason': self.rejection_reason,
+            'account_status': self.account_status,
+            'is_active': self.is_active
+        }
+    
+    @staticmethod
+    def get_pending_registrations(admin_user=None):
+        """Get users with pending registrations"""
+        if admin_user and not admin_user.is_admin():
+            return []
+        
+        return User.query.filter(
+            User.registration_status.in_(['pending', 'pending_approval'])
+        ).order_by(User.registration_timestamp.desc()).all()
+    
+    @staticmethod
+    def get_recent_registrations(days=30):
+        """Get recent registrations for admin dashboard"""
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        
+        return User.query.filter(
+            User.registration_timestamp >= cutoff_date
+        ).order_by(User.registration_timestamp.desc()).all()
     
     def to_dict(self):
         """Convert user to dictionary"""

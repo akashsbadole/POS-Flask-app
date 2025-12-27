@@ -1,0 +1,599 @@
+{% extends "auth/auth-base.html" %}
+
+{% block title %}Register - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .registration-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .registration-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .registration-header h2 {
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+
+    .registration-header p {
+        color: #7f8c8d;
+        font-size: 0.95rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #34495e;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-control.is-invalid {
+        border-color: #e74c3c;
+    }
+
+    .form-control.is-valid {
+        border-color: #27ae60;
+    }
+
+    .invalid-feedback {
+        color: #e74c3c;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .valid-feedback {
+        color: #27ae60;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .password-strength {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .password-strength.weak {
+        color: #e74c3c;
+    }
+
+    .password-strength.medium {
+        color: #f39c12;
+    }
+
+    .password-strength.strong {
+        color: #27ae60;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+    }
+
+    .checkbox-group label {
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        color: #34495e;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #2980b9, #1f5f8b);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-primary:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .login-link {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: #7f8c8d;
+    }
+
+    .login-link a {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .login-link a:hover {
+        text-decoration: underline;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .form-help {
+        font-size: 0.875rem;
+        color: #7f8c8d;
+        margin-top: 0.25rem;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .alert-error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+
+    .loading-spinner {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .registration-container {
+            margin: 1rem;
+            padding: 1.5rem;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="registration-container">
+    <div class="registration-header">
+        <h2>Create Your Account</h2>
+        <p>Join our Restaurant POS System and streamline your business operations</p>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <form id="registration-form" method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.username.label(class="form-label") }}
+                {{ form.username(class="form-control", placeholder="Choose a username") }}
+                <div class="form-help">Username can only contain letters, numbers, and underscores</div>
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+            
+            <div class="form-group">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-control", placeholder="your@email.com") }}
+                <div class="form-help">We'll send verification email to this address</div>
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.password.label(class="form-label") }}
+                {{ form.password(class="form-control", placeholder="Create a strong password") }}
+                <div class="form-help">Password must be at least 8 characters with uppercase, lowercase, number, and special character</div>
+                <div class="password-strength"></div>
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+            
+            <div class="form-group">
+                {{ form.confirm_password.label(class="form-label") }}
+                {{ form.confirm_password(class="form-control", placeholder="Confirm your password") }}
+                <div class="form-help">Re-enter your password to confirm</div>
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            {{ form.full_name.label(class="form-label") }}
+            {{ form.full_name(class="form-control", placeholder="Enter your full name") }}
+            <div class="form-help">Your real name for account management</div>
+            <div class="invalid-feedback"></div>
+            <div class="valid-feedback"></div>
+        </div>
+
+        <div class="form-group">
+            {{ form.phone.label(class="form-label") }}
+            {{ form.phone(class="form-control", placeholder="+1234567890") }}
+            <div class="form-help">Phone number for account verification and recovery</div>
+            <div class="invalid-feedback"></div>
+            <div class="valid-feedback"></div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.business_name.label(class="form-label") }}
+                {{ form.business_name(class="form-control", placeholder="Your restaurant name (optional)") }}
+                <div class="form-help">Optional: Name of your restaurant or business</div>
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+            
+            <div class="form-group">
+                {{ form.business_type.label(class="form-label") }}
+                {{ form.business_type(class="form-control") }}
+                <div class="form-help">Type of your business</div>
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+        </div>
+
+        <div class="checkbox-group">
+            {{ form.agree_terms() }}
+            <label for="{{ form.agree_terms.id }}">I agree to the <a href="#" target="_blank">Terms of Service</a> and <a href="#" target="_blank">Privacy Policy</a></label>
+            <div class="invalid-feedback"></div>
+        </div>
+
+        {{ form.submit(class="btn-primary", id="submit-btn") }}
+    </form>
+
+    <div class="login-link">
+        Already have an account? <a href="{{ url_for('auth.login') }}">Sign in here</a>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registration-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const alertContainer = document.getElementById('alert-container');
+    
+    // Real-time validation
+    const usernameField = document.querySelector('input[name="username"]');
+    const emailField = document.querySelector('input[name="email"]');
+    const phoneField = document.querySelector('input[name="phone"]');
+    const passwordField = document.querySelector('input[name="password"]');
+    const confirmPasswordField = document.querySelector('input[name="confirm_password"]');
+    const termsCheckbox = document.querySelector('input[name="agree_terms"]');
+    
+    // Username validation
+    usernameField.addEventListener('blur', function() {
+        checkUsernameAvailability(this.value);
+    });
+    
+    // Email validation
+    emailField.addEventListener('blur', function() {
+        checkEmailAvailability(this.value);
+    });
+    
+    // Phone validation
+    phoneField.addEventListener('blur', function() {
+        checkPhoneAvailability(this.value);
+    });
+    
+    // Password strength check
+    passwordField.addEventListener('input', function() {
+        checkPasswordStrength(this.value);
+        validatePasswordMatch();
+    });
+    
+    confirmPasswordField.addEventListener('input', validatePasswordMatch);
+    
+    // Password confirmation validation
+    function validatePasswordMatch() {
+        const password = passwordField.value;
+        const confirmPassword = confirmPasswordField.value;
+        const confirmField = confirmPasswordField;
+        
+        if (confirmPassword && password !== confirmPassword) {
+            setFieldError(confirmField, 'Passwords do not match');
+        } else if (confirmPassword && password === confirmPassword) {
+            setFieldSuccess(confirmField, 'Passwords match');
+        } else {
+            clearFieldValidation(confirmField);
+        }
+    }
+    
+    // Check username availability
+    function checkUsernameAvailability(username) {
+        if (username.length < 3) return;
+        
+        fetch('/api/register/check-username', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ username: username })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const field = usernameField;
+            if (data.success && data.available) {
+                setFieldSuccess(field, data.message);
+            } else {
+                setFieldError(field, data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking username:', error);
+        });
+    }
+    
+    // Check email availability
+    function checkEmailAvailability(email) {
+        if (!email || !email.includes('@')) return;
+        
+        fetch('/api/register/check-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ email: email })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const field = emailField;
+            if (data.success && data.available) {
+                setFieldSuccess(field, data.message);
+            } else {
+                setFieldError(field, data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking email:', error);
+        });
+    }
+    
+    // Check phone availability
+    function checkPhoneAvailability(phone) {
+        if (!phone || phone.length < 7) return;
+        
+        fetch('/api/register/check-phone', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ phone: phone })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const field = phoneField;
+            if (data.success && data.available) {
+                setFieldSuccess(field, data.message);
+            } else {
+                setFieldError(field, data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking phone:', error);
+        });
+    }
+    
+    // Check password strength
+    function checkPasswordStrength(password) {
+        const strengthDiv = document.querySelector('.password-strength');
+        
+        if (password.length === 0) {
+            strengthDiv.textContent = '';
+            strengthDiv.className = 'password-strength';
+            return;
+        }
+        
+        let score = 0;
+        let feedback = [];
+        
+        // Length check
+        if (password.length >= 8) score += 1;
+        else feedback.push('at least 8 characters');
+        
+        // Lowercase check
+        if (/[a-z]/.test(password)) score += 1;
+        else feedback.push('lowercase letter');
+        
+        // Uppercase check
+        if (/[A-Z]/.test(password)) score += 1;
+        else feedback.push('uppercase letter');
+        
+        // Number check
+        if (/\d/.test(password)) score += 1;
+        else feedback.push('number');
+        
+        // Special character check
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 1;
+        else feedback.push('special character');
+        
+        // Set strength indicator
+        if (score <= 2) {
+            strengthDiv.textContent = `Weak - Add ${feedback.join(', ')}`;
+            strengthDiv.className = 'password-strength weak';
+        } else if (score <= 4) {
+            strengthDiv.textContent = `Medium - Add ${feedback.join(', ')}`;
+            strengthDiv.className = 'password-strength medium';
+        } else {
+            strengthDiv.textContent = 'Strong password';
+            strengthDiv.className = 'password-strength strong';
+        }
+    }
+    
+    // Set field error
+    function setFieldError(field, message) {
+        field.classList.remove('is-valid');
+        field.classList.add('is-invalid');
+        const feedback = field.parentNode.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.textContent = message;
+        }
+        clearFieldSuccess(field);
+    }
+    
+    // Set field success
+    function setFieldSuccess(field, message) {
+        field.classList.remove('is-invalid');
+        field.classList.add('is-valid');
+        const feedback = field.parentNode.querySelector('.valid-feedback');
+        if (feedback) {
+            feedback.textContent = message;
+        }
+        clearFieldError(field);
+    }
+    
+    // Clear field error
+    function clearFieldError(field) {
+        const feedback = field.parentNode.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.textContent = '';
+        }
+    }
+    
+    // Clear field success
+    function clearFieldSuccess(field) {
+        const feedback = field.parentNode.querySelector('.valid-feedback');
+        if (feedback) {
+            feedback.textContent = '';
+        }
+    }
+    
+    // Clear field validation
+    function clearFieldValidation(field) {
+        field.classList.remove('is-invalid', 'is-valid');
+        clearFieldError(field);
+        clearFieldSuccess(field);
+    }
+    
+    // Show alert
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.textContent = message;
+        alertContainer.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Clear previous alerts
+        alertContainer.innerHTML = '';
+        
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span>Creating Account...';
+        
+        // Prepare form data
+        const formData = new FormData(form);
+        
+        // Submit form via AJAX
+        fetch('/register', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                if (data.redirect) {
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 2000);
+                }
+            } else {
+                showAlert(data.message, 'error');
+                if (data.errors) {
+                    // Display field errors
+                    Object.keys(data.errors).forEach(fieldName => {
+                        const field = form.querySelector(`[name="${fieldName}"]`);
+                        if (field) {
+                            setFieldError(field, data.errors[fieldName][0]);
+                        }
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Registration error:', error);
+            showAlert('An unexpected error occurred. Please try again.', 'error');
+        })
+        .finally(() => {
+            // Re-enable submit button
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Account';
+        });
+    });
+});
+</script>
+{% endblock %}

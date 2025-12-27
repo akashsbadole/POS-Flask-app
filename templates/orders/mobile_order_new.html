@@ -1,0 +1,768 @@
+{% extends "base.html" %}
+{% block title %}Mobile Order - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Mobile Order Taking Styles */
+.mobile-order-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header-height-mobile) - var(--nav-height-mobile));
+  padding: var(--spacing-md);
+}
+
+.mobile-order-header {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.mobile-order-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-form-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.mobile-form-control {
+  min-height: var(--touch-target-min);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
+  transition: all var(--transition-fast);
+}
+
+.mobile-form-control:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.mobile-menu-section {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-category-tabs {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+}
+
+.mobile-category-tab {
+  flex-shrink: 0;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-secondary);
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-min);
+  white-space: nowrap;
+}
+
+.mobile-category-tab.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.mobile-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.mobile-menu-item {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  min-height: 140px;
+}
+
+.mobile-menu-item:active {
+  transform: scale(0.98);
+}
+
+.mobile-menu-item-image {
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: var(--font-size-xl);
+}
+
+.mobile-menu-item-info {
+  padding: var(--spacing-md);
+}
+
+.mobile-menu-item-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-xs);
+  line-height: 1.3;
+}
+
+.mobile-menu-item-price {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.mobile-add-to-cart {
+  width: 100%;
+  padding: var(--spacing-xs);
+  background: var(--color-success);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.mobile-add-to-cart:active {
+  background: var(--color-success);
+  transform: scale(0.95);
+}
+
+.mobile-cart-summary {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  margin-top: var(--spacing-md);
+}
+
+.mobile-cart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-cart-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.mobile-cart-count {
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--border-radius-full);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.mobile-cart-items {
+  max-height: 200px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.mobile-cart-item:last-child {
+  border-bottom: none;
+}
+
+.mobile-cart-item-info {
+  flex: 1;
+}
+
+.mobile-cart-item-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.mobile-cart-item-price {
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+}
+
+.mobile-quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.mobile-quantity-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: white;
+  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.mobile-quantity-btn:active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.mobile-quantity-display {
+  min-width: 32px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.mobile-cart-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  border-top: 2px solid var(--color-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-cart-total-label {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.mobile-cart-total-amount {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.mobile-order-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.mobile-btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-large);
+}
+
+.mobile-btn-primary:active {
+  transform: scale(0.98);
+  background: var(--color-primary-dark);
+}
+
+.mobile-btn-secondary {
+  background: var(--color-secondary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-large);
+}
+
+.mobile-btn-secondary:active {
+  transform: scale(0.98);
+  background: var(--color-secondary);
+}
+
+/* Mobile Modal for Order Confirmation */
+.mobile-order-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+}
+
+.mobile-order-modal-content {
+  background: white;
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-xl);
+  max-width: 400px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-modal-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-modal-icon {
+  font-size: 3rem;
+  color: var(--color-success);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-modal-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-sm);
+}
+
+.mobile-modal-subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-secondary);
+}
+
+.mobile-modal-actions {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .mobile-order-container {
+    height: calc(100vh - var(--header-height-tablet));
+    padding: var(--spacing-lg);
+  }
+  
+  .mobile-menu-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  
+  .mobile-order-actions {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mobile-order-container" x-data="mobileOrderApp()">
+  <!-- Order Header -->
+  <div class="mobile-order-header">
+    <div class="mobile-order-info">
+      <div class="mobile-form-group">
+        <label class="mobile-form-label">Order Type</label>
+        <select class="mobile-form-control" x-model="order.order_type">
+          <option value="Dine-in">Dine-in</option>
+          <option value="Takeaway">Takeaway</option>
+          <option value="Delivery">Delivery</option>
+        </select>
+      </div>
+      
+      <div class="mobile-form-group" x-show="order.order_type === 'Dine-in'">
+        <label class="mobile-form-label">Table</label>
+        <select class="mobile-form-control" x-model="order.table_id">
+          <option value="">Select Table</option>
+          <template x-for="table in availableTables" :key="table.id">
+            <option :value="table.id" x-text="`Table ${table.number} (${table.capacity})`"></option>
+          </template>
+        </select>
+      </div>
+      
+      <div class="mobile-form-group">
+        <label class="mobile-form-label">Customer Name</label>
+        <input type="text" class="mobile-form-control" x-model="order.customer_name" placeholder="Enter name">
+      </div>
+      
+      <div class="mobile-form-group">
+        <label class="mobile-form-label">Phone</label>
+        <input type="tel" class="mobile-form-control" x-model="order.customer_phone" placeholder="Enter phone">
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Categories -->
+  <div class="mobile-menu-section">
+    <div class="mobile-category-tabs">
+      <template x-for="category in categories" :key="category.id">
+        <button class="mobile-category-tab" 
+                :class="{ 'active': selectedCategory === category.id }"
+                @click="selectedCategory = category.id">
+          <span x-text="category.name"></span>
+        </button>
+      </template>
+    </div>
+
+    <!-- Menu Items -->
+    <div class="mobile-menu-grid">
+      <template x-for="item in getFilteredMenuItems()" :key="item.id">
+        <div class="mobile-menu-item" @click="addToCart(item)">
+          <div class="mobile-menu-item-image">
+            <i class="bi" :class="item.icon || 'bi-cup-hot'"></i>
+          </div>
+          <div class="mobile-menu-item-info">
+            <div class="mobile-menu-item-name" x-text="item.name"></div>
+            <div class="mobile-menu-item-price" x-text="'₹' + item.price.toFixed(2)"></div>
+            <button class="mobile-add-to-cart">
+              <i class="bi bi-plus"></i> Add
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Cart Summary -->
+  <div class="mobile-cart-summary" x-show="cartItems.length > 0">
+    <div class="mobile-cart-header">
+      <h3 class="mobile-cart-title">Order Summary</h3>
+      <span class="mobile-cart-count" x-text="getTotalItems() + ' items'"></span>
+    </div>
+    
+    <div class="mobile-cart-items">
+      <template x-for="item in cartItems" :key="item.id">
+        <div class="mobile-cart-item">
+          <div class="mobile-cart-item-info">
+            <div class="mobile-cart-item-name" x-text="item.name"></div>
+            <div class="mobile-cart-item-price" x-text="'₹' + item.price.toFixed(2) + ' each'"></div>
+          </div>
+          <div class="mobile-quantity-controls">
+            <button class="mobile-quantity-btn" @click="decreaseQuantity(item)">-</button>
+            <span class="mobile-quantity-display" x-text="item.quantity"></span>
+            <button class="mobile-quantity-btn" @click="increaseQuantity(item)">+</button>
+          </div>
+        </div>
+      </template>
+    </div>
+    
+    <div class="mobile-cart-total">
+      <span class="mobile-cart-total-label">Total</span>
+      <span class="mobile-cart-total-amount" x-text="'₹' + getTotalAmount().toFixed(2)"></span>
+    </div>
+    
+    <div class="mobile-order-actions">
+      <button class="mobile-btn-secondary" @click="clearCart()">
+        <i class="bi bi-trash"></i> Clear
+      </button>
+      <button class="mobile-btn-primary" @click="placeOrder()">
+        <i class="bi bi-check-circle"></i> Place Order
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Confirmation Modal -->
+<div class="mobile-order-modal" x-show="showConfirmationModal" 
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+  <div class="mobile-order-modal-content"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 transform scale-95"
+       x-transition:enter-end="opacity-100 transform scale-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 transform scale-100"
+       x-transition:leave-end="opacity-0 transform scale-95">
+    
+    <div class="mobile-modal-header">
+      <div class="mobile-modal-icon">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+      <h2 class="mobile-modal-title">Order Placed!</h2>
+      <p class="mobile-modal-subtitle">Your order has been sent to the kitchen</p>
+    </div>
+    
+    <div class="mobile-modal-actions">
+      <button class="mobile-btn-primary" @click="newOrder()">
+        <i class="bi bi-plus"></i> New Order
+      </button>
+      <button class="mobile-btn-secondary" @click="viewOrders()">
+        <i class="bi bi-list"></i> View Orders
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function mobileOrderApp() {
+  return {
+    order: {
+      order_type: 'Dine-in',
+      table_id: '',
+      customer_name: '',
+      customer_phone: ''
+    },
+    selectedCategory: null,
+    categories: [],
+    menuItems: [],
+    availableTables: [],
+    cartItems: [],
+    showConfirmationModal: false,
+    isLoading: false,
+
+    init() {
+      this.loadCategories();
+      this.loadMenuItems();
+      this.loadAvailableTables();
+      this.setupEventListeners();
+      this.restoreCartFromStorage();
+    },
+
+    async loadCategories() {
+      try {
+        const response = await fetch('/api/menu/categories');
+        if (response.ok) {
+          this.categories = await response.json();
+          if (this.categories.length > 0) {
+            this.selectedCategory = this.categories[0].id;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+      }
+    },
+
+    async loadMenuItems() {
+      try {
+        const response = await fetch('/api/menu/items');
+        if (response.ok) {
+          this.menuItems = await response.json();
+        }
+      } catch (error) {
+        console.error('Failed to load menu items:', error);
+      }
+    },
+
+    async loadAvailableTables() {
+      try {
+        const response = await fetch('/api/tables/available');
+        if (response.ok) {
+          this.availableTables = await response.json();
+        }
+      } catch (error) {
+        console.error('Failed to load tables:', error);
+      }
+    },
+
+    setupEventListeners() {
+      // Save cart to storage on changes
+      this.$watch('cartItems', () => {
+        this.saveCartToStorage();
+      }, { deep: true });
+    },
+
+    getFilteredMenuItems() {
+      if (!this.selectedCategory) return this.menuItems;
+      return this.menuItems.filter(item => item.category_id === this.selectedCategory);
+    },
+
+    addToCart(menuItem) {
+      const existingItem = this.cartItems.find(item => item.id === menuItem.id);
+      
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        this.cartItems.push({
+          ...menuItem,
+          quantity: 1
+        });
+      }
+
+      this.showToast('Added to cart', 'success');
+      this.addHapticFeedback();
+    },
+
+    increaseQuantity(item) {
+      item.quantity += 1;
+    },
+
+    decreaseQuantity(item) {
+      if (item.quantity > 1) {
+        item.quantity -= 1;
+      } else {
+        this.removeFromCart(item);
+      }
+    },
+
+    removeFromCart(item) {
+      const index = this.cartItems.indexOf(item);
+      if (index > -1) {
+        this.cartItems.splice(index, 1);
+      }
+    },
+
+    clearCart() {
+      if (confirm('Are you sure you want to clear the cart?')) {
+        this.cartItems = [];
+      }
+    },
+
+    getTotalItems() {
+      return this.cartItems.reduce((total, item) => total + item.quantity, 0);
+    },
+
+    getTotalAmount() {
+      return this.cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    },
+
+    async placeOrder() {
+      if (this.cartItems.length === 0) {
+        this.showToast('Cart is empty', 'warning');
+        return;
+      }
+
+      if (!this.order.customer_name.trim()) {
+        this.showToast('Please enter customer name', 'warning');
+        return;
+      }
+
+      this.isLoading = true;
+
+      try {
+        const orderData = {
+          ...this.order,
+          items: this.cartItems,
+          total: this.getTotalAmount(),
+          subtotal: this.getTotalAmount(),
+          tax: 0,
+          discount: 0
+        };
+
+        const response = await fetch('/api/orders/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(orderData)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          this.showConfirmationModal = true;
+          this.addHapticFeedback([100, 50, 100]);
+          
+          // Clear cart after successful order
+          setTimeout(() => {
+            this.cartItems = [];
+            this.order = {
+              order_type: 'Dine-in',
+              table_id: '',
+              customer_name: '',
+              customer_phone: ''
+            };
+          }, 2000);
+        } else {
+          const error = await response.json();
+          this.showToast(error.message || 'Failed to place order', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to place order:', error);
+        this.showToast('Failed to place order', 'error');
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    newOrder() {
+      this.showConfirmationModal = false;
+      this.cartItems = [];
+      this.order = {
+        order_type: 'Dine-in',
+        table_id: '',
+        customer_name: '',
+        customer_phone: ''
+      };
+    },
+
+    viewOrders() {
+      window.location.href = '/orders/list';
+    },
+
+    saveCartToStorage() {
+      try {
+        localStorage.setItem('mobile_order_cart', JSON.stringify({
+          cartItems: this.cartItems,
+          order: this.order,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.error('Failed to save cart to storage:', error);
+      }
+    },
+
+    restoreCartFromStorage() {
+      try {
+        const saved = localStorage.getItem('mobile_order_cart');
+        if (saved) {
+          const data = JSON.parse(saved);
+          // Restore if saved within last hour
+          if (Date.now() - data.timestamp < 3600000) {
+            this.cartItems = data.cartItems || [];
+            this.order = { ...this.order, ...data.order };
+          } else {
+            localStorage.removeItem('mobile_order_cart');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to restore cart from storage:', error);
+      }
+    },
+
+    addHapticFeedback(pattern = [50]) {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(pattern);
+      }
+    },
+
+    showToast(message, type = 'info') {
+      if (window.MobileOptimizer && window.MobileOptimizer.api) {
+        window.MobileOptimizer.api.toast(message, type);
+      } else {
+        console.log(`${type.toUpperCase()}: ${message}`);
+      }
+    }
+  };
+}
+</script>
+{% endblock %}

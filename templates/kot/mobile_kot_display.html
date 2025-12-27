@@ -1,0 +1,774 @@
+{% extends "base.html" %}
+{% block title %}Mobile Kitchen Display - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Mobile KOT Display Styles */
+.mobile-kot-container {
+  padding: var(--spacing-md);
+  padding-bottom: calc(var(--spacing-md) + var(--nav-height-mobile));
+  min-height: calc(100vh - var(--header-height-mobile) - var(--nav-height-mobile));
+}
+
+.mobile-kot-header {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-kot-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-dark);
+}
+
+.mobile-kot-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.mobile-kot-count {
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--border-radius-full);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.mobile-kot-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-kot-filter {
+  flex-shrink: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-secondary);
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-min);
+  white-space: nowrap;
+}
+
+.mobile-kot-filter.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.mobile-kot-grid {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.mobile-kot-card {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--color-info);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  min-height: 160px;
+}
+
+.mobile-kot-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-kot-card.urgent {
+  border-left-color: var(--color-danger);
+  animation: pulse 2s infinite;
+}
+
+.mobile-kot-card.preparing {
+  border-left-color: var(--color-warning);
+}
+
+.mobile-kot-card.ready {
+  border-left-color: var(--color-success);
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: var(--shadow-sm); }
+  50% { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
+}
+
+.mobile-kot-header-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+.mobile-kot-order-info {
+  flex: 1;
+}
+
+.mobile-kot-order-number {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.mobile-kot-order-type {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-info);
+  color: white;
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mobile-kot-time-info {
+  text-align: right;
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+}
+
+.mobile-kot-elapsed-time {
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.mobile-kot-table-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+}
+
+.mobile-kot-items-list {
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-kot-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.mobile-kot-item:last-child {
+  border-bottom: none;
+}
+
+.mobile-kot-item-name {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-dark);
+  flex: 1;
+}
+
+.mobile-kot-item-quantity {
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--border-radius-full);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  margin-left: var(--spacing-sm);
+}
+
+.mobile-kot-item-notes {
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+  font-style: italic;
+  margin-top: var(--spacing-xs);
+  padding-left: var(--spacing-md);
+  border-left: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.mobile-kot-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+.mobile-kot-action-btn {
+  padding: var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-min);
+}
+
+.mobile-kot-action-btn.start {
+  background: var(--color-success);
+  color: white;
+}
+
+.mobile-kot-action-btn.complete {
+  background: var(--color-primary);
+  color: white;
+}
+
+.mobile-kot-action-btn.ready {
+  background: var(--color-warning);
+  color: white;
+}
+
+.mobile-kot-action-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-kot-priority {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+.mobile-kot-empty-state {
+  text-align: center;
+  padding: var(--spacing-4xl) var(--spacing-lg);
+  color: var(--color-secondary);
+}
+
+.mobile-kot-empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.5;
+}
+
+.mobile-kot-empty-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.mobile-kot-empty-text {
+  font-size: var(--font-size-base);
+}
+
+.mobile-kot-auto-refresh {
+  position: fixed;
+  top: calc(var(--header-height-mobile) + var(--spacing-md));
+  right: var(--spacing-md);
+  background: white;
+  border-radius: var(--border-radius-full);
+  padding: var(--spacing-sm);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-fixed);
+}
+
+.mobile-kot-refresh-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.mobile-kot-refresh-btn:active {
+  transform: scale(0.9);
+}
+
+.mobile-kot-refresh-btn.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Sound notification styles */
+.mobile-kot-sound-toggle {
+  position: fixed;
+  top: calc(var(--header-height-mobile) + var(--spacing-md));
+  right: calc(var(--spacing-xl) + var(--spacing-md));
+  background: white;
+  border-radius: var(--border-radius-full);
+  padding: var(--spacing-sm);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-fixed);
+}
+
+@media (min-width: 768px) {
+  .mobile-kot-container {
+    padding: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+  }
+  
+  .mobile-kot-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mobile-kot-container" x-data="mobileKOTDisplay()">
+  <!-- KOT Header -->
+  <div class="mobile-kot-header">
+    <h1 class="mobile-kot-title">Kitchen Display</h1>
+    <div class="mobile-kot-status">
+      <span class="mobile-kot-count" x-text="kotOrders.length"></span>
+      <span>orders</span>
+    </div>
+  </div>
+
+  <!-- KOT Filters -->
+  <div class="mobile-kot-filters">
+    <button class="mobile-kot-filter" 
+            :class="{ 'active': selectedFilter === 'all' }"
+            @click="selectedFilter = 'all'">
+      All (<span x-text="kotOrders.length"></span>)
+    </button>
+    <button class="mobile-kot-filter" 
+            :class="{ 'active': selectedFilter === 'new' }"
+            @click="selectedFilter = 'new'">
+      New (<span x-text="getOrderCountByStatus('New')"></span>)
+    </button>
+    <button class="mobile-kot-filter" 
+            :class="{ 'active': selectedFilter === 'preparing' }"
+            @click="selectedFilter = 'preparing'">
+      Preparing (<span x-text="getOrderCountByStatus('In Progress')"></span>)
+    </button>
+    <button class="mobile-kot-filter" 
+            :class="{ 'active': selectedFilter === 'ready' }"
+            @click="selectedFilter = 'ready'">
+      Ready (<span x-text="getOrderCountByStatus('Ready')"></span>)
+    </button>
+  </div>
+
+  <!-- KOT Orders Grid -->
+  <div class="mobile-kot-grid">
+    <template x-for="order in getFilteredOrders()" :key="order.id">
+      <div class="mobile-kot-card" 
+           :class="getOrderCardClass(order)"
+           @click="selectOrder(order)">
+        
+        <!-- Priority indicator for urgent orders -->
+        <div x-show="isOrderUrgent(order)" class="mobile-kot-priority"></div>
+        
+        <div class="mobile-kot-header-info">
+          <div class="mobile-kot-order-info">
+            <div class="mobile-kot-order-number" x-text="order.order_number"></div>
+            <span class="mobile-kot-order-type" x-text="order.order_type"></span>
+          </div>
+          <div class="mobile-kot-time-info">
+            <div x-text="formatTime(order.created_at)"></div>
+            <div class="mobile-kot-elapsed-time" x-text="getElapsedTime(order.created_at)"></div>
+          </div>
+        </div>
+        
+        <div class="mobile-kot-table-info">
+          <i class="bi bi-table"></i>
+          <span x-text="order.table_number || 'N/A'"></span>
+          <span>•</span>
+          <span x-text="order.customer_name || 'Walk-in'"></span>
+        </div>
+        
+        <div class="mobile-kot-items-list">
+          <template x-for="item in order.items" :key="item.id">
+            <div class="mobile-kot-item">
+              <span class="mobile-kot-item-name" x-text="item.name"></span>
+              <span class="mobile-kot-item-quantity" x-text="'x' + item.quantity"></span>
+              <div x-show="item.notes" class="mobile-kot-item-notes" x-text="item.notes"></div>
+            </div>
+          </template>
+        </div>
+        
+        <div class="mobile-kot-actions">
+          <button x-show="order.status === 'New'" 
+                  class="mobile-kot-action-btn start"
+                  @click.stop="startPreparing(order)">
+            <i class="bi bi-play-circle"></i> Start
+          </button>
+          
+          <button x-show="order.status === 'In Progress'" 
+                  class="mobile-kot-action-btn ready"
+                  @click.stop="markAsReady(order)">
+            <i class="bi bi-check-circle"></i> Ready
+          </button>
+          
+          <button x-show="order.status === 'Ready'" 
+                  class="mobile-kot-action-btn complete"
+                  @click.stop="completeOrder(order)">
+            <i class="bi bi-check2-circle"></i> Complete
+          </button>
+          
+          <button class="mobile-kot-action-btn" 
+                  style="background: var(--color-secondary); color: white;"
+                  @click.stop="viewOrderDetails(order)">
+            <i class="bi bi-eye"></i> Details
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Empty State -->
+  <div x-show="getFilteredOrders().length === 0" class="mobile-kot-empty-state">
+    <div class="mobile-kot-empty-icon">
+      <i class="bi bi-receipt"></i>
+    </div>
+    <h3 class="mobile-kot-empty-title">No orders found</h3>
+    <p class="mobile-kot-empty-text">All orders are completed. Great work!</p>
+  </div>
+</div>
+
+<!-- Auto Refresh Button -->
+<div class="mobile-kot-auto-refresh">
+  <button class="mobile-kot-refresh-btn" 
+          :class="{ 'spinning': isRefreshing }"
+          @click="refreshOrders()"
+          :disabled="isRefreshing">
+    <i class="bi" :class="isRefreshing ? 'bi-arrow-repeat' : 'bi-arrow-clockwise'"></i>
+  </button>
+</div>
+
+<!-- Sound Toggle -->
+<div class="mobile-kot-sound-toggle">
+  <button class="mobile-kot-refresh-btn" 
+          :class="{ 'spinning': isRefreshing }"
+          @click="toggleSound()"
+          :style="soundEnabled ? 'background: var(--color-success);' : 'background: var(--color-secondary);'">
+    <i class="bi" :class="soundEnabled ? 'bi-volume-up' : 'bi-volume-mute'"></i>
+  </button>
+</div>
+
+<!-- Order Details Modal -->
+<div class="mobile-order-modal" x-show="selectedOrder" 
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+  <div class="mobile-order-modal-content"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 transform scale-95"
+       x-transition:enter-end="opacity-100 transform scale-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 transform scale-100"
+       x-transition:leave-end="opacity-0 transform scale-95">
+    
+    <div class="mobile-modal-header">
+      <h2 class="mobile-modal-title" x-text="'Order ' + selectedOrder?.order_number"></h2>
+      <button @click="selectedOrder = null" class="mobile-kot-action-btn" style="background: var(--color-secondary);">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+    
+    <div x-show="selectedOrder" class="mobile-kot-items-list">
+      <template x-for="item in selectedOrder.items" :key="item.id">
+        <div class="mobile-kot-item">
+          <span class="mobile-kot-item-name" x-text="item.name"></span>
+          <span class="mobile-kot-item-quantity" x-text="'x' + item.quantity"></span>
+          <div x-show="item.notes" class="mobile-kot-item-notes" x-text="item.notes"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function mobileKOTDisplay() {
+  return {
+    kotOrders: [],
+    selectedFilter: 'all',
+    selectedOrder: null,
+    isRefreshing: false,
+    soundEnabled: true,
+    autoRefreshInterval: null,
+
+    init() {
+      this.loadKOTOrders();
+      this.setupAutoRefresh();
+      this.setupWebSocket();
+      this.setupSound();
+      this.requestNotificationPermission();
+    },
+
+    async loadKOTOrders() {
+      try {
+        const response = await fetch('/api/kot/orders');
+        if (response.ok) {
+          this.kotOrders = await response.json();
+          this.playNotificationSound();
+        }
+      } catch (error) {
+        console.error('Failed to load KOT orders:', error);
+      }
+    },
+
+    getFilteredOrders() {
+      if (this.selectedFilter === 'all') {
+        return this.kotOrders;
+      }
+      return this.kotOrders.filter(order => 
+        order.status.toLowerCase().replace(' ', '') === this.selectedFilter
+      );
+    },
+
+    getOrderCountByStatus(status) {
+      return this.kotOrders.filter(order => order.status === status).length;
+    },
+
+    getOrderCardClass(order) {
+      const classes = [];
+      
+      if (this.isOrderUrgent(order)) {
+        classes.push('urgent');
+      }
+      
+      if (order.status === 'In Progress') {
+        classes.push('preparing');
+      } else if (order.status === 'Ready') {
+        classes.push('ready');
+      }
+      
+      return classes.join(' ');
+    },
+
+    isOrderUrgent(order) {
+      const elapsedMinutes = this.getElapsedMinutes(order.created_at);
+      return elapsedMinutes > 30 && order.status !== 'Completed';
+    },
+
+    getElapsedTime(createdAt) {
+      const minutes = this.getElapsedMinutes(createdAt);
+      if (minutes < 60) {
+        return `${minutes}m`;
+      } else {
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        return `${hours}h ${remainingMinutes}m`;
+      }
+    },
+
+    getElapsedMinutes(createdAt) {
+      const now = new Date();
+      const created = new Date(createdAt);
+      return Math.floor((now - created) / (1000 * 60));
+    },
+
+    formatTime(createdAt) {
+      const date = new Date(createdAt);
+      return date.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    },
+
+    selectOrder(order) {
+      this.selectedOrder = order;
+    },
+
+    async startPreparing(order) {
+      try {
+        const response = await fetch(`/api/kot/orders/${order.id}/start`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          order.status = 'In Progress';
+          this.playActionSound();
+          this.showToast('Order marked as preparing', 'success');
+        }
+      } catch (error) {
+        console.error('Failed to start preparing:', error);
+        this.showToast('Failed to update order status', 'error');
+      }
+    },
+
+    async markAsReady(order) {
+      try {
+        const response = await fetch(`/api/kot/orders/${order.id}/ready`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          order.status = 'Ready';
+          this.playActionSound();
+          this.showToast('Order marked as ready', 'success');
+          
+          // Send notification to waiting staff
+          this.sendOrderReadyNotification(order);
+        }
+      } catch (error) {
+        console.error('Failed to mark as ready:', error);
+        this.showToast('Failed to update order status', 'error');
+      }
+    },
+
+    async completeOrder(order) {
+      try {
+        const response = await fetch(`/api/kot/orders/${order.id}/complete`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          // Remove from local list
+          const index = this.kotOrders.indexOf(order);
+          if (index > -1) {
+            this.kotOrders.splice(index, 1);
+          }
+          this.playActionSound();
+          this.showToast('Order completed', 'success');
+        }
+      } catch (error) {
+        console.error('Failed to complete order:', error);
+        this.showToast('Failed to update order status', 'error');
+      }
+    },
+
+    viewOrderDetails(order) {
+      this.selectedOrder = order;
+    },
+
+    setupAutoRefresh() {
+      // Refresh every 30 seconds
+      this.autoRefreshInterval = setInterval(() => {
+        this.refreshOrders();
+      }, 30000);
+    },
+
+    async refreshOrders() {
+      this.isRefreshing = true;
+      await this.loadKOTOrders();
+      setTimeout(() => {
+        this.isRefreshing = false;
+      }, 1000);
+    },
+
+    setupWebSocket() {
+      if (typeof WebSocket !== 'undefined') {
+        try {
+          const ws = new WebSocket(`ws://${window.location.host}/ws/kot`);
+          
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'new_order') {
+              this.kotOrders.unshift(data.order);
+              this.playNotificationSound();
+              this.showToast(`New order: ${data.order.order_number}`, 'info');
+            } else if (data.type === 'order_update') {
+              this.updateOrderInList(data.order);
+            }
+          };
+          
+          ws.onerror = (error) => {
+            console.log('KOT WebSocket error:', error);
+          };
+        } catch (error) {
+          console.log('KOT WebSocket not available');
+        }
+      }
+    },
+
+    updateOrderInList(updatedOrder) {
+      const index = this.kotOrders.findIndex(order => order.id === updatedOrder.id);
+      if (index > -1) {
+        this.kotOrders[index] = updatedOrder;
+      }
+    },
+
+    setupSound() {
+      // Load sound files
+      this.notificationSound = new Audio('/static/sounds/notification.mp3');
+      this.actionSound = new Audio('/static/sounds/alert.mp3');
+    },
+
+    playNotificationSound() {
+      if (this.soundEnabled && this.notificationSound) {
+        this.notificationSound.play().catch(e => console.log('Sound play failed:', e));
+      }
+    },
+
+    playActionSound() {
+      if (this.soundEnabled && this.actionSound) {
+        this.actionSound.play().catch(e => console.log('Sound play failed:', e));
+      }
+    },
+
+    toggleSound() {
+      this.soundEnabled = !this.soundEnabled;
+      if (this.soundEnabled) {
+        this.showToast('Sound enabled', 'success');
+      } else {
+        this.showToast('Sound disabled', 'info');
+      }
+    },
+
+    async requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            this.showToast('Notifications enabled', 'success');
+          }
+        } catch (error) {
+          console.log('Notification permission denied:', error);
+        }
+      }
+    },
+
+    sendOrderReadyNotification(order) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Order Ready', {
+          body: `Order ${order.order_number} is ready for pickup`,
+          icon: '/static/images/android-chrome-192x192.png',
+          tag: `order-ready-${order.id}`
+        });
+      }
+    },
+
+    showToast(message, type = 'info') {
+      if (window.MobileOptimizer && window.MobileOptimizer.api) {
+        window.MobileOptimizer.api.toast(message, type);
+      } else {
+        console.log(`${type.toUpperCase()}: ${message}`);
+      }
+    },
+
+    beforeDestroy() {
+      if (this.autoRefreshInterval) {
+        clearInterval(this.autoRefreshInterval);
+      }
+    }
+  };
+}
+</script>
+{% endblock %}

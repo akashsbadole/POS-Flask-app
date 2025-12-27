@@ -1,0 +1,109 @@
+{
+  "name": "Restaurant POS System",
+  "short_name": "RestaurantPOS",
+  "description": "Comprehensive restaurant point of sale system with mobile-first design",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["business", "productivity", "food"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "images/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "images/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "images/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "images/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "images/mobile-screenshot-1.png",
+      "sizes": "360x640",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "images/tablet-screenshot-1.png",
+      "sizes": "768x1024",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Order",
+      "short_name": "New Order",
+      "description": "Create a new restaurant order",
+      "url": "/orders/new",
+      "icons": [
+        {
+          "src": "images/shortcut-new-order.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Kitchen Display",
+      "short_name": "Kitchen",
+      "description": "View kitchen display system",
+      "url": "/kot",
+      "icons": [
+        {
+          "src": "images/shortcut-kitchen.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View business dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "images/shortcut-dashboard.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "protocol_handlers": [
+    {
+      "protocol": "web+restaurantpos",
+      "url": "/?action=%s"
+    }
+  ]
+}

@@ -356,3 +356,156 @@ class EmailOTPSettingsForm(FlaskForm):
             # Backup email should be different from main email
             if field.data.lower() == self.email.data.lower():
                 raise ValidationError('Backup email must be different from main email address')
+
+# Registration Forms
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[
+        DataRequired(),
+        Length(min=3, max=80),
+        Regexp(r'^[a-zA-Z0-9_]+$', message='Username can only contain letters, numbers, and underscores')
+    ])
+    email = StringField('Email Address', validators=[
+        DataRequired(),
+        Email(),
+        Length(max=120)
+    ])
+    password = PasswordField('Password', validators=[
+        DataRequired(),
+        Length(min=8, max=128)
+    ])
+    confirm_password = PasswordField('Confirm Password', validators=[
+        DataRequired(),
+        EqualTo('password', message='Passwords must match')
+    ])
+    full_name = StringField('Full Name', validators=[
+        DataRequired(),
+        Length(min=2, max=120)
+    ])
+    phone = StringField('Phone Number', validators=[
+        DataRequired(),
+        Length(max=20),
+        Regexp(r'^[+]?[1-9][\d\s\-\(\)]{7,15}$', message='Please enter a valid phone number')
+    ])
+    business_name = StringField('Business Name', validators=[
+        Optional(),
+        Length(max=120)
+    ])
+    business_type = SelectField('Business Type', choices=[
+        ('restaurant', 'Restaurant'),
+        ('cafe', 'Cafe'),
+        ('fast_food', 'Fast Food'),
+        ('bakery', 'Bakery'),
+        ('other', 'Other')
+    ], default='restaurant')
+    agree_terms = BooleanField('I agree to the Terms of Service', validators=[
+        DataRequired(message='You must agree to the Terms of Service')
+    ])
+    submit = SubmitField('Create Account')
+    
+    def validate_username(self, field):
+        # Check if username already exists
+        from models import User
+        user = User.query.filter_by(username=field.data).first()
+        if user:
+            raise ValidationError('Username already exists. Please choose a different one.')
+        
+        # Check if username is reserved
+        reserved_usernames = ['admin', 'administrator', 'root', 'system', 'api', 'www', 'mail', 'ftp']
+        if field.data.lower() in reserved_usernames:
+            raise ValidationError('This username is reserved. Please choose a different one.')
+    
+    def validate_email(self, field):
+        # Check if email already exists
+        from models import User
+        user = User.get_by_email_encrypted(field.data)
+        if user:
+            raise ValidationError('An account with this email already exists.')
+        
+        # Validate email domain (optional - can be configured)
+        domain = field.data.split('@')[1].lower()
+        blocked_domains = ['mailinator.com', 'tempmail.org', 'guerrillamail.com']
+        if domain in blocked_domains:
+            raise ValidationError('Temporary email addresses are not allowed.')
+    
+    def validate_password(self, field):
+        password = field.data
+        
+        # Check password strength requirements
+        if len(password) < 8:
+            raise ValidationError('Password must be at least 8 characters long.')
+        
+        if not re.search(r'[a-z]', password):
+            raise ValidationError('Password must contain at least one lowercase letter.')
+        
+        if not re.search(r'[A-Z]', password):
+            raise ValidationError('Password must contain at least one uppercase letter.')
+        
+        if not re.search(r'\d', password):
+            raise ValidationError('Password must contain at least one number.')
+        
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            raise ValidationError('Password must contain at least one special character.')
+        
+        # Check for common passwords
+        common_passwords = ['password', 'password123', '123456', 'admin', 'welcome']
+        if password.lower() in common_passwords:
+            raise ValidationError('This password is too common. Please choose a more secure password.')
+    
+    def validate_phone(self, field):
+        from utils.otp_manager import OTPManager
+        
+        # Validate phone number format
+        is_valid, formatted_phone, error_msg = OTPManager.validate_phone_number(field.data)
+        if not is_valid:
+            raise ValidationError(error_msg)
+        
+        # Check if phone number is already registered
+        from models import User
+        user = User.query.filter_by(phone=formatted_phone).first()
+        if user:
+            raise ValidationError('This phone number is already registered.')
+
+class EmailVerificationForm(FlaskForm):
+    verification_code = StringField('Verification Code', validators=[
+        DataRequired(),
+        Length(min=6, max=6),
+        Regexp(r'^[0-9]{6}$', message='Please enter a valid 6-digit code')
+    ])
+    submit = SubmitField('Verify Email')
+    
+    def validate_verification_code(self, field):
+        # Additional validation for verification code format
+        if not field.data.isdigit():
+            raise ValidationError('Verification code must contain only numbers')
+
+class ResendVerificationForm(FlaskForm):
+    email = StringField('Email Address', validators=[
+        DataRequired(),
+        Email(),
+        Length(max=120)
+    ])
+    submit = SubmitField('Resend Verification Email')
+    
+    def validate_email(self, field):
+        from models import User
+        user = User.get_by_email_encrypted(field.data)
+        if not user:
+            raise ValidationError('No registration found with this email address.')
+        
+        if user.email_verified:
+            raise ValidationError('Email is already verified.')
+        
+        if user.registration_status == 'approved':
+            raise ValidationError('Registration is already approved.')
+
+class AdminApprovalForm(FlaskForm):
+    action = SelectField('Action', choices=[
+        ('approve', 'Approve Registration'),
+        ('reject', 'Reject Registration')
+    ], validators=[DataRequired()])
+    notes = TextAreaField('Notes', validators=[
+        Optional(),
+        Length(max=500)
+    ])
+    submit = SubmitField('Submit')

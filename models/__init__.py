@@ -12,11 +12,38 @@ from .payment import Payment
 from .settings import Settings
 from .print_history import PrintHistory
 from .audit_log import AuditLog
+from .payment_gateway import PaymentGateway, PaymentTransaction
 
 # Import backup models
 from .backup import (
     BackupJob, BackupRun, RestoreOperation, BackupAlert, BackupConfiguration,
     BackupType, BackupStatus, RestoreStatus, init_backup_models
+)
+
+# Import real-time KOT models
+from .realtime_kot import (
+    KitchenDisplay, KOTEvent, OrderStatusHistory, RealTimeMetrics, enhance_order_model
+)
+
+# Import supplier management models
+from .supplier import (
+    SupplierCategory, Supplier, SupplierContact, SupplierDocument, SupplierRating
+)
+
+# Import purchase order models
+from .purchase_order import (
+    PurchaseOrder, PurchaseOrderItem, PurchaseOrderApproval, 
+    PurchaseOrderReceipt, PurchaseOrderTemplate, SupplierPriceHistory
+)
+
+# Import accounts payable models
+from .accounts_payable import (
+    AccountsPayable, SupplierPaymentTransaction, BudgetAllocation, BudgetTransaction
+)
+
+# Import advanced analytics models
+from .analytics import (
+    AnalyticsData, TrendAnalysis, PredictiveModel, CustomerInsights, BusinessMetrics
 )
 
 def create_tables():
@@ -29,6 +56,8 @@ def init_db(app):
     # Create all tables first within app context
     with app.app_context():
         create_tables()
+        # Initialize real-time KOT models
+        enhance_order_model()
         # Then initialize backup models
         init_backup_models(app)
 
@@ -74,10 +103,20 @@ def get_database_info():
 
 __all__ = [
     'db', 'User', 'Category', 'MenuItem', 'Table', 'Order', 'OrderItem', 
-    'Payment', 'Settings', 'PrintHistory', 'AuditLog', 'create_tables', 
-    'init_db', 'validate_database_config', 'get_database_info',
+    'Payment', 'Settings', 'PrintHistory', 'AuditLog', 'PaymentGateway', 
+    'PaymentTransaction', 'create_tables', 'init_db', 'validate_database_config', 
+    'get_database_info',
     # Backup models
     'BackupJob', 'BackupRun', 'RestoreOperation', 'BackupAlert', 
     'BackupConfiguration', 'BackupType', 'BackupStatus', 'RestoreStatus',
-    'init_backup_models'
+    'init_backup_models',
+    # Supplier management models
+    'SupplierCategory', 'Supplier', 'SupplierContact', 'SupplierDocument', 'SupplierRating',
+    # Purchase order models
+    'PurchaseOrder', 'PurchaseOrderItem', 'PurchaseOrderApproval', 'PurchaseOrderReceipt', 
+    'PurchaseOrderTemplate', 'SupplierPriceHistory',
+    # Accounts payable models
+    'AccountsPayable', 'SupplierPaymentTransaction', 'BudgetAllocation', 'BudgetTransaction',
+    # Advanced analytics models
+    'AnalyticsData', 'TrendAnalysis', 'PredictiveModel', 'CustomerInsights', 'BusinessMetrics'
 ]

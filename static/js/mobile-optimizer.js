@@ -1,810 +1,1025 @@
 /**
- * Mobile Optimization JavaScript for Flask POS Application
- * Handles touch interactions, performance optimizations, and mobile-specific features
+ * Restaurant POS Mobile Optimizer
+ * Provides PWA features, touch optimizations, and mobile-first functionality
  */
 
-class MobileOptimizer {
-    constructor() {
-        this.isMobile = this.detectMobile();
-        this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        this.viewportWidth = window.innerWidth;
-        this.touchStartX = 0;
-        this.touchStartY = 0;
-        this.isSwiping = false;
-        
-        this.init();
-    }
-    
-    detectMobile() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-               window.innerWidth <= 768;
-    }
-    
-    init() {
-        if (this.isMobile || this.isTouch) {
-            this.setupTouchOptimizations();
+(function() {
+    'use strict';
+
+    // Mobile Optimizer Object
+    const MobileOptimizer = {
+        // Configuration
+        config: {
+            touchThreshold: 44, // Minimum touch target size (WCAG 2.1)
+            swipeThreshold: 50, // Minimum swipe distance
+            tapDelay: 300, // Delay to distinguish tap from double-tap
+            animationDuration: 300,
+            pwaInstallDelay: 30000, // Show PWA install prompt after 30 seconds
+        },
+
+        // State
+        state: {
+            isMobile: false,
+            isTablet: false,
+            isDesktop: false,
+            isLandscape: false,
+            touchStartX: 0,
+            touchStartY: 0,
+            touchStartTime: 0,
+            swipeDirection: null,
+            lastTap: 0,
+            pwaInstallEvent: null,
+            deferredPrompt: null,
+            isInstalled: false,
+            isOnline: navigator.onLine,
+            installPromptShown: false,
+        },
+
+        // Initialize mobile optimizer
+        init() {
+            this.detectDevice();
+            this.setupEventListeners();
+            this.initializePWA();
+            this.optimizeTouchTargets();
+            this.setupGestureSupport();
+            this.initializeOfflineSupport();
             this.setupPerformanceOptimizations();
-            this.setupMobileNavigation();
-            this.setupSwipeGestures();
-            this.setupMobileSpecificFeatures();
-            this.optimizeForms();
-            this.setupResponsiveBehaviors();
-        }
-        
-        // Setup resize handler
-        window.addEventListener('resize', this.debounce(() => {
-            this.handleResize();
-        }, 250));
-        
-        // Setup orientation change handler
-        window.addEventListener('orientationchange', this.debounce(() => {
-            this.handleOrientationChange();
-        }, 100));
-    }
-    
-    setupTouchOptimizations() {
-        // Prevent default touch behaviors on interactive elements
-        document.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.touch-action')) {
-                // Allow touch action on designated elements
-                return;
-            }
+            this.setupAccessibilityEnhancements();
             
-            // Prevent double-tap zoom on buttons
-            if (e.target.closest('button, .btn, a')) {
-                e.preventDefault();
+            console.log('Mobile Optimizer initialized');
+        },
+
+        // Device detection
+        detectDevice() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // Detect mobile device
+            this.state.isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent) ||
+                                 width <= 768;
+
+            // Detect tablet
+            this.state.isTablet = /ipad|android(?!.*mobile)/i.test(userAgent) ||
+                                 (width > 768 && width <= 1024);
+
+            // Detect desktop
+            this.state.isDesktop = !this.state.isMobile && !this.state.isTablet;
+
+            // Detect orientation
+            this.state.isLandscape = width > height;
+
+            // Add device classes to body
+            document.body.classList.toggle('mobile-device', this.state.isMobile);
+            document.body.classList.toggle('tablet-device', this.state.isTablet);
+            document.body.classList.toggle('desktop-device', this.state.isDesktop);
+            document.body.classList.toggle('landscape-mode', this.state.isLandscape);
+
+            // Set viewport meta tag for iOS zoom prevention
+            if (this.state.isMobile) {
+                this.preventiOSZoom();
             }
-        }, { passive: false });
-        
-        // Handle touch end for buttons
-        document.addEventListener('touchend', (e) => {
-            const target = e.target.closest('button, .btn, a');
-            if (target && !this.isSwiping) {
-                e.preventDefault();
-                target.click();
-            }
-        }, { passive: false });
-        
-        // Add active states for touch
-        document.addEventListener('touchstart', (e) => {
-            const target = e.target.closest('button, .btn, .menu-item-card, .table-card');
-            if (target) {
-                target.classList.add('touch-active');
-            }
-        });
-        
-        document.addEventListener('touchend', (e) => {
-            const target = e.target.closest('button, .btn, .menu-item-card, .table-card');
-            if (target) {
-                setTimeout(() => {
-                    target.classList.remove('touch-active');
-                }, 150);
-            }
-        });
-        
-        // Prevent scrolling on modals
-        document.addEventListener('touchmove', (e) => {
-            if (e.target.closest('.modal')) {
-                const modalBody = e.target.closest('.modal-body');
-                if (modalBody) {
-                    const { scrollTop, scrollHeight, clientHeight } = modalBody;
-                    if (scrollTop === 0 && e.touches[0].clientY > e.touches[0].clientY) {
-                        e.preventDefault();
-                    }
-                    if (scrollTop + clientHeight >= scrollHeight && e.touches[0].clientY < e.touches[0].clientY) {
-                        e.preventDefault();
-                    }
-                } else {
-                    e.preventDefault();
-                }
-            }
-        }, { passive: false });
-    }
-    
-    setupPerformanceOptimizations() {
-        // Lazy load images
-        if ('IntersectionObserver' in window) {
-            const imageObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target;
-                        if (img.dataset.src) {
-                            img.src = img.dataset.src;
-                            img.classList.remove('lazy');
-                            imageObserver.unobserve(img);
-                        }
+        },
+
+        // Prevent iOS zoom on input focus
+        preventiOSZoom() {
+            const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea, select');
+            
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    if (window.innerWidth < 768) {
+                        this.style.fontSize = '16px';
                     }
                 });
+
+                input.addEventListener('blur', function() {
+                    this.style.fontSize = '';
+                });
             });
-            
-            document.querySelectorAll('img[data-src]').forEach(img => {
-                imageObserver.observe(img);
+        },
+
+        // Setup event listeners
+        setupEventListeners() {
+            // Window resize event
+            window.addEventListener('resize', this.throttle(() => {
+                this.detectDevice();
+                this.adjustLayoutForDevice();
+            }, 250));
+
+            // Orientation change event
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => {
+                    this.detectDevice();
+                    this.adjustLayoutForDevice();
+                }, 100);
             });
-        }
-        
-        // Debounce scroll events
-        let scrollTimeout;
-        window.addEventListener('scroll', () => {
-            if (scrollTimeout) {
-                clearTimeout(scrollTimeout);
-            }
-            scrollTimeout = setTimeout(() => {
-                this.handleScroll();
-            }, 100);
-        }, { passive: true });
-        
-        // Optimize animations
-        this.reduceMotionForPerformance();
-    }
-    
-    setupMobileNavigation() {
-        // Mobile navigation toggle
-        const navToggle = document.querySelector('.mobile-nav-toggle');
-        const sidebar = document.querySelector('.sidebar');
-        const mainContent = document.querySelector('.main-content');
-        
-        if (navToggle && sidebar) {
-            navToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                this.updateNavIcon(navToggle, sidebar.classList.contains('collapsed'));
+
+            // Online/Offline events
+            window.addEventListener('online', () => {
+                this.state.isOnline = true;
+                this.showOnlineNotification();
+                this.syncOfflineData();
             });
-            
-            // Close sidebar when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!sidebar.contains(e.target) && !navToggle.contains(e.target)) {
-                    sidebar.classList.add('collapsed');
-                    this.updateNavIcon(navToggle, true);
-                }
+
+            window.addEventListener('offline', () => {
+                this.state.isOnline = false;
+                this.showOfflineNotification();
             });
-        }
-        
-        // Add swipe to close sidebar
-        if (sidebar) {
-            this.addSwipeGesture(sidebar, (direction) => {
-                if (direction === 'left' && !sidebar.classList.contains('collapsed')) {
-                    sidebar.classList.add('collapsed');
-                }
-                if (direction === 'right' && sidebar.classList.contains('collapsed')) {
-                    sidebar.classList.remove('collapsed');
-                }
-            });
-        }
-    }
-    
-    setupSwipeGestures() {
-        // Swipe gestures for order tabs
-        const orderTabs = document.querySelector('.order-tabs');
-        if (orderTabs) {
-            this.addSwipeGesture(orderTabs, (direction) => {
-                const activeTab = orderTabs.querySelector('.order-tab.active');
-                if (!activeTab) return;
-                
-                if (direction === 'left') {
-                    const nextTab = activeTab.nextElementSibling;
-                    if (nextTab && nextTab.classList.contains('order-tab')) {
-                        nextTab.click();
-                    }
-                } else if (direction === 'right') {
-                    const prevTab = activeTab.previousElementSibling;
-                    if (prevTab && prevTab.classList.contains('order-tab')) {
-                        prevTab.click();
-                    }
-                }
-            });
-        }
-        
-        // Swipe for table cards
-        document.querySelectorAll('.table-card').forEach(card => {
-            this.addSwipeGesture(card, (direction) => {
-                if (direction === 'left') {
-                    this.showTableActions(card);
-                }
-            });
-        });
-    }
-    
-    setupMobileSpecificFeatures() {
-        // Virtual keyboard handling
-        this.handleVirtualKeyboard();
-        
-        // Pull-to-refresh
-        this.setupPullToRefresh();
-        
-        // Haptic feedback
-        this.setupHapticFeedback();
-        
-        // Orientation-specific optimizations
-        this.applyOrientationOptimizations();
-    }
-    
-    optimizeForms() {
-        // Prevent zoom on input focus
-        const inputs = document.querySelectorAll('input[type="text"], input[type="number"], textarea');
-        inputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                if (this.isMobile) {
-                    document.querySelector('meta[name="viewport"]').setAttribute('content', 
-                        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0');
-                }
-            });
-            
-            input.addEventListener('blur', () => {
-                document.querySelector('meta[name="viewport"]').setAttribute('content', 
-                    'width=device-width, initial-scale=1.0');
-            });
-        });
-        
-        // Auto-advance fields
-        this.setupFieldAutoAdvance();
-        
-        // Mobile-friendly date inputs
-        this.optimizeDateInputs();
-    }
-    
-    setupResponsiveBehaviors() {
-        // Handle responsive tables
-        document.querySelectorAll('.data-table').forEach(table => {
-            this.makeTableResponsive(table);
-        });
-        
-        // Optimize modals for mobile
-        document.querySelectorAll('.modal').forEach(modal => {
-            this.optimizeModalForMobile(modal);
-        });
-        
-        // Setup mobile-specific shortcuts
-        this.setupMobileShortcuts();
-    }
-    
-    addSwipeGesture(element, callback) {
-        let startX = 0;
-        let startY = 0;
-        let startTime = 0;
-        
-        element.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            startTime = Date.now();
-            this.isSwiping = false;
-        }, { passive: true });
-        
-        element.addEventListener('touchmove', (e) => {
-            if (!startX || !startY) return;
-            
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const diffX = startX - currentX;
-            const diffY = startY - currentY;
-            
-            // Check if this is a horizontal swipe
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-                this.isSwiping = true;
-            }
-        }, { passive: true });
-        
-        element.addEventListener('touchend', (e) => {
-            if (!startX || !startY) return;
-            
-            const endX = e.changedTouches[0].clientX;
-            const endY = e.changedTouches[0].clientY;
-            const diffX = startX - endX;
-            const diffY = startY - endY;
-            const endTime = Date.now();
-            
-            // Reset values
-            startX = 0;
-            startY = 0;
-            
-            // Check if this was a valid swipe
-            const timeDiff = endTime - startTime;
-            const swipeDistance = Math.abs(diffX);
-            
-            if (timeDiff < 500 && swipeDistance > 50 && Math.abs(diffY) < 100) {
-                const direction = diffX > 0 ? 'right' : 'left';
-                callback(direction);
-            }
-            
-            setTimeout(() => {
-                this.isSwiping = false;
-            }, 100);
-        }, { passive: true });
-    }
-    
-    handleVirtualKeyboard() {
-        // Detect virtual keyboard appearance
-        const initialViewportHeight = window.visualViewport?.height || window.innerHeight;
-        
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                const currentHeight = window.visualViewport.height;
-                const heightDiff = initialViewportHeight - currentHeight;
-                
-                if (heightDiff > 150) {
-                    // Keyboard is visible
-                    document.body.classList.add('keyboard-visible');
-                    this.adjustForKeyboard(true);
-                } else {
-                    // Keyboard is hidden
-                    document.body.classList.remove('keyboard-visible');
-                    this.adjustForKeyboard(false);
-                }
-            });
-        }
-    }
-    
-    adjustForKeyboard(isVisible) {
-        const activeElement = document.activeElement;
-        if (!activeElement) return;
-        
-        if (isVisible) {
-            // Scroll active element into view
-            setTimeout(() => {
-                activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 300);
-        }
-    }
-    
-    setupPullToRefresh() {
-        let startY = 0;
-        let isPulling = false;
-        
-        document.addEventListener('touchstart', (e) => {
-            if (window.scrollY === 0) {
-                startY = e.touches[0].clientY;
-                isPulling = false;
-            }
-        }, { passive: true });
-        
-        document.addEventListener('touchmove', (e) => {
-            if (startY === 0) return;
-            
-            const currentY = e.touches[0].clientY;
-            const pullDistance = currentY - startY;
-            
-            if (pullDistance > 0 && window.scrollY === 0) {
-                isPulling = true;
-                this.showPullIndicator(pullDistance);
+
+            // Touch events for gesture support
+            document.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+            document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+            document.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+
+            // Click event optimization
+            document.addEventListener('click', this.handleClick.bind(this));
+
+            // PWA install event
+            window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
+                this.state.deferredPrompt = e;
+                this.showPWAInstallPrompt();
+            });
+
+            // App installed event
+            window.addEventListener('appinstalled', () => {
+                this.state.isInstalled = true;
+                this.hidePWAInstallPrompt();
+                this.showInstallSuccess();
+            });
+
+            // Keyboard events for mobile
+            document.addEventListener('keydown', this.handleKeyboard.bind(this));
+        },
+
+        // PWA initialization
+        initializePWA() {
+            // Check if app is already installed
+            this.state.isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
+                                   window.navigator.standalone ||
+                                   document.referrer.includes('android-app://');
+
+            if (this.state.isInstalled) {
+                document.body.classList.add('pwa-installed');
             }
-        }, { passive: false });
-        
-        document.addEventListener('touchend', () => {
-            if (isPulling) {
-                this.hidePullIndicator();
-                startY = 0;
-                isPulling = false;
+
+            // Show install prompt after delay
+            if (!this.state.isInstalled && this.state.deferredPrompt) {
+                setTimeout(() => {
+                    if (!this.state.installPromptShown) {
+                        this.showPWAInstallPrompt();
+                    }
+                }, this.config.pwaInstallDelay);
             }
-        }, { passive: true });
-    }
-    
-    showPullIndicator(distance) {
-        let indicator = document.getElementById('pull-to-refresh');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'pull-to-refresh';
-            indicator.innerHTML = '<div class="spinner"></div><span>Pull to refresh...</span>';
-            indicator.style.cssText = `
-                position: fixed;
-                top: -60px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: white;
-                padding: 10px 20px;
-                border-radius: 0 0 20px 20px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                z-index: 1000;
-                transition: top 0.3s ease;
-            `;
-            document.body.appendChild(indicator);
-        }
-        
-        if (distance > 100) {
-            indicator.style.top = '0px';
-        }
-    }
-    
-    hidePullIndicator() {
-        const indicator = document.getElementById('pull-to-refresh');
-        if (indicator) {
-            indicator.style.top = '-60px';
-        }
-    }
-    
-    setupHapticFeedback() {
-        // Add haptic feedback to buttons
-        document.querySelectorAll('button, .btn').forEach(button => {
-            button.addEventListener('touchstart', () => {
-                if ('vibrate' in navigator) {
-                    navigator.vibrate(10);
+        },
+
+        // Show PWA install prompt
+        showPWAInstallPrompt() {
+            const prompt = document.getElementById('pwa-install-prompt');
+            if (prompt) {
+                prompt.style.display = 'block';
+                this.state.installPromptShown = true;
+
+                // Add install button event listener
+                const installBtn = document.getElementById('pwa-install-btn');
+                if (installBtn) {
+                    installBtn.addEventListener('click', this.installPWA.bind(this));
                 }
-            }, { passive: true });
-        });
-    }
-    
-    makeTableResponsive(table) {
-        if (!this.isMobile) return;
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = 'table-responsive';
-        table.parentNode.insertBefore(wrapper, table);
-        wrapper.appendChild(table);
-        
-        // Add horizontal scroll indicators
-        this.addScrollIndicators(wrapper);
-    }
-    
-    optimizeModalForMobile(modal) {
-        if (!this.isMobile) return;
-        
-        const modalDialog = modal.querySelector('.modal-dialog');
-        const modalBody = modal.querySelector('.modal-body');
-        
-        // Make modal full-screen on mobile
-        if (window.innerWidth <= 768) {
-            modalDialog.style.maxWidth = '100%';
-            modalDialog.style.margin = '0';
-            modalDialog.style.height = '100vh';
-            
-            modalBody.style.maxHeight = 'calc(100vh - 140px)';
-        }
-        
-        // Add swipe to close
-        this.addSwipeGesture(modal, (direction) => {
-            if (direction === 'down') {
-                // Close modal on swipe down
-                const modalInstance = bootstrap.Modal.getInstance(modal);
-                if (modalInstance) {
-                    modalInstance.hide();
+
+                // Add dismiss button event listener
+                const dismissBtn = document.getElementById('pwa-dismiss-btn');
+                if (dismissBtn) {
+                    dismissBtn.addEventListener('click', this.hidePWAInstallPrompt.bind(this));
                 }
             }
-        });
-    }
-    
-    setupMobileShortcuts() {
-        // Add long press for additional actions
-        document.querySelectorAll('.menu-item-card, .table-card').forEach(card => {
-            let pressTimer;
-            
-            card.addEventListener('touchstart', () => {
-                pressTimer = setTimeout(() => {
-                    this.showContextMenu(card);
-                }, 500);
-            }, { passive: true });
-            
-            card.addEventListener('touchend', () => {
-                clearTimeout(pressTimer);
-            }, { passive: true });
-        });
-    }
-    
-    showContextMenu(element) {
-        // Implement context menu for long press
-        console.log('Long press detected on:', element);
-        // This could show a modal with additional options
-    }
-    
-    updateNavIcon(toggle, isCollapsed) {
-        const icon = toggle.querySelector('i') || toggle;
-        if (isCollapsed) {
-            icon.innerHTML = '☰'; // Hamburger menu
-        } else {
-            icon.innerHTML = '✕'; // Close icon
-        }
-    }
-    
-    handleResize() {
-        const newViewportWidth = window.innerWidth;
-        const widthChanged = Math.abs(newViewportWidth - this.viewportWidth) > 50;
-        
-        if (widthChanged) {
-            this.viewportWidth = newViewportWidth;
-            this.applyOrientationOptimizations();
-        }
-    }
-    
-    handleOrientationChange() {
-        setTimeout(() => {
-            this.applyOrientationOptimizations();
-            
-            // Adjust scroll position
-            if (document.activeElement) {
-                document.activeElement.scrollIntoView({ behavior: 'smooth' });
+        },
+
+        // Hide PWA install prompt
+        hidePWAInstallPrompt() {
+            const prompt = document.getElementById('pwa-install-prompt');
+            if (prompt) {
+                prompt.style.display = 'none';
             }
-        }, 100);
-    }
-    
-    applyOrientationOptimizations() {
-        const isLandscape = window.innerWidth > window.innerHeight;
-        const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1024;
-        
-        document.body.classList.toggle('landscape', isLandscape);
-        document.body.classList.toggle('portrait', !isLandscape);
-        document.body.classList.toggle('tablet', isTablet);
-        
-        // Adjust layouts based on orientation
-        if (isLandscape && this.isMobile) {
-            this.optimizeForLandscape();
-        } else {
-            this.optimizeForPortrait();
-        }
-    }
-    
-    optimizeForLandscape() {
-        // Show side-by-side layouts in landscape
-        document.querySelectorAll('.kot-container').forEach(container => {
-            container.style.display = 'grid';
-            container.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        });
-    }
-    
-    optimizeForPortrait() {
-        // Show stacked layouts in portrait
-        document.querySelectorAll('.kot-container').forEach(container => {
-            container.style.display = 'block';
-            container.style.gridTemplateColumns = 'none';
-        });
-    }
-    
-    handleScroll() {
-        // Add scroll-based optimizations
-        const scrollTop = window.pageYOffset;
-        
-        // Hide/show navigation based on scroll direction
-        const nav = document.querySelector('.navbar');
-        if (nav) {
-            if (scrollTop > 100) {
-                nav.classList.add('navbar-hidden');
-            } else {
-                nav.classList.remove('navbar-hidden');
+        },
+
+        // Install PWA
+        installPWA() {
+            if (this.state.deferredPrompt) {
+                this.state.deferredPrompt.prompt();
+                
+                this.state.deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted PWA install');
+                    } else {
+                        console.log('User dismissed PWA install');
+                    }
+                    this.state.deferredPrompt = null;
+                    this.hidePWAInstallPrompt();
+                });
             }
-        }
-    }
-    
-    reduceMotionForPerformance() {
-        // Reduce animations on low-end devices
-        const isLowEnd = this.detectLowEndDevice();
-        
-        if (isLowEnd) {
-            document.body.classList.add('reduced-motion');
-            
-            // Disable complex animations
-            const style = document.createElement('style');
-            style.textContent = `
-                * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-                .modal.fade { transition: none !important; }
-                .carousel-item { transition: none !important; }
+        },
+
+        // Show install success notification
+        showInstallSuccess() {
+            this.showToast('App installed successfully!', 'success');
+        },
+
+        // Optimize touch targets
+        optimizeTouchTargets() {
+            const interactiveElements = document.querySelectorAll(
+                'button, a, input[type="button"], input[type="submit"], input[type="reset"], [role="button"], [tabindex]:not([tabindex="-1"])'
+            );
+
+            interactiveElements.forEach(element => {
+                // Ensure minimum touch target size
+                const rect = element.getBoundingClientRect();
+                if (rect.width < this.config.touchThreshold || rect.height < this.config.touchThreshold) {
+                    element.style.minWidth = this.config.touchThreshold + 'px';
+                    element.style.minHeight = this.config.touchThreshold + 'px';
+                    element.classList.add('touch-optimized');
+                }
+
+                // Add touch feedback
+                element.addEventListener('touchstart', (e) => {
+                    this.addTouchRipple(e.target, e);
+                }, { passive: true });
+
+                // Prevent double-tap zoom
+                element.addEventListener('touchend', this.preventDoubleTapZoom.bind(this));
+            });
+        },
+
+        // Add touch ripple effect
+        addTouchRipple(element, event) {
+            const ripple = document.createElement('span');
+            const rect = element.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = event.touches[0].clientX - rect.left - size / 2;
+            const y = event.touches[0].clientY - rect.top - size / 2;
+
+            ripple.style.cssText = `
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.6);
+                transform: scale(0);
+                animation: ripple 600ms linear;
+                width: ${size}px;
+                height: ${size}px;
+                left: ${x}px;
+                top: ${y}px;
+                pointer-events: none;
             `;
-            document.head.appendChild(style);
-        }
-    }
-    
-    detectLowEndDevice() {
-        // Simple heuristic to detect low-end devices
-        const memory = navigator.deviceMemory || 4;
-        const cores = navigator.hardwareConcurrency || 4;
-        
-        return memory < 2 || cores < 4;
-    }
-    
-    setupFieldAutoAdvance() {
-        document.querySelectorAll('input[maxlength]').forEach(input => {
-            input.addEventListener('input', () => {
-                if (input.value.length >= input.maxLength) {
-                    const nextInput = this.findNextInput(input);
-                    if (nextInput) {
-                        nextInput.focus();
+
+            element.style.position = 'relative';
+            element.style.overflow = 'hidden';
+            element.appendChild(ripple);
+
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        },
+
+        // Prevent double-tap zoom
+        preventDoubleTapZoom(event) {
+            const now = Date.now();
+            if (now - this.state.lastTap <= this.config.tapDelay) {
+                event.preventDefault();
+            }
+            this.state.lastTap = now;
+        },
+
+        // Setup gesture support
+        setupGestureSupport() {
+            // Swipe gestures for navigation
+            const swipeableElements = document.querySelectorAll('.swipeable');
+            swipeableElements.forEach(element => {
+                this.addSwipeGestures(element);
+            });
+
+            // Pull to refresh
+            const refreshableElements = document.querySelectorAll('.pull-to-refresh');
+            refreshableElements.forEach(element => {
+                this.addPullToRefresh(element);
+            });
+
+            // Pinch to zoom for images
+            const zoomableImages = document.querySelectorAll('.zoomable');
+            zoomableImages.forEach(image => {
+                this.addPinchToZoom(image);
+            });
+        },
+
+        // Add swipe gestures
+        addSwipeGestures(element) {
+            let startX, startY, startTime;
+
+            element.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startTime = Date.now();
+            }, { passive: true });
+
+            element.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const endTime = Date.now();
+
+                const deltaX = endX - startX;
+                const deltaY = endY - startY;
+                const deltaTime = endTime - startTime;
+
+                // Check if it's a valid swipe
+                if (Math.abs(deltaX) > this.config.swipeThreshold && 
+                    Math.abs(deltaY) < 100 && 
+                    deltaTime < 500) {
+                    
+                    const direction = deltaX > 0 ? 'right' : 'left';
+                    this.handleSwipe(element, direction);
+                }
+            }, { passive: true });
+        },
+
+        // Handle swipe gesture
+        handleSwipe(element, direction) {
+            const swipeEvent = new CustomEvent('swipe', {
+                detail: { direction, element }
+            });
+            element.dispatchEvent(swipeEvent);
+        },
+
+        // Add pull to refresh
+        addPullToRefresh(element) {
+            let startY, currentY, startTime;
+            const threshold = 80;
+
+            element.addEventListener('touchstart', (e) => {
+                if (element.scrollTop === 0) {
+                    startY = e.touches[0].clientY;
+                    startTime = Date.now();
+                }
+            }, { passive: true });
+
+            element.addEventListener('touchmove', (e) => {
+                if (startY !== undefined && element.scrollTop === 0) {
+                    currentY = e.touches[0].clientY;
+                    const deltaY = currentY - startY;
+
+                    if (deltaY > 0) {
+                        e.preventDefault();
+                        element.style.transform = `translateY(${Math.min(deltaY, threshold)}px)`;
+                        element.classList.toggle('pulling', deltaY > 20);
+                    }
+                }
+            }, { passive: false });
+
+            element.addEventListener('touchend', () => {
+                if (startY !== undefined) {
+                    const deltaY = currentY - startY;
+                    
+                    if (deltaY > threshold) {
+                        this.handlePullToRefresh(element);
+                    }
+                    
+                    element.style.transform = '';
+                    element.classList.remove('pulling');
+                    startY = undefined;
+                }
+            }, { passive: true });
+        },
+
+        // Handle pull to refresh
+        handlePullToRefresh(element) {
+            const refreshEvent = new CustomEvent('pullrefresh', {
+                detail: { element }
+            });
+            element.dispatchEvent(refreshEvent);
+
+            // Show loading indicator
+            element.classList.add('refreshing');
+            
+            // Simulate refresh (replace with actual refresh logic)
+            setTimeout(() => {
+                element.classList.remove('refreshing');
+                const refreshCompleteEvent = new CustomEvent('refreshcomplete');
+                element.dispatchEvent(refreshCompleteEvent);
+            }, 2000);
+        },
+
+        // Add pinch to zoom
+        addPinchToZoom(image) {
+            let initialDistance = 0;
+            let currentScale = 1;
+
+            image.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    initialDistance = this.getTouchDistance(e.touches);
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            image.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const currentDistance = this.getTouchDistance(e.touches);
+                    const scale = currentDistance / initialDistance;
+                    
+                    currentScale = Math.max(0.5, Math.min(3, currentScale * scale));
+                    image.style.transform = `scale(${currentScale})`;
+                }
+            }, { passive: false });
+
+            image.addEventListener('touchend', () => {
+                if (currentScale === 1) {
+                    image.style.transform = '';
+                }
+            });
+        },
+
+        // Get distance between two touch points
+        getTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        },
+
+        // Touch event handlers
+        handleTouchStart(event) {
+            this.state.touchStartX = event.touches[0].clientX;
+            this.state.touchStartY = event.touches[0].clientY;
+            this.state.touchStartTime = Date.now();
+        },
+
+        handleTouchMove(event) {
+            // Prevent default for scrollable containers
+            if (event.target.closest('.scrollable')) {
+                event.preventDefault();
+            }
+        },
+
+        handleTouchEnd(event) {
+            const touchEndX = event.changedTouches[0].clientX;
+            const touchEndY = event.changedTouches[0].clientY;
+            const touchEndTime = Date.now();
+
+            const deltaX = touchEndX - this.state.touchStartX;
+            const deltaY = touchEndY - this.state.touchStartY;
+            const deltaTime = touchEndTime - this.state.touchStartTime;
+
+            // Detect swipe gestures
+            if (Math.abs(deltaX) > this.config.swipeThreshold && 
+                Math.abs(deltaY) < 100 && 
+                deltaTime < 500) {
+                
+                this.state.swipeDirection = deltaX > 0 ? 'right' : 'left';
+                this.handleGlobalSwipe(this.state.swipeDirection);
+            }
+        },
+
+        // Handle global swipe gestures
+        handleGlobalSwipe(direction) {
+            // Handle sidebar toggle on mobile
+            if (this.state.isMobile) {
+                const sidebar = document.querySelector('.mobile-sidebar');
+                if (sidebar) {
+                    if (direction === 'right' && !sidebar.classList.contains('open')) {
+                        sidebar.classList.add('open');
+                    } else if (direction === 'left' && sidebar.classList.contains('open')) {
+                        sidebar.classList.remove('open');
+                    }
+                }
+            }
+        },
+
+        // Click event handler
+        handleClick(event) {
+            // Add haptic feedback for important actions
+            if (event.target.matches('.btn-primary, .btn-success, .btn-danger')) {
+                this.addHapticFeedback();
+            }
+
+            // Close mobile menu when clicking outside
+            if (this.state.isMobile) {
+                const sidebar = document.querySelector('.mobile-sidebar');
+                const menuToggle = document.querySelector('.mobile-menu-toggle');
+                
+                if (sidebar && sidebar.classList.contains('open') && 
+                    !sidebar.contains(event.target) && 
+                    !menuToggle.contains(event.target)) {
+                    sidebar.classList.remove('open');
+                }
+            }
+        },
+
+        // Keyboard event handler
+        handleKeyboard(event) {
+            // Handle escape key to close modals and menus
+            if (event.key === 'Escape') {
+                this.closeAllOverlays();
+            }
+
+            // Handle Enter key on mobile
+            if (event.key === 'Enter' && this.state.isMobile) {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.type !== 'submit') {
+                    event.preventDefault();
+                    activeElement.blur();
+                }
+            }
+        },
+
+        // Close all overlays
+        closeAllOverlays() {
+            const overlays = document.querySelectorAll('.mobile-sidebar, .modal.show, .dropdown-menu.show');
+            overlays.forEach(overlay => {
+                overlay.classList.remove('show', 'open');
+            });
+        },
+
+        // Add haptic feedback
+        addHapticFeedback() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(50); // 50ms vibration
+            }
+        },
+
+        // Offline support
+        initializeOfflineSupport() {
+            // Store data in IndexedDB for offline access
+            this.setupIndexedDB();
+            
+            // Sync data when back online
+            this.setupDataSync();
+        },
+
+        // Setup IndexedDB for offline storage
+        setupIndexedDB() {
+            const request = indexedDB.open('RestaurantPOS', 1);
+
+            request.onerror = () => {
+                console.error('IndexedDB error:', request.error);
+            };
+
+            request.onsuccess = () => {
+                this.db = request.result;
+            };
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+
+                // Create object stores
+                if (!db.objectStoreNames.contains('orders')) {
+                    const orderStore = db.createObjectStore('orders', { keyPath: 'id' });
+                    orderStore.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('offlineActions')) {
+                    const actionStore = db.createObjectStore('offlineActions', { keyPath: 'id', autoIncrement: true });
+                    actionStore.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('cachedData')) {
+                    const cacheStore = db.createObjectStore('cachedData', { keyPath: 'key' });
+                    cacheStore.createIndex('expiry', 'expiry', { unique: false });
+                }
+            };
+        },
+
+        // Store data offline
+        storeOfflineData(storeName, data) {
+            if (!this.db) return Promise.resolve();
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                
+                data.timestamp = Date.now();
+                const request = store.put(data);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        // Get offline data
+        getOfflineData(storeName, key) {
+            if (!this.db) return Promise.resolve(null);
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = key ? store.get(key) : store.getAll();
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        // Setup data synchronization
+        setupDataSync() {
+            if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+                navigator.serviceWorker.ready.then(registration => {
+                    return registration.sync.register('background-sync');
+                });
+            }
+        },
+
+        // Sync offline data
+        async syncOfflineData() {
+            if (!this.state.isOnline) return;
+
+            try {
+                const offlineActions = await this.getOfflineData('offlineActions');
+                if (offlineActions) {
+                    // Process offline actions
+                    for (const action of offlineActions) {
+                        await this.processOfflineAction(action);
+                    }
+                }
+            } catch (error) {
+                console.error('Data sync failed:', error);
+            }
+        },
+
+        // Process offline action
+        async processOfflineAction(action) {
+            try {
+                const response = await fetch(action.url, {
+                    method: action.method,
+                    headers: action.headers,
+                    body: action.data
+                });
+
+                if (response.ok) {
+                    // Remove from offline storage
+                    await this.removeOfflineAction(action.id);
+                }
+            } catch (error) {
+                console.error('Failed to process offline action:', error);
+            }
+        },
+
+        // Remove offline action
+        removeOfflineAction(actionId) {
+            if (!this.db) return Promise.resolve();
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['offlineActions'], 'readwrite');
+                const store = transaction.objectStore('offlineActions');
+                const request = store.delete(actionId);
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        // Show online notification
+        showOnlineNotification() {
+            this.showToast('Connection restored', 'success');
+        },
+
+        // Show offline notification
+        showOfflineNotification() {
+            this.showToast('Working offline', 'warning');
+        },
+
+        // Performance optimizations
+        setupPerformanceOptimizations() {
+            // Lazy load images
+            this.setupLazyLoading();
+            
+            // Optimize animations
+            this.optimizeAnimations();
+            
+            // Preload critical resources
+            this.preloadResources();
+        },
+
+        // Setup lazy loading
+        setupLazyLoading() {
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy-load');
+                            observer.unobserve(img);
+                        }
+                    });
+                });
+
+                document.querySelectorAll('img[data-src]').forEach(img => {
+                    imageObserver.observe(img);
+                });
+            }
+        },
+
+        // Optimize animations
+        optimizeAnimations() {
+            // Use CSS transforms instead of changing layout properties
+            const animatedElements = document.querySelectorAll('.animate');
+            animatedElements.forEach(element => {
+                element.style.willChange = 'transform, opacity';
+            });
+
+            // Pause animations when not visible
+            if ('IntersectionObserver' in window) {
+                const animationObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.style.animationPlayState = 'running';
+                        } else {
+                            entry.target.style.animationPlayState = 'paused';
+                        }
+                    });
+                });
+
+                animatedElements.forEach(element => {
+                    animationObserver.observe(element);
+                });
+            }
+        },
+
+        // Preload critical resources
+        preloadResources() {
+            const criticalResources = [
+                '/static/css/mobile-responsive.css',
+                '/static/js/mobile-optimizer.js',
+                '/static/js/pos.js'
+            ];
+
+            criticalResources.forEach(resource => {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.href = resource;
+                link.as = resource.endsWith('.css') ? 'style' : 'script';
+                document.head.appendChild(link);
+            });
+        },
+
+        // Accessibility enhancements
+        setupAccessibilityEnhancements() {
+            // Add ARIA labels to interactive elements
+            this.addAriaLabels();
+            
+            // Setup focus management
+            this.setupFocusManagement();
+            
+            // Add keyboard navigation
+            this.setupKeyboardNavigation();
+        },
+
+        // Add ARIA labels
+        addAriaLabels() {
+            const interactiveElements = document.querySelectorAll('button:not([aria-label]):not([aria-labelledby])');
+            interactiveElements.forEach(element => {
+                const text = element.textContent.trim() || element.title;
+                if (text) {
+                    element.setAttribute('aria-label', text);
+                }
+            });
+        },
+
+        // Setup focus management
+        setupFocusManagement() {
+            // Trap focus in modals
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    const modal = document.querySelector('.modal.show');
+                    if (modal) {
+                        this.trapFocus(e, modal);
                     }
                 }
             });
-        });
-    }
-    
-    findNextInput(currentInput) {
-        const inputs = Array.from(document.querySelectorAll('input:not([disabled])'));
-        const currentIndex = inputs.indexOf(currentInput);
-        return inputs[currentIndex + 1];
-    }
-    
-    optimizeDateInputs() {
-        document.querySelectorAll('input[type="date"]').forEach(input => {
-            input.setAttribute('inputmode', 'none');
-            input.setAttribute('readonly', 'readonly');
+        },
+
+        // Trap focus in element
+        trapFocus(event, element) {
+            const focusableElements = element.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey) {
+                if (document.activeElement === firstElement) {
+                    event.preventDefault();
+                    lastElement.focus();
+                }
+            } else {
+                if (document.activeElement === lastElement) {
+                    event.preventDefault();
+                    firstElement.focus();
+                }
+            }
+        },
+
+        // Setup keyboard navigation
+        setupKeyboardNavigation() {
+            // Add skip links
+            this.addSkipLinks();
             
-            input.addEventListener('click', () => {
-                // Use mobile-friendly date picker
-                if ('showPicker' in input) {
-                    input.showPicker();
+            // Setup roving tabindex
+            this.setupRovingTabindex();
+        },
+
+        // Add skip links
+        addSkipLinks() {
+            const skipLink = document.querySelector('.skip-link');
+            if (skipLink) {
+                skipLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const target = document.querySelector(skipLink.getAttribute('href'));
+                    if (target) {
+                        target.focus();
+                        target.scrollIntoView();
+                    }
+                });
+            }
+        },
+
+        // Setup roving tabindex
+        setupRovingTabindex() {
+            const rovingGroups = document.querySelectorAll('[role="tablist"]');
+            rovingGroups.forEach(group => {
+                const tabs = group.querySelectorAll('[role="tab"]');
+                tabs.forEach((tab, index) => {
+                    tab.setAttribute('tabindex', index === 0 ? '0' : '-1');
+                    
+                    tab.addEventListener('keydown', (e) => {
+                        let newIndex = index;
+                        
+                        switch (e.key) {
+                            case 'ArrowRight':
+                            case 'ArrowDown':
+                                newIndex = (index + 1) % tabs.length;
+                                break;
+                            case 'ArrowLeft':
+                            case 'ArrowUp':
+                                newIndex = (index - 1 + tabs.length) % tabs.length;
+                                break;
+                            case 'Home':
+                                newIndex = 0;
+                                break;
+                            case 'End':
+                                newIndex = tabs.length - 1;
+                                break;
+                        }
+                        
+                        if (newIndex !== index) {
+                            e.preventDefault();
+                            tabs.forEach(t => t.setAttribute('tabindex', '-1'));
+                            tabs[newIndex].setAttribute('tabindex', '0');
+                            tabs[newIndex].focus();
+                        }
+                    });
+                });
+            });
+        },
+
+        // Adjust layout for device
+        adjustLayoutForDevice() {
+            // Adjust sidebar behavior
+            const sidebar = document.querySelector('.mobile-sidebar');
+            if (sidebar) {
+                if (this.state.isDesktop) {
+                    sidebar.classList.remove('open');
+                }
+            }
+
+            // Adjust bottom navigation
+            const bottomNav = document.querySelector('.mobile-bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.display = this.state.isMobile ? 'flex' : 'none';
+            }
+
+            // Adjust modal layout
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (modal.classList.contains('show')) {
+                    this.adjustModalForDevice(modal);
                 }
             });
-        });
-    }
-    
-    addScrollIndicators(container) {
-        const leftIndicator = document.createElement('div');
-        const rightIndicator = document.createElement('div');
-        
-        leftIndicator.className = 'scroll-indicator scroll-left';
-        rightIndicator.className = 'scroll-indicator scroll-right';
-        
-        leftIndicator.innerHTML = '◀';
-        rightIndicator.innerHTML = '▶';
-        
-        Object.assign(leftIndicator.style, {
-            position: 'absolute',
-            left: '5px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            background: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            padding: '5px',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            display: 'none'
-        });
-        
-        Object.assign(rightIndicator.style, {
-            position: 'absolute',
-            right: '5px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            background: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            padding: '5px',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            display: 'none'
-        });
-        
-        container.style.position = 'relative';
-        container.appendChild(leftIndicator);
-        container.appendChild(rightIndicator);
-        
-        // Show/hide indicators based on scroll position
-        container.addEventListener('scroll', () => {
-            leftIndicator.style.display = container.scrollLeft > 0 ? 'block' : 'none';
-            rightIndicator.style.display = 
-                container.scrollLeft < container.scrollWidth - container.clientWidth ? 'block' : 'none';
-        });
-        
-        // Scroll on click
-        leftIndicator.addEventListener('click', () => {
-            container.scrollBy({ left: -200, behavior: 'smooth' });
-        });
-        
-        rightIndicator.addEventListener('click', () => {
-            container.scrollBy({ left: 200, behavior: 'smooth' });
-        });
-    }
-    
-    showTableActions(tableCard) {
-        // Show swipe actions for table
-        console.log('Show actions for table:', tableCard);
-        // This could show a modal with table actions
-    }
-    
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
+        },
+
+        // Adjust modal for device
+        adjustModalForDevice(modal) {
+            if (this.state.isMobile) {
+                modal.classList.add('mobile-modal');
+            } else {
+                modal.classList.remove('mobile-modal');
+            }
+        },
+
+        // Utility functions
+        throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
             };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-}
+        },
 
-// Add CSS for mobile optimizations
-const mobileCSS = `
-    .touch-active {
-        opacity: 0.7;
-        transform: scale(0.95);
-    }
-    
-    .navbar-hidden {
-        transform: translateY(-100%);
-        transition: transform 0.3s ease;
-    }
-    
-    .keyboard-visible {
-        padding-bottom: 200px;
-    }
-    
-    .scroll-indicator {
-        z-index: 10;
-        font-size: 12px;
-        user-select: none;
-    }
-    
-    .reduced-motion * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-    
-    .landscape .modal-dialog {
-        max-width: 90%;
-        margin: 1rem auto;
-    }
-    
-    .tablet .sidebar {
-        width: 200px;
-    }
-    
-    .mobile-only {
-        display: none;
-    }
-    
-    @media (max-width: 768px) {
-        .mobile-only {
-            display: block;
-        }
-        
-        .desktop-only {
-            display: none;
-        }
-    }
-`;
+        debounce(func, delay) {
+            let timeoutId;
+            return function() {
+                const args = arguments;
+                const context = this;
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => func.apply(context, args), delay);
+            };
+        },
 
-// Initialize mobile optimizer when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    // Inject mobile CSS
-    const style = document.createElement('style');
-    style.textContent = mobileCSS;
-    document.head.appendChild(style);
-    
-    // Initialize mobile optimizer
-    window.mobileOptimizer = new MobileOptimizer();
-    
-    // Add global mobile utilities
-    window.showMobileNotification = (message, type = 'info') => {
-        const notification = document.createElement('div');
-        notification.className = `mobile-notification mobile-notification-${type}`;
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#007bff'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            z-index: 9999;
-            animation: slideDown 0.3s ease;
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.animation = 'slideUp 0.3s ease';
+        // Show toast notification
+        showToast(message, type = 'info', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <i class="bi bi-${this.getToastIcon(type)}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
             setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
-        }, 3000);
-    };
-    
-    // Add animation keyframes
-    const animationCSS = document.createElement('style');
-    animationCSS.textContent = `
-        @keyframes slideDown {
-            from { transform: translate(-50%, -100%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        
-        @keyframes slideUp {
-            from { transform: translate(-50%, 0); opacity: 1; }
-            to { transform: translate(-50%, -100%); opacity: 0; }
-        }
-    `;
-    document.head.appendChild(animationCSS);
-});
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        },
 
-// Export for global use
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = MobileOptimizer;
-}
+        // Get toast icon
+        getToastIcon(type) {
+            const icons = {
+                success: 'check-circle',
+                warning: 'exclamation-triangle',
+                error: 'x-circle',
+                info: 'info-circle'
+            };
+            return icons[type] || 'info-circle';
+        },
+
+        // Public API
+        api: {
+            // Show PWA install prompt
+            showInstallPrompt() {
+                MobileOptimizer.showPWAInstallPrompt();
+            },
+
+            // Hide PWA install prompt
+            hideInstallPrompt() {
+                MobileOptimizer.hidePWAInstallPrompt();
+            },
+
+            // Store data offline
+            storeOffline(storeName, data) {
+                return MobileOptimizer.storeOfflineData(storeName, data);
+            },
+
+            // Get offline data
+            getOffline(storeName, key) {
+                return MobileOptimizer.getOfflineData(storeName, key);
+            },
+
+            // Sync data
+            sync() {
+                return MobileOptimizer.syncOfflineData();
+            },
+
+            // Show toast
+            toast(message, type, duration) {
+                MobileOptimizer.showToast(message, type, duration);
+            },
+
+            // Get device info
+            getDeviceInfo() {
+                return {
+                    isMobile: MobileOptimizer.state.isMobile,
+                    isTablet: MobileOptimizer.state.isTablet,
+                    isDesktop: MobileOptimizer.state.isDesktop,
+                    isLandscape: MobileOptimizer.state.isLandscape,
+                    isOnline: MobileOptimizer.state.isOnline,
+                    isInstalled: MobileOptimizer.state.isInstalled
+                };
+            }
+        }
+    };
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => MobileOptimizer.init());
+    } else {
+        MobileOptimizer.init();
+    }
+
+    // Export to global scope
+    window.MobileOptimizer = MobileOptimizer;
+
+})();

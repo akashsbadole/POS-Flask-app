@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+{% block title %}Mobile Dashboard - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Mobile Dashboard Specific Styles */
+.mobile-dashboard {
+  padding: var(--spacing-md);
+  padding-bottom: calc(var(--spacing-md) + var(--nav-height-mobile));
+}
+
+.mobile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-stat-card {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.mobile-stat-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.mobile-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+  font-weight: 500;
+}
+
+.mobile-stat-icon {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-primary);
+}
+
+.mobile-quick-actions {
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+
+.mobile-action-btn {
+  background: white;
+  border: none;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-dark);
+}
+
+.mobile-action-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-action-btn.primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.mobile-action-btn.success {
+  background: var(--color-success);
+  color: white;
+}
+
+.mobile-action-btn.warning {
+  background: var(--color-warning);
+  color: white;
+}
+
+.mobile-action-icon {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--spacing-sm);
+}
+
+.mobile-action-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.mobile-recent-orders {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-section-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.mobile-view-all-btn {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.mobile-order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.mobile-order-item:last-child {
+  border-bottom: none;
+}
+
+.mobile-order-info {
+  flex: 1;
+}
+
+.mobile-order-number {
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.mobile-order-details {
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+}
+
+.mobile-order-status {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mobile-order-status.new {
+  background-color: var(--color-info);
+  color: white;
+}
+
+.mobile-order-status.preparing {
+  background-color: var(--color-warning);
+  color: white;
+}
+
+.mobile-order-status.ready {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.mobile-order-status.completed {
+  background-color: var(--color-secondary);
+  color: white;
+}
+
+.mobile-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.mobile-floating-action {
+  position: fixed;
+  bottom: calc(var(--nav-height-mobile) + var(--spacing-lg));
+  right: var(--spacing-lg);
+  width: 56px;
+  height: 56px;
+  background: var(--color-primary);
+  border-radius: var(--border-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: var(--font-size-xl);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-fixed);
+  transition: all var(--transition-normal);
+  text-decoration: none;
+}
+
+.mobile-floating-action:active {
+  transform: scale(0.9);
+}
+
+@media (min-width: 768px) {
+  .mobile-dashboard {
+    padding: var(--spacing-xl);
+    padding-bottom: var(--spacing-xl);
+  }
+  
+  .mobile-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .mobile-action-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mobile-dashboard" x-data="mobileDashboard()">
+  <!-- Mobile Stats Grid -->
+  <div class="mobile-stats-grid">
+    <div class="mobile-stat-card">
+      <div class="mobile-stat-icon">
+        <i class="bi bi-cart-plus"></i>
+      </div>
+      <div class="mobile-stat-value" x-text="stats.today.orders">0</div>
+      <div class="mobile-stat-label">Today's Orders</div>
+    </div>
+    
+    <div class="mobile-stat-card">
+      <div class="mobile-stat-icon">
+        <i class="bi bi-currency-rupee"></i>
+      </div>
+      <div class="mobile-stat-value" x-text="'₹' + stats.today.revenue.toFixed(0)">₹0</div>
+      <div class="mobile-stat-label">Today's Revenue</div>
+    </div>
+    
+    <div class="mobile-stat-card">
+      <div class="mobile-stat-icon">
+        <i class="bi bi-table"></i>
+      </div>
+      <div class="mobile-stat-value" x-text="stats.tables.available">0</div>
+      <div class="mobile-stat-label">Available Tables</div>
+    </div>
+    
+    <div class="mobile-stat-card">
+      <div class="mobile-stat-icon">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+      <div class="mobile-stat-value" x-text="stats.low_stock_count">0</div>
+      <div class="mobile-stat-label">Low Stock</div>
+    </div>
+  </div>
+
+  <!-- Mobile Quick Actions -->
+  <div class="mobile-quick-actions">
+    <div class="mobile-section-header">
+      <h3 class="mobile-section-title">Quick Actions</h3>
+    </div>
+    
+    <div class="mobile-action-grid">
+      <a href="{{ url_for('orders.new_order') }}" class="mobile-action-btn primary">
+        <i class="bi bi-plus-circle mobile-action-icon"></i>
+        <span class="mobile-action-label">New Order</span>
+      </a>
+      
+      <a href="{{ url_for('kot.index') }}" class="mobile-action-btn warning">
+        <i class="bi bi-receipt mobile-action-icon"></i>
+        <span class="mobile-action-label">Kitchen</span>
+      </a>
+      
+      <a href="{{ url_for('orders.list_orders') }}" class="mobile-action-btn success">
+        <i class="bi bi-list-ul mobile-action-icon"></i>
+        <span class="mobile-action-label">Orders</span>
+      </a>
+      
+      <a href="{{ url_for('menu.index') }}" class="mobile-action-btn">
+        <i class="bi bi-card-list mobile-action-icon"></i>
+        <span class="mobile-action-label">Menu</span>
+      </a>
+      
+      <a href="{{ url_for('tables.index') }}" class="mobile-action-btn">
+        <i class="bi bi-grid-3x3-gap mobile-action-icon"></i>
+        <span class="mobile-action-label">Tables</span>
+      </a>
+      
+      <a href="{{ url_for('inventory.index') }}" class="mobile-action-btn">
+        <i class="bi bi-box-seam mobile-action-icon"></i>
+        <span class="mobile-action-label">Inventory</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Mobile Recent Orders -->
+  <div class="mobile-recent-orders">
+    <div class="mobile-section-header">
+      <h3 class="mobile-section-title">Recent Orders</h3>
+      <a href="{{ url_for('orders.list_orders') }}" class="mobile-view-all-btn">View All</a>
+    </div>
+    
+    <div x-show="recentOrders.length === 0" class="text-center text-muted py-4">
+      <i class="bi bi-inbox" style="font-size: 2rem; margin-bottom: var(--spacing-md);"></i>
+      <p>No recent orders</p>
+    </div>
+    
+    <template x-for="order in recentOrders" :key="order.id">
+      <div class="mobile-order-item">
+        <div class="mobile-order-info">
+          <div class="mobile-order-number" x-text="order.order_number"></div>
+          <div class="mobile-order-details">
+            <span x-text="order.customer_name || 'Walk-in Customer'"></span> • 
+            <span x-text="'₹' + (order.grand_total || 0).toFixed(2)"></span>
+          </div>
+        </div>
+        <div class="mobile-status-indicator">
+          <span class="mobile-order-status" 
+                :class="getOrderStatusClass(order.status)"
+                x-text="order.status"></span>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Floating Action Button -->
+  <a href="{{ url_for('orders.new_order') }}" class="mobile-floating-action" 
+     x-data="{ tooltip: false }"
+     @mouseenter="tooltip = true" 
+     @mouseleave="tooltip = false">
+    <i class="bi bi-plus"></i>
+    
+    <!-- Tooltip -->
+    <div x-show="tooltip" 
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 transform scale-95"
+         x-transition:enter-end="opacity-100 transform scale-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 transform scale-100"
+         x-transition:leave-end="opacity-0 transform scale-95"
+         class="absolute bottom-full right-0 mb-2 px-2 py-1 bg-dark text-white text-xs rounded whitespace-nowrap">
+      New Order
+    </div>
+  </a>
+</div>
+
+<!-- Pull to Refresh Indicator -->
+<div class="pull-to-refresh-indicator">
+  <div class="spinner"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function mobileDashboard() {
+  return {
+    stats: {
+      today: {
+        orders: 0,
+        revenue: 0
+      },
+      tables: {
+        available: 0,
+        occupied: 0,
+        total: 0
+      },
+      low_stock_count: 0
+    },
+    recentOrders: [],
+
+    init() {
+      this.loadDashboardData();
+      this.setupPullToRefresh();
+      this.setupWebSocket();
+      this.setupHapticFeedback();
+    },
+
+    async loadDashboardData() {
+      try {
+        this.showLoading(true);
+        
+        const response = await fetch('/api/dashboard/stats');
+        if (response.ok) {
+          const data = await response.json();
+          this.stats = data;
+        }
+        
+        const ordersResponse = await fetch('/api/dashboard/recent-orders');
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          this.recentOrders = ordersData;
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+        this.showToast('Failed to load dashboard data', 'error');
+      } finally {
+        this.showLoading(false);
+      }
+    },
+
+    setupPullToRefresh() {
+      const dashboard = document.querySelector('.mobile-dashboard');
+      if (dashboard) {
+        dashboard.classList.add('pull-to-refresh');
+        
+        dashboard.addEventListener('pullrefresh', () => {
+          this.loadDashboardData();
+          this.showToast('Dashboard refreshed', 'success');
+        });
+      }
+    },
+
+    setupWebSocket() {
+      if (typeof WebSocket !== 'undefined') {
+        try {
+          const ws = new WebSocket(`ws://${window.location.host}/ws/dashboard`);
+          
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'order_update') {
+              this.handleOrderUpdate(data.order);
+            } else if (data.type === 'stats_update') {
+              this.stats = data.stats;
+            }
+          };
+          
+          ws.onerror = (error) => {
+            console.log('WebSocket error:', error);
+          };
+        } catch (error) {
+          console.log('WebSocket not available');
+        }
+      }
+    },
+
+    setupHapticFeedback() {
+      // Add haptic feedback to stat cards
+      const statCards = document.querySelectorAll('.mobile-stat-card');
+      statCards.forEach(card => {
+        card.addEventListener('touchstart', () => {
+          if ('vibrate' in navigator) {
+            navigator.vibrate(30);
+          }
+        });
+      });
+    },
+
+    handleOrderUpdate(order) {
+      // Update recent orders
+      const index = this.recentOrders.findIndex(o => o.id === order.id);
+      if (index >= 0) {
+        this.recentOrders[index] = order;
+      } else {
+        this.recentOrders.unshift(order);
+        if (this.recentOrders.length > 5) {
+          this.recentOrders.pop();
+        }
+      }
+      
+      // Add haptic feedback for new orders
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100]);
+      }
+    },
+
+    getOrderStatusClass(status) {
+      const statusMap = {
+        'New': 'new',
+        'In Progress': 'preparing',
+        'Ready': 'ready',
+        'Completed': 'completed',
+        'Cancelled': 'completed'
+      };
+      return statusMap[status] || 'new';
+    },
+
+    showLoading(show) {
+      const loadingElement = document.querySelector('.loading-overlay');
+      if (loadingElement) {
+        loadingElement.style.display = show ? 'flex' : 'none';
+      }
+    },
+
+    showToast(message, type = 'info') {
+      if (window.MobileOptimizer && window.MobileOptimizer.api) {
+        window.MobileOptimizer.api.toast(message, type);
+      } else {
+        console.log(`${type.toUpperCase()}: ${message}`);
+      }
+    },
+
+    // Accessibility enhancements
+    announceUpdate(message) {
+      const announcement = document.createElement('div');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.setAttribute('aria-atomic', 'true');
+      announcement.className = 'sr-only';
+      announcement.textContent = message;
+      
+      document.body.appendChild(announcement);
+      
+      setTimeout(() => {
+        document.body.removeChild(announcement);
+      }, 1000);
+    }
+  };
+}
+
+// Add CSS animations for pull to refresh
+const style = document.createElement('style');
+style.textContent = `
+  .pull-to-refresh-indicator {
+    position: fixed;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(79, 70, 229, 0.1);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    opacity: 0;
+    transition: all var(--transition-normal);
+    z-index: var(--z-modal);
+  }
+  
+  .mobile-dashboard.pulling .pull-to-refresh-indicator {
+    top: 20px;
+    opacity: 1;
+  }
+  
+  @keyframes spin {
+    to { transform: translateX(-50%) rotate(360deg); }
+  }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

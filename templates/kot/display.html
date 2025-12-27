@@ -1,0 +1,945 @@
+{% extends "base.html" %} 
+{% block title %}Real-time Kitchen Display - Restaurant POS{% endblock %} 
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kot-modern.css') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#000000">
+<style>
+  /* Real-time Kitchen Display Styles */
+  .realtime-kot-display {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    min-height: 100vh;
+    color: white;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .display-header {
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-bottom: 2px solid rgba(255,255,255,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  
+  .display-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+  
+  .status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  
+  .status-connected { background: #10b981; }
+  .status-disconnected { background: #ef4444; }
+  .status-connecting { background: #f59e0b; }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    max-width: 100%;
+  }
+  
+  .order-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .order-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6);
+  }
+  
+  .order-card.urgent {
+    border-color: #ef4444;
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+  }
+  
+  .order-card.urgent::before {
+    background: #ef4444;
+  }
+  
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .order-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+  
+  .order-time {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  
+  .order-meta {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .meta-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .badge-table {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  
+  .badge-type {
+    background: #dcfce7;
+    color: #166534;
+  }
+  
+  .badge-urgent {
+    background: #fee2e2;
+    color: #dc2626;
+    animation: urgent-pulse 1s infinite;
+  }
+  
+  @keyframes urgent-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  
+  .timer-display {
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .timer-icon {
+    color: #6b7280;
+  }
+  
+  .timer-text {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: #374151;
+  }
+  
+  .timer-text.urgent {
+    color: #dc2626;
+    animation: urgent-blink 1s infinite;
+  }
+  
+  @keyframes urgent-blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
+  }
+  
+  .order-items {
+    margin-bottom: 16px;
+  }
+  
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .item-row:last-child {
+    border-bottom: none;
+  }
+  
+  .item-name {
+    font-weight: 600;
+    color: #374151;
+  }
+  
+  .item-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .item-quantity {
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .item-status {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .item-status.pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  
+  .item-status.in-progress {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  
+  .item-status.ready {
+    background: #dcfce7;
+    color: #166534;
+  }
+  
+  .item-status:hover {
+    transform: scale(1.05);
+  }
+  
+  .special-instructions {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    color: #92400e;
+    font-style: italic;
+  }
+  
+  .order-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .action-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .action-btn.start {
+    background: #3b82f6;
+    color: white;
+  }
+  
+  .action-btn.start:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+  }
+  
+  .action-btn.ready {
+    background: #10b981;
+    color: white;
+  }
+  
+  .action-btn.ready:hover {
+    background: #059669;
+    transform: translateY(-2px);
+  }
+  
+  .action-btn.complete {
+    background: #8b5cf6;
+    color: white;
+  }
+  
+  .action-btn.complete:hover {
+    background: #7c3aed;
+    transform: translateY(-2px);
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(255,255,255,0.7);
+  }
+  
+  .empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  
+  .empty-state p {
+    font-size: 18px;
+    margin: 0;
+  }
+  
+  .notification-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #10b981;
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    z-index: 10000;
+    animation: slide-in 0.3s ease;
+  }
+  
+  .notification-toast.error {
+    background: #ef4444;
+  }
+  
+  .notification-toast.warning {
+    background: #f59e0b;
+  }
+  
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .connection-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 1000;
+  }
+  
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    .orders-grid {
+      grid-template-columns: 1fr;
+      padding: 10px;
+      gap: 15px;
+    }
+    
+    .order-card {
+      padding: 16px;
+    }
+    
+    .display-title {
+      font-size: 22px;
+    }
+    
+    .order-actions {
+      flex-direction: column;
+    }
+    
+    .connection-indicator {
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+    }
+  }
+  
+  /* Fullscreen Mode */
+  .fullscreen-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: inherit;
+  }
+  
+  .fullscreen-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="realtime-kot-display" id="app">
+  <!-- Header -->
+  <div class="display-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <h1 class="display-title">
+        <i class="fas fa-utensils"></i>
+        Real-time Kitchen Display
+        <span id="displayName" class="text-light"></span>
+      </h1>
+      
+      <div class="connection-status">
+        <div class="status-indicator status-connecting" id="statusIndicator"></div>
+        <span id="connectionStatus">Connecting...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="orders-grid" id="ordersGrid">
+    <!-- Orders will be dynamically loaded here -->
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" id="emptyState" style="display: none;">
+    <i class="fas fa-clipboard-list"></i>
+    <p>No active orders</p>
+    <small>Waiting for new orders...</small>
+  </div>
+
+  <!-- Connection Indicator -->
+  <div class="connection-indicator" id="connectionIndicator">
+    <div>Connected: <span id="connectedCount">0</span> displays</div>
+    <div>Active Orders: <span id="activeOrdersCount">0</span></div>
+  </div>
+
+  <!-- Fullscreen Toggle -->
+  <button class="fullscreen-toggle" id="fullscreenToggle" title="Toggle Fullscreen">
+    <i class="fas fa-expand"></i>
+  </button>
+</div>
+
+<!-- Audio Elements -->
+<audio id="notificationSound" preload="auto">
+  <source src="{{ url_for('static', filename='sounds/notification.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="urgentSound" preload="auto">
+  <source src="{{ url_for('static', filename='sounds/urgent.mp3') }}" type="audio/mpeg">
+</audio>
+
+<!-- Socket.IO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+
+<script>
+// Real-time Kitchen Display JavaScript
+class RealTimeKitchenDisplay {
+  constructor() {
+    this.socket = null;
+    this.connected = false;
+    this.sessionId = null;
+    this.orders = new Map();
+    this.displayConfig = {
+      displayName: 'Kitchen Display',
+      stationType: 'general',
+      kitchenRole: 'kitchen_staff',
+      autoRefresh: true,
+      soundEnabled: true
+    };
+    
+    this.init();
+  }
+  
+  init() {
+    this.setupEventListeners();
+    this.connectWebSocket();
+    this.startHeartbeat();
+    this.loadDisplayConfig();
+  }
+  
+  setupEventListeners() {
+    // Fullscreen toggle
+    document.getElementById('fullscreenToggle').addEventListener('click', () => {
+      this.toggleFullscreen();
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        this.toggleFullscreen();
+      }
+    });
+    
+    // Prevent accidental page refresh
+    window.addEventListener('beforeunload', (e) => {
+      e.preventDefault();
+      e.returnValue = 'Are you sure you want to leave the kitchen display?';
+    });
+  }
+  
+  connectWebSocket() {
+    try {
+      // Initialize Socket.IO connection
+      this.socket = io('/ws', {
+        auth: {
+          token: this.getAuthToken()
+        },
+        query: {
+          display_name: this.displayConfig.displayName,
+          station_type: this.displayConfig.stationType,
+          kitchen_role: this.displayConfig.kitchenRole
+        }
+      });
+      
+      this.setupSocketEvents();
+      
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error);
+      this.showNotification('Connection failed. Retrying...', 'error');
+    }
+  }
+  
+  setupSocketEvents() {
+    // Connection events
+    this.socket.on('connect', () => {
+      this.connected = true;
+      this.updateConnectionStatus('Connected', 'connected');
+      console.log('Connected to WebSocket server');
+    });
+    
+    this.socket.on('disconnect', () => {
+      this.connected = false;
+      this.updateConnectionStatus('Disconnected', 'disconnected');
+      console.log('Disconnected from WebSocket server');
+    });
+    
+    this.socket.on('connect_error', (error) => {
+      this.updateConnectionStatus('Connection Error', 'disconnected');
+      console.error('Connection error:', error);
+    });
+    
+    // Authentication and setup
+    this.socket.on('connected', (data) => {
+      this.sessionId = data.session_id;
+      document.getElementById('displayName').textContent = `(${data.display_name})`;
+      this.showNotification('Connected to kitchen display system', 'success');
+    });
+    
+    this.socket.on('error', (data) => {
+      this.showNotification(data.message || 'An error occurred', 'error');
+    });
+    
+    // Order events
+    this.socket.on('order_event', (data) => {
+      this.handleOrderEvent(data);
+    });
+    
+    this.socket.on('orders_sync', (data) => {
+      this.loadOrders(data.orders);
+    });
+    
+    this.socket.on('status_updated', (data) => {
+      this.showNotification(`Order ${data.order_id} status updated to ${data.new_status}`, 'success');
+    });
+    
+    this.socket.on('item_updated', (data) => {
+      this.showNotification(`Item status updated: ${data.message}`, 'success');
+    });
+    
+    // Kitchen alerts
+    this.socket.on('kitchen_alert', (data) => {
+      this.handleKitchenAlert(data);
+    });
+    
+    // Display status
+    this.socket.on('display_status', (data) => {
+      this.updateDisplayStatus(data);
+    });
+    
+    // Heartbeat response
+    this.socket.on('heartbeat_ack', (data) => {
+      this.lastHeartbeatResponse = Date.now();
+    });
+  }
+  
+  handleOrderEvent(data) {
+    const { type, data: eventData } = data;
+    
+    switch (type) {
+      case 'new_order':
+        this.addOrder(eventData);
+        this.playNotificationSound('new');
+        this.showNotification(`New Order: ${eventData.order_number}`, 'info');
+        break;
+        
+      case 'order_update':
+        this.updateOrder(eventData);
+        this.showNotification(`Order ${eventData.order_number} updated: ${eventData.old_status} → ${eventData.new_status}`, 'info');
+        break;
+        
+      case 'item_update':
+        this.updateOrderItem(eventData);
+        break;
+        
+      case 'order_complete':
+        this.removeOrder(eventData.order_id);
+        this.showNotification(`Order ${eventData.order_number} completed`, 'success');
+        break;
+        
+      case 'order_cancelled':
+        this.removeOrder(eventData.order_id);
+        this.showNotification(`Order ${eventData.order_number} cancelled`, 'warning');
+        break;
+    }
+  }
+  
+  addOrder(orderData) {
+    this.orders.set(orderData.id, orderData);
+    this.renderOrders();
+  }
+  
+  updateOrder(orderData) {
+    if (this.orders.has(orderData.order_id)) {
+      const order = this.orders.get(orderData.order_id);
+      Object.assign(order, orderData);
+      this.renderOrders();
+    }
+  }
+  
+  updateOrderItem(itemData) {
+    const order = this.orders.get(itemData.order_id);
+    if (order) {
+      const itemIndex = order.items.findIndex(item => item.id === itemData.order_item_id);
+      if (itemIndex !== -1) {
+        order.items[itemIndex].status = itemData.new_status;
+        this.renderOrders();
+      }
+    }
+  }
+  
+  removeOrder(orderId) {
+    this.orders.delete(orderId);
+    this.renderOrders();
+  }
+  
+  loadOrders(ordersData) {
+    this.orders.clear();
+    ordersData.forEach(order => {
+      this.orders.set(order.id, order);
+    });
+    this.renderOrders();
+  }
+  
+  renderOrders() {
+    const grid = document.getElementById('ordersGrid');
+    const emptyState = document.getElementById('emptyState');
+    
+    if (this.orders.size === 0) {
+      grid.style.display = 'none';
+      emptyState.style.display = 'block';
+      return;
+    }
+    
+    grid.style.display = 'grid';
+    emptyState.style.display = 'none';
+    
+    // Sort orders by priority and creation time
+    const sortedOrders = Array.from(this.orders.values()).sort((a, b) => {
+      const priorityOrder = { 'critical': 4, 'high': 3, 'medium': 2, 'normal': 1 };
+      const aPriority = priorityOrder[a.priority?.level] || 1;
+      const bPriority = priorityOrder[b.priority?.level] || 1;
+      
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority;
+      }
+      
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
+    
+    grid.innerHTML = sortedOrders.map(order => this.renderOrderCard(order)).join('');
+    
+    // Add event listeners for order actions
+    this.addOrderActionListeners();
+  }
+  
+  renderOrderCard(order) {
+    const ageMinutes = this.calculateOrderAge(order.created_at);
+    const urgencyClass = order.priority?.level === 'critical' ? 'urgent' : '';
+    const timerClass = ageMinutes > 20 ? 'urgent' : '';
+    
+    return `
+      <div class="order-card ${urgencyClass}" data-order-id="${order.id}">
+        <div class="order-header">
+          <div class="order-number">#${order.order_number}</div>
+          <div class="order-time">${this.formatTime(order.created_at)}</div>
+        </div>
+        
+        <div class="order-meta">
+          ${order.table_number ? `<span class="meta-badge badge-table">Table ${order.table_number}</span>` : ''}
+          <span class="meta-badge badge-type">${order.order_type}</span>
+          ${order.priority?.level === 'critical' ? '<span class="meta-badge badge-urgent">URGENT</span>' : ''}
+        </div>
+        
+        <div class="timer-display">
+          <i class="fas fa-clock timer-icon"></i>
+          <span class="timer-text ${timerClass}">${ageMinutes} min</span>
+        </div>
+        
+        <div class="order-items">
+          ${order.items.map(item => `
+            <div class="item-row">
+              <span class="item-name">${item.item_name}</span>
+              <div class="item-details">
+                <span class="item-quantity">${item.quantity}</span>
+                <span class="item-status ${item.status.toLowerCase().replace(' ', '-')}" 
+                      onclick="kitchenDisplay.updateItemStatus(${item.id}, '${this.getNextStatus(item.status)}')">
+                  ${item.status}
+                </span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        
+        ${order.special_instructions ? `
+          <div class="special-instructions">
+            <i class="fas fa-info-circle"></i>
+            ${order.special_instructions}
+          </div>
+        ` : ''}
+        
+        <div class="order-actions">
+          ${order.status === 'New' ? `
+            <button class="action-btn start" onclick="kitchenDisplay.updateOrderStatus(${order.id}, 'In Progress')">
+              <i class="fas fa-play"></i>
+              Start
+            </button>
+          ` : ''}
+          
+          ${order.status === 'In Progress' ? `
+            <button class="action-btn ready" onclick="kitchenDisplay.updateOrderStatus(${order.id}, 'Ready')">
+              <i class="fas fa-check"></i>
+              Ready
+            </button>
+          ` : ''}
+          
+          ${order.status === 'Ready' ? `
+            <button class="action-btn complete" onclick="kitchenDisplay.updateOrderStatus(${order.id}, 'Completed')">
+              <i class="fas fa-check-double"></i>
+              Complete
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  addOrderActionListeners() {
+    // Order action buttons are handled by onclick handlers in the HTML
+  }
+  
+  updateOrderStatus(orderId, newStatus) {
+    if (!this.connected) {
+      this.showNotification('Not connected to server', 'error');
+      return;
+    }
+    
+    this.socket.emit('update_order_status', {
+      order_id: orderId,
+      status: newStatus,
+      reason: `Updated via kitchen display ${this.displayConfig.displayName}`
+    });
+  }
+  
+  updateItemStatus(itemId, newStatus) {
+    if (!this.connected) {
+      this.showNotification('Not connected to server', 'error');
+      return;
+    }
+    
+    this.socket.emit('update_item_status', {
+      item_id: itemId,
+      status: newStatus
+    });
+  }
+  
+  getNextStatus(currentStatus) {
+    const statusFlow = {
+      'Pending': 'In Progress',
+      'In Progress': 'Ready',
+      'Ready': 'Completed'
+    };
+    return statusFlow[currentStatus] || currentStatus;
+  }
+  
+  handleKitchenAlert(data) {
+    const { type, message } = data;
+    
+    // Play sound based on alert type
+    if (type === 'urgent') {
+      this.playNotificationSound('urgent');
+    } else {
+      this.playNotificationSound('normal');
+    }
+    
+    // Show notification
+    this.showNotification(message, type === 'urgent' ? 'error' : 'info');
+    
+    // Visual alert
+    this.showVisualAlert(type, message);
+  }
+  
+  showVisualAlert(type, message) {
+    // Flash the header or show visual indicator
+    const header = document.querySelector('.display-header');
+    const originalBackground = header.style.background;
+    
+    header.style.background = type === 'urgent' ? '#ef4444' : '#f59e0b';
+    
+    setTimeout(() => {
+      header.style.background = originalBackground;
+    }, 1000);
+  }
+  
+  updateConnectionStatus(status, type) {
+    const statusElement = document.getElementById('connectionStatus');
+    const indicator = document.getElementById('statusIndicator');
+    
+    statusElement.textContent = status;
+    indicator.className = `status-indicator status-${type}`;
+  }
+  
+  updateDisplayStatus(data) {
+    document.getElementById('connectedCount').textContent = data.connected_displays || 0;
+    document.getElementById('activeOrdersCount').textContent = data.active_orders || 0;
+  }
+  
+  showNotification(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `notification-toast ${type}`;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      toast.remove();
+    }, 5000);
+  }
+  
+  playNotificationSound(type) {
+    if (!this.displayConfig.soundEnabled) return;
+    
+    const audio = type === 'urgent' 
+      ? document.getElementById('urgentSound')
+      : document.getElementById('notificationSound');
+    
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    }
+  }
+  
+  toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      document.getElementById('fullscreenToggle').innerHTML = '<i class="fas fa-compress"></i>';
+    } else {
+      document.exitFullscreen();
+      document.getElementById('fullscreenToggle').innerHTML = '<i class="fas fa-expand"></i>';
+    }
+  }
+  
+  startHeartbeat() {
+    setInterval(() => {
+      if (this.connected) {
+        this.socket.emit('heartbeat', { timestamp: Date.now() });
+      }
+    }, 30000); // Send heartbeat every 30 seconds
+  }
+  
+  loadDisplayConfig() {
+    // Load display configuration from localStorage
+    const saved = localStorage.getItem('kitchenDisplayConfig');
+    if (saved) {
+      try {
+        this.displayConfig = { ...this.displayConfig, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error('Failed to load display config:', e);
+      }
+    }
+    
+    // Set display name
+    document.getElementById('displayName').textContent = `(${this.displayConfig.displayName})`;
+  }
+  
+  getAuthToken() {
+    // Get authentication token from session or localStorage
+    return localStorage.getItem('auth_token') || '';
+  }
+  
+  calculateOrderAge(createdAt) {
+    const now = new Date();
+    const created = new Date(createdAt);
+    return Math.floor((now - created) / 1000 / 60); // minutes
+  }
+  
+  formatTime(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  }
+}
+
+// Initialize the kitchen display when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  window.kitchenDisplay = new RealTimeKitchenDisplay();
+});
+</script>
+{% endblock %}

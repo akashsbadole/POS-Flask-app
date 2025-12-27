@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplier Management - Restaurant POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .supplier-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid #007bff;
+        }
+        .supplier-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            font-size: 0.75rem;
+        }
+        .rating-stars {
+            color: #ffc107;
+        }
+        .category-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .performance-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .performance-excellent { background-color: #28a745; }
+        .performance-good { background-color: #17a2b8; }
+        .performance-average { background-color: #ffc107; }
+        .performance-poor { background-color: #dc3545; }
+        .quick-stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2><i class="fas fa-truck me-2"></i>Supplier Management</h2>
+                    <div>
+                        <button class="btn btn-primary me-2" onclick="showCreateSupplierModal()">
+                            <i class="fas fa-plus me-1"></i>Add Supplier
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="exportSuppliers()">
+                            <i class="fas fa-download me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="quick-stats">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalSuppliers">0</div>
+                        <div class="stat-label">Total Suppliers</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number" id="activeSuppliers">0</div>
+                        <div class="stat-label">Active Suppliers</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number" id="pendingOrders">0</div>
+                        <div class="stat-label">Pending Orders</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number" id="monthlySpend">₹0</div>
+                        <div class="stat-label">Monthly Spend</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="searchInput" 
+                                       placeholder="Search suppliers..." onkeyup="filterSuppliers()">
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" id="categoryFilter" onchange="filterSuppliers()">
+                                    <option value="">All Categories</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" id="statusFilter" onchange="filterSuppliers()">
+                                    <option value="">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" id="ratingFilter" onchange="filterSuppliers()">
+                                    <option value="">All Ratings</option>
+                                    <option value="4+">4+ Stars</option>
+                                    <option value="3+">3+ Stars</option>
+                                    <option value="2+">2+ Stars</option>
+                                    <option value="1+">1+ Stars</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" id="preferredOnly" onchange="filterSuppliers()">
+                                    <label class="form-check-label" for="preferredOnly">Preferred Only</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Suppliers Grid -->
+        <div class="row" id="suppliersGrid">
+            <!-- Suppliers will be loaded here -->
+        </div>
+
+        <!-- Pagination -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <nav aria-label="Supplier pagination">
+                    <ul class="pagination justify-content-center" id="suppliersPagination">
+                        <!-- Pagination will be loaded here -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Supplier Modal -->
+    <div class="modal fade" id="createSupplierModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Supplier</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createSupplierForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Supplier Name *</label>
+                                    <input type="text" class="form-control" name="name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Business Name</label>
+                                    <input type="text" class="form-control" name="business_name">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Category *</label>
+                                    <select class="form-select" name="category_id" required>
+                                        <option value="">Select Category</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Supplier Code</label>
+                                    <input type="text" class="form-control" name="supplier_code">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" name="email">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" name="phone">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Payment Terms</label>
+                                    <select class="form-select" name="payment_terms">
+                                        <option value="net_30">Net 30</option>
+                                        <option value="net_15">Net 15</option>
+                                        <option value="cod">Cash on Delivery</option>
+                                        <option value="prepaid">Prepaid</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Lead Time (Days)</label>
+                                    <input type="number" class="form-control" name="lead_time_days" value="3">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" name="address_line_1" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createSupplier()">Create Supplier</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supplier Detail Modal -->
+    <div class="modal fade" id="supplierDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Supplier Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="supplierDetailBody">
+                    <!-- Supplier details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentFilters = {};
+        let suppliers = [];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCategories();
+            loadSuppliers();
+            loadDashboardStats();
+        });
+
+        // Load categories for filters and forms
+        async function loadCategories() {
+            try {
+                const response = await fetch('/suppliers/categories');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const categoryFilter = document.getElementById('categoryFilter');
+                    const categorySelect = document.querySelector('select[name="category_id"]');
+                    
+                    // Clear existing options
+                    categoryFilter.innerHTML = '<option value="">All Categories</option>';
+                    categorySelect.innerHTML = '<option value="">Select Category</option>';
+                    
+                    // Add categories
+                    data.categories.forEach(category => {
+                        const option1 = new Option(category.name, category.id);
+                        const option2 = new Option(category.name, category.id);
+                        categoryFilter.add(option1);
+                        categorySelect.add(option2);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        // Load dashboard statistics
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch('/suppliers/dashboard/data');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update stats (this is simplified - in real app you'd get comprehensive stats)
+                    document.getElementById('totalSuppliers').textContent = '0';
+                    document.getElementById('activeSuppliers').textContent = '0';
+                    document.getElementById('pendingOrders').textContent = '0';
+                    document.getElementById('monthlySpend').textContent = '₹0';
+                }
+            } catch (error) {
+                console.error('Error loading dashboard stats:', error);
+            }
+        }
+
+        // Load suppliers with current filters
+        async function loadSuppliers(page = 1) {
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    ...currentFilters
+                });
+
+                const response = await fetch(`/suppliers?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    suppliers = data.suppliers;
+                    currentPage = page;
+                    
+                    displaySuppliers(suppliers);
+                    displayPagination(data.pagination);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                console.error('Error loading suppliers:', error);
+                showAlert('Error loading suppliers: ' + error.message, 'danger');
+            }
+        }
+
+        // Display suppliers in grid
+        function displaySuppliers(suppliers) {
+            const grid = document.getElementById('suppliersGrid');
+            
+            if (suppliers.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No suppliers found</h5>
+                            <p class="text-muted">Try adjusting your filters or add a new supplier.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = suppliers.map(supplier => `
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card supplier-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="card-title mb-0">${supplier.name}</h6>
+                                <span class="badge bg-${getStatusColor(supplier.status)} status-badge">
+                                    ${supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1)}
+                                </span>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <small class="text-muted">${supplier.business_name || 'No business name'}</small>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <span class="badge bg-secondary category-badge">
+                                    ${supplier.category_name || 'Uncategorized'}
+                                </span>
+                                ${supplier.is_preferred ? '<span class="badge bg-warning ms-1">Preferred</span>' : ''}
+                            </div>
+                            
+                            <div class="mb-2">
+                                ${supplier.overall_rating > 0 ? `
+                                    <div class="d-flex align-items-center">
+                                        <div class="rating-stars me-2">
+                                            ${generateStars(supplier.overall_rating)}
+                                        </div>
+                                        <small class="text-muted">(${supplier.overall_rating.toFixed(1)})</small>
+                                    </div>
+                                ` : '<small class="text-muted">No ratings yet</small>'}
+                            </div>
+                            
+                            <div class="mb-2">
+                                <small><i class="fas fa-envelope me-1"></i>${supplier.email || 'No email'}</small><br>
+                                <small><i class="fas fa-phone me-1"></i>${supplier.phone || 'No phone'}</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-shopping-cart me-1"></i>
+                                    ${supplier.total_orders} orders
+                                </small>
+                                ${supplier.on_time_delivery_rate > 0 ? `
+                                    <small class="text-muted ms-3">
+                                        <i class="fas fa-clock me-1"></i>
+                                        ${supplier.on_time_delivery_rate.toFixed(0)}% on-time
+                                    </small>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary btn-sm" onclick="viewSupplierDetail(${supplier.id})">
+                                    <i class="fas fa-eye me-1"></i>View Details
+                                </button>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-success btn-sm" onclick="createPOFromSupplier(${supplier.id})">
+                                        <i class="fas fa-plus me-1"></i>PO
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="editSupplier(${supplier.id})">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </button>
+                                    ${supplier.status !== 'active' ? `
+                                        <button class="btn btn-outline-success btn-sm" onclick="approveSupplier(${supplier.id})">
+                                            <i class="fas fa-check me-1"></i>Approve
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Display pagination
+        function displayPagination(pagination) {
+            const paginationEl = document.getElementById('suppliersPagination');
+            
+            if (pagination.pages <= 1) {
+                paginationEl.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            
+            // Previous button
+            if (pagination.has_prev) {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSuppliers(${pagination.page - 1})">Previous</a></li>`;
+            } else {
+                html += `<li class="page-item disabled"><span class="page-link">Previous</span></li>`;
+            }
+            
+            // Page numbers
+            const startPage = Math.max(1, pagination.page - 2);
+            const endPage = Math.min(pagination.pages, pagination.page + 2);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === pagination.page) {
+                    html += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+                } else {
+                    html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSuppliers(${i})">${i}</a></li>`;
+                }
+            }
+            
+            // Next button
+            if (pagination.has_next) {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSuppliers(${pagination.page + 1})">Next</a></li>`;
+            } else {
+                html += `<li class="page-item disabled"><span class="page-link">Next</span></li>`;
+            }
+            
+            paginationEl.innerHTML = html;
+        }
+
+        // Filter suppliers
+        function filterSuppliers() {
+            currentFilters = {
+                search: document.getElementById('searchInput').value,
+                category_id: document.getElementById('categoryFilter').value,
+                status: document.getElementById('statusFilter').value,
+                is_preferred: document.getElementById('preferredOnly').checked
+            };
+
+            // Handle rating filter
+            const ratingFilter = document.getElementById('ratingFilter').value;
+            if (ratingFilter) {
+                const minRating = parseFloat(ratingFilter.replace('+', ''));
+                currentFilters.min_rating = minRating;
+            }
+
+            loadSuppliers(1);
+        }
+
+        // Show create supplier modal
+        function showCreateSupplierModal() {
+            const modal = new bootstrap.Modal(document.getElementById('createSupplierModal'));
+            modal.show();
+        }
+
+        // Create supplier
+        async function createSupplier() {
+            const form = document.getElementById('createSupplierForm');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/suppliers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Supplier created successfully!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('createSupplierModal')).hide();
+                    form.reset();
+                    loadSuppliers();
+                    loadDashboardStats();
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                showAlert('Error creating supplier: ' + error.message, 'danger');
+            }
+        }
+
+        // View supplier detail
+        async function viewSupplierDetail(supplierId) {
+            try {
+                const response = await fetch(`/suppliers/${supplierId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displaySupplierDetail(data.supplier);
+                    const modal = new bootstrap.Modal(document.getElementById('supplierDetailModal'));
+                    modal.show();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                showAlert('Error loading supplier details: ' + error.message, 'danger');
+            }
+        }
+
+        // Display supplier detail in modal
+        function displaySupplierDetail(supplier) {
+            const body = document.getElementById('supplierDetailBody');
+            
+            body.innerHTML = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5>${supplier.name}</h5>
+                        <p class="text-muted">${supplier.business_name || 'No business name provided'}</p>
+                        
+                        <div class="row mb-3">
+                            <div class="col-sm-6">
+                                <strong>Category:</strong> ${supplier.category_name || 'Uncategorized'}<br>
+                                <strong>Status:</strong> <span class="badge bg-${getStatusColor(supplier.status)}">${supplier.status}</span><br>
+                                <strong>Payment Terms:</strong> ${supplier.payment_terms || 'Not specified'}<br>
+                                <strong>Lead Time:</strong> ${supplier.lead_time_days || 0} days
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Contact Information:</strong><br>
+                                ${supplier.email ? `<i class="fas fa-envelope me-1"></i>${supplier.email}<br>` : ''}
+                                ${supplier.phone ? `<i class="fas fa-phone me-1"></i>${supplier.phone}<br>` : ''}
+                                ${supplier.mobile ? `<i class="fas fa-mobile me-1"></i>${supplier.mobile}<br>` : ''}
+                            </div>
+                        </div>
+                        
+                        ${supplier.full_address ? `
+                            <div class="mb-3">
+                                <strong>Address:</strong><br>
+                                <small class="text-muted">${supplier.full_address}</small>
+                            </div>
+                        ` : ''}
+                        
+                        ${supplier.notes ? `
+                            <div class="mb-3">
+                                <strong>Notes:</strong><br>
+                                <small class="text-muted">${supplier.notes}</small>
+                            </div>
+                        ` : ''}
+                        
+                        ${supplier.contacts && supplier.contacts.length > 0 ? `
+                            <div class="mb-3">
+                                <strong>Contacts:</strong>
+                                ${supplier.contacts.map(contact => `
+                                    <div class="border rounded p-2 mb-2">
+                                        <strong>${contact.name}</strong> ${contact.position ? `(${contact.position})` : ''}<br>
+                                        <small class="text-muted">
+                                            ${contact.email || ''} ${contact.phone ? ` | ${contact.phone}` : ''}
+                                        </small>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>Performance Metrics</h6>
+                                
+                                ${supplier.overall_rating > 0 ? `
+                                    <div class="mb-3">
+                                        <strong>Overall Rating:</strong><br>
+                                        <div class="rating-stars">${generateStars(supplier.overall_rating)}</div>
+                                        <small class="text-muted">${supplier.overall_rating.toFixed(1)} / 5.0</small>
+                                    </div>
+                                ` : '<p class="text-muted">No ratings yet</p>'}
+                                
+                                <div class="mb-2">
+                                    <small><strong>Total Orders:</strong> ${supplier.total_orders}</small><br>
+                                    <small><strong>On-time Delivery:</strong> ${supplier.on_time_delivery_rate.toFixed(0)}%</small><br>
+                                    <small><strong>Quality Issues:</strong> ${supplier.quality_issue_rate.toFixed(1)}%</small><br>
+                                    <small><strong>Avg Delivery Time:</strong> ${supplier.average_delivery_time}h</small>
+                                </div>
+                                
+                                ${supplier.contract_active ? `
+                                    <div class="alert alert-success mt-3">
+                                        <small><strong>Active Contract</strong><br>
+                                        Value: ${supplier.contract_value ? `₹${supplier.contract_value.toLocaleString()}` : 'Not specified'}</small>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Create PO from supplier
+        function createPOFromSupplier(supplierId) {
+            window.location.href = `/suppliers/purchase-orders/new?supplier_id=${supplierId}`;
+        }
+
+        // Edit supplier
+        function editSupplier(supplierId) {
+            window.location.href = `/suppliers/${supplierId}/edit`;
+        }
+
+        // Approve supplier
+        async function approveSupplier(supplierId) {
+            if (!confirm('Are you sure you want to approve this supplier?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/suppliers/${supplierId}/approve`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Supplier approved successfully!', 'success');
+                    loadSuppliers(currentPage);
+                    loadDashboardStats();
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                showAlert('Error approving supplier: ' + error.message, 'danger');
+            }
+        }
+
+        // Export suppliers
+        function exportSuppliers() {
+            window.open('/suppliers/export', '_blank');
+        }
+
+        // Utility functions
+        function getStatusColor(status) {
+            const colors = {
+                'active': 'success',
+                'pending': 'warning',
+                'inactive': 'secondary',
+                'suspended': 'danger',
+                'blacklisted': 'dark'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        function generateStars(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+            let stars = '★'.repeat(fullStars);
+            if (hasHalfStar) stars += '☆';
+            stars += '☆'.repeat(5 - Math.ceil(rating));
+            return stars;
+        }
+
+        function showAlert(message, type) {
+            // Create alert element
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receive Purchase Order - Restaurant POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .po-header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .po-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .item-card {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .item-card.received {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        .item-card.partial {
+            border-color: #ffc107;
+            background: #fffef8;
+        }
+        .receiving-form {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .quality-check {
+            border-left: 4px solid #007bff;
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .batch-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .delivery-summary {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 8px;
+            padding: 20px;
+            position: sticky;
+            top: 20px;
+        }
+        .scan-area {
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .scan-area:hover {
+            border-color: #0056b3;
+            background: #e6f2ff;
+        }
+        .receipt-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="po-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2><i class="fas fa-truck-loading me-2"></i>Receive Purchase Order</h2>
+                    <p class="mb-0">Process incoming goods and update inventory</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="receipt-number" id="receiptNumber">RCPT-XXXX</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PO Details -->
+        <div class="po-details">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 id="supplierName">Loading...</h5>
+                    <p class="mb-1"><strong>PO Number:</strong> <span id="poNumber">-</span></p>
+                    <p class="mb-1"><strong>Order Date:</strong> <span id="orderDate">-</span></p>
+                    <p class="mb-0"><strong>Expected Delivery:</strong> <span id="expectedDelivery">-</span></p>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-end">
+                        <p class="mb-1"><strong>Total Amount:</strong> <span id="totalAmount">₹0.00</span></p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-warning" id="poStatus">Pending</span></p>
+                        <p class="mb-0"><strong>Priority:</strong> <span id="poPriority">Normal</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Items to Receive -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Items to Receive</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="itemsContainer">
+                            <!-- Items will be loaded here -->
+                        </div>
+                        
+                        <!-- Add Receipt Section -->
+                        <div class="mt-4">
+                            <h6><i class="fas fa-plus me-2"></i>Add New Receipt</h6>
+                            <div class="receiving-form">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Delivery Date</label>
+                                            <input type="date" class="form-control" id="deliveryDate" 
+                                                   value="${new Date().toISOString().split('T')[0]}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Storage Location</label>
+                                            <input type="text" class="form-control" id="storageLocation" 
+                                                   placeholder="e.g., Cold Storage A1">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Delivery Notes</label>
+                                    <textarea class="form-control" id="deliveryNotes" rows="2" 
+                                              placeholder="Any notes about this delivery..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Sidebar -->
+            <div class="col-lg-4">
+                <div class="delivery-summary">
+                    <h5><i class="fas fa-clipboard-check me-2"></i>Receiving Summary</h5>
+                    <div id="receivingSummary">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-box fa-2x mb-2"></i>
+                            <p>Start receiving items to see summary</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-success" onclick="completeReceiving()" id="completeBtn" disabled>
+                            <i class="fas fa-check me-1"></i>Complete Receiving
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="generateReceipt()">
+                            <i class="fas fa-receipt me-1"></i>Generate Receipt
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="printReceivingReport()">
+                            <i class="fas fa-print me-1"></i>Print Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Receipt Modal -->
+    <div class="modal fade" id="itemReceiptModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Receive Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="itemReceiptForm">
+                        <div class="mb-3">
+                            <label class="form-label">Item</label>
+                            <input type="text" class="form-control" id="receiptItemName" readonly>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Ordered Quantity</label>
+                                    <input type="text" class="form-control" id="orderedQuantity" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Already Received</label>
+                                    <input type="text" class="form-control" id="alreadyReceived" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Receiving Quantity *</label>
+                            <input type="number" class="form-control" id="receivingQuantity" 
+                                   min="0.1" step="0.1" required>
+                        </div>
+                        <div class="quality-check">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="qualityPassed" checked>
+                                <label class="form-check-label" for="qualityPassed">
+                                    Quality check passed
+                                </label>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Quality Notes</label>
+                                <textarea class="form-control" id="qualityNotes" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="batch-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Batch Number</label>
+                                        <input type="text" class="form-control" id="batchNumber" 
+                                               placeholder="Optional">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Expiry Date</label>
+                                        <input type="date" class="form-control" id="expiryDate">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Storage Temperature</label>
+                                <select class="form-select" id="storageTemperature">
+                                    <option value="">Select...</option>
+                                    <option value="room">Room Temperature</option>
+                                    <option value="refrigerated">Refrigerated (2-8°C)</option>
+                                    <option value="frozen">Frozen (-18°C)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="processItemReceipt()">Receive Item</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let purchaseOrder = null;
+        let items = [];
+        let receipts = [];
+        let currentItem = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const poId = getPOIdFromURL();
+            if (poId) {
+                loadPurchaseOrder(poId);
+            } else {
+                alert('Purchase Order ID not found');
+                window.location.href = '/suppliers/purchase-orders';
+            }
+        });
+
+        // Get PO ID from URL
+        function getPOIdFromURL() {
+            const path = window.location.pathname;
+            const matches = path.match(/\/purchase-orders\/(\d+)\/receive/);
+            return matches ? matches[1] : null;
+        }
+
+        // Load purchase order
+        async function loadPurchaseOrder(poId) {
+            try {
+                const response = await fetch(`/suppliers/purchase-orders/${poId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    purchaseOrder = data.purchase_order;
+                    items = purchaseOrder.items;
+                    displayPurchaseOrder();
+                    displayItems();
+                    generateReceiptNumber();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                console.error('Error loading purchase order:', error);
+                alert('Error loading purchase order: ' + error.message);
+            }
+        }
+
+        // Display purchase order details
+        function displayPurchaseOrder() {
+            document.getElementById('supplierName').textContent = purchaseOrder.supplier_name;
+            document.getElementById('poNumber').textContent = purchaseOrder.po_number;
+            document.getElementById('orderDate').textContent = formatDate(purchaseOrder.order_date);
+            document.getElementById('expectedDelivery').textContent = formatDate(purchaseOrder.expected_delivery_date);
+            document.getElementById('totalAmount').textContent = purchaseOrder.formatted_total;
+            document.getElementById('poStatus').textContent = purchaseOrder.status;
+            document.getElementById('poStatus').className = `badge bg-${getStatusColor(purchaseOrder.status)}`;
+            document.getElementById('poPriority').textContent = purchaseOrder.priority;
+        }
+
+        // Display items
+        function displayItems() {
+            const container = document.getElementById('itemsContainer');
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted py-4">No items found</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const receivedQty = parseFloat(item.quantity_received || 0);
+                const orderedQty = parseFloat(item.quantity_ordered);
+                const remainingQty = orderedQty - receivedQty;
+                const isFullyReceived = receivedQty >= orderedQty;
+                const isPartiallyReceived = receivedQty > 0 && !isFullyReceived;
+
+                let cardClass = '';
+                let statusText = 'Pending';
+                let statusClass = 'bg-secondary';
+
+                if (isFullyReceived) {
+                    cardClass = 'received';
+                    statusText = 'Received';
+                    statusClass = 'bg-success';
+                } else if (isPartiallyReceived) {
+                    cardClass = 'partial';
+                    statusText = 'Partial';
+                    statusClass = 'bg-warning';
+                }
+
+                return `
+                    <div class="item-card ${cardClass}">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1">${item.item_name}</h6>
+                                    ${item.description ? `<small class="text-muted">${item.description}</small>` : ''}
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <div>
+                                        <strong>${orderedQty}</strong>
+                                        <small class="text-muted d-block">${item.unit_of_measure}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <div>
+                                        <strong>${receivedQty}</strong>
+                                        <small class="text-muted d-block">Received</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <div>
+                                        <strong>${remainingQty}</strong>
+                                        <small class="text-muted d-block">Remaining</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <span class="badge ${statusClass} mb-2">${statusText}</span><br>
+                                    ${!isFullyReceived ? `
+                                        <button class="btn btn-sm btn-primary" onclick="showItemReceiptModal(${item.id})">
+                                            <i class="fas fa-plus me-1"></i>Receive
+                                        </button>
+                                    ` : '<small class="text-success">Complete</small>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            updateReceivingSummary();
+        }
+
+        // Show item receipt modal
+        function showItemReceiptModal(itemId) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+
+            currentItem = item;
+
+            // Populate form
+            document.getElementById('receiptItemName').value = item.item_name;
+            document.getElementById('orderedQuantity').value = `${item.quantity_ordered} ${item.unit_of_measure}`;
+            document.getElementById('alreadyReceived').value = `${item.quantity_received || 0} ${item.unit_of_measure}`;
+            document.getElementById('receivingQuantity').value = Math.max(0, item.quantity_ordered - (item.quantity_received || 0));
+            document.getElementById('receivingQuantity').max = item.quantity_ordered - (item.quantity_received || 0);
+
+            // Reset form
+            document.getElementById('itemReceiptForm').reset();
+            document.getElementById('qualityPassed').checked = true;
+
+            const modal = new bootstrap.Modal(document.getElementById('itemReceiptModal'));
+            modal.show();
+        }
+
+        // Process item receipt
+        async function processItemReceipt() {
+            const receivingQuantity = parseFloat(document.getElementById('receivingQuantity').value);
+            const qualityPassed = document.getElementById('qualityPassed').checked;
+            const qualityNotes = document.getElementById('qualityNotes').value;
+            const batchNumber = document.getElementById('batchNumber').value;
+            const expiryDate = document.getElementById('expiryDate').value;
+            const storageTemperature = document.getElementById('storageTemperature').value;
+
+            if (!receivingQuantity || receivingQuantity <= 0) {
+                alert('Please enter a valid receiving quantity');
+                return;
+            }
+
+            if (receivingQuantity > currentItem.quantity_ordered - (currentItem.quantity_received || 0)) {
+                alert('Receiving quantity cannot exceed remaining quantity');
+                return;
+            }
+
+            // Add to receipts array
+            const receipt = {
+                item_id: currentItem.id,
+                quantity: receivingQuantity,
+                quality_passed: qualityPassed,
+                condition_notes: qualityNotes,
+                batch_number: batchNumber,
+                expiry_date: expiryDate,
+                storage_temperature: storageTemperature
+            };
+
+            receipts.push(receipt);
+
+            // Update item locally
+            currentItem.quantity_received = (currentItem.quantity_received || 0) + receivingQuantity;
+
+            // Refresh display
+            displayItems();
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('itemReceiptModal')).hide();
+
+            // Show success message
+            showAlert(`Received ${receivingQuantity} ${currentItem.unit_of_measure} of ${currentItem.item_name}`, 'success');
+        }
+
+        // Update receiving summary
+        function updateReceivingSummary() {
+            const summaryContainer = document.getElementById('receivingSummary');
+            const completeBtn = document.getElementById('completeBtn');
+
+            if (receipts.length === 0) {
+                summaryContainer.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-box fa-2x mb-2"></i>
+                        <p>Start receiving items to see summary</p>
+                    </div>
+                `;
+                completeBtn.disabled = true;
+                return;
+            }
+
+            const totalReceipts = receipts.length;
+            const totalItems = items.length;
+            const isComplete = items.every(item => item.quantity_received >= item.quantity_ordered);
+
+            summaryContainer.innerHTML = `
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Items Received:</span>
+                        <span>${totalReceipts} / ${totalItems}</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Receipts Processed:</span>
+                        <span>${receipts.length}</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Status:</span>
+                        <span class="badge bg-${isComplete ? 'success' : 'warning'}">
+                            ${isComplete ? 'Complete' : 'In Progress'}
+                        </span>
+                    </div>
+                </div>
+            `;
+
+            completeBtn.disabled = receipts.length === 0;
+        }
+
+        // Complete receiving process
+        async function completeReceiving() {
+            if (receipts.length === 0) {
+                alert('No receipts to process');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to complete the receiving process?')) {
+                return;
+            }
+
+            try {
+                const deliveryDate = document.getElementById('deliveryDate').value;
+                const deliveryNotes = document.getElementById('deliveryNotes').value;
+
+                const response = await fetch(`/suppliers/purchase-orders/${purchaseOrder.id}/receive`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        receipts: receipts,
+                        delivery_date: deliveryDate,
+                        notes: deliveryNotes
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Purchase order receiving completed successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = `/suppliers/purchase-orders/${purchaseOrder.id}`;
+                    }, 2000);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('Error completing receiving:', error);
+                showAlert('Error completing receiving: ' + error.message, 'danger');
+            }
+        }
+
+        // Generate receipt number
+        function generateReceiptNumber() {
+            const timestamp = Date.now().toString().slice(-6);
+            const receiptNumber = `RCPT-${timestamp}`;
+            document.getElementById('receiptNumber').textContent = receiptNumber;
+        }
+
+        // Generate receipt
+        function generateReceipt() {
+            if (receipts.length === 0) {
+                alert('No receipts to generate');
+                return;
+            }
+
+            // This would generate a printable receipt
+            const receiptData = {
+                po_number: purchaseOrder.po_number,
+                supplier_name: purchaseOrder.supplier_name,
+                receipts: receipts,
+                generated_at: new Date().toISOString()
+            };
+
+            // Open print window with receipt data
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Receipt - ${purchaseOrder.po_number}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .header { text-align: center; margin-bottom: 20px; }
+                        .receipt-item { margin: 10px 0; padding: 10px; border-bottom: 1px solid #ddd; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>Goods Receipt</h2>
+                        <p>PO: ${purchaseOrder.po_number}</p>
+                        <p>Supplier: ${purchaseOrder.supplier_name}</p>
+                        <p>Date: ${new Date().toLocaleDateString()}</p>
+                    </div>
+                    <h3>Received Items:</h3>
+                    ${receipts.map(receipt => {
+                        const item = items.find(i => i.id === receipt.item_id);
+                        return `
+                            <div class="receipt-item">
+                                <strong>${item.item_name}</strong><br>
+                                Quantity: ${receipt.quantity} ${item.unit_of_measure}<br>
+                                Quality: ${receipt.quality_passed ? 'Passed' : 'Failed'}<br>
+                                ${receipt.batch_number ? `Batch: ${receipt.batch_number}<br>` : ''}
+                                ${receipt.expiry_date ? `Expiry: ${receipt.expiry_date}<br>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // Print receiving report
+        function printReceivingReport() {
+            window.print();
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'draft': 'secondary',
+                'pending': 'warning',
+                'approved': 'info',
+                'ordered': 'primary',
+                'received': 'success',
+                'completed': 'success',
+                'cancelled': 'danger'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

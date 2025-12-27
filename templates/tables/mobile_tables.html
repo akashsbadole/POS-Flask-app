@@ -1,0 +1,794 @@
+{% extends "base.html" %}
+{% block title %}Mobile Table Management - Restaurant POS{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Mobile Table Management Styles */
+.mobile-tables-container {
+  padding: var(--spacing-md);
+  padding-bottom: calc(var(--spacing-md) + var(--nav-height-mobile));
+  min-height: calc(100vh - var(--header-height-mobile) - var(--nav-height-mobile));
+}
+
+.mobile-tables-header {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-tables-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-dark);
+}
+
+.mobile-tables-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.mobile-table-count {
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--border-radius-full);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.mobile-table-status-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mobile-table-status-badge.available {
+  background: var(--color-success);
+  color: white;
+}
+
+.mobile-table-status-badge.occupied {
+  background: var(--color-warning);
+  color: white;
+}
+
+.mobile-table-status-badge.reserved {
+  background: var(--color-info);
+  color: white;
+}
+
+.mobile-tables-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-table-filter {
+  flex-shrink: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-secondary);
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-min);
+  white-space: nowrap;
+}
+
+.mobile-table-filter.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.mobile-tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-table-card {
+  aspect-ratio: 1;
+  background: white;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+  min-height: 140px;
+}
+
+.mobile-table-card:active {
+  transform: scale(0.95);
+}
+
+.mobile-table-card.available {
+  background: linear-gradient(135deg, var(--color-success), #059669);
+  color: white;
+}
+
+.mobile-table-card.occupied {
+  background: linear-gradient(135deg, var(--color-warning), #d97706);
+  color: white;
+}
+
+.mobile-table-card.reserved {
+  background: linear-gradient(135deg, var(--color-info), #2563eb);
+  color: white;
+}
+
+.mobile-table-card.cleaning {
+  background: linear-gradient(135deg, var(--color-secondary), #64748b);
+  color: white;
+}
+
+.mobile-table-number {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: var(--spacing-xs);
+}
+
+.mobile-table-capacity {
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+  margin-bottom: var(--spacing-sm);
+}
+
+.mobile-table-status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  opacity: 0.8;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.mobile-table-occupant-info {
+  position: absolute;
+  bottom: var(--spacing-sm);
+  left: var(--spacing-sm);
+  right: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  opacity: 0.9;
+}
+
+.mobile-table-action-btn {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+}
+
+.mobile-table-action-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.9);
+}
+
+.mobile-tables-actions {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.mobile-tables-actions-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+}
+
+.mobile-action-btn {
+  padding: var(--spacing-lg);
+  border: none;
+  border-radius: var(--border-radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-large);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+  color: white;
+}
+
+.mobile-action-btn.primary {
+  background: var(--color-primary);
+}
+
+.mobile-action-btn.success {
+  background: var(--color-success);
+}
+
+.mobile-action-btn.warning {
+  background: var(--color-warning);
+}
+
+.mobile-action-btn.info {
+  background: var(--color-info);
+}
+
+.mobile-action-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-action-icon {
+  font-size: var(--font-size-xl);
+}
+
+.mobile-action-label {
+  font-size: var(--font-size-sm);
+}
+
+/* Table Status Modal */
+.mobile-table-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+}
+
+.mobile-table-modal-content {
+  background: white;
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-xl);
+  max-width: 400px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-table-modal-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-table-modal-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-table-modal-icon.available {
+  color: var(--color-success);
+}
+
+.mobile-table-modal-icon.occupied {
+  color: var(--color-warning);
+}
+
+.mobile-table-modal-icon.reserved {
+  color: var(--color-info);
+}
+
+.mobile-table-modal-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: var(--spacing-sm);
+}
+
+.mobile-table-modal-subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-table-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-table-info-item {
+  text-align: center;
+  padding: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: var(--border-radius-md);
+}
+
+.mobile-table-info-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.mobile-table-info-value {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.mobile-table-modal-actions {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .mobile-tables-container {
+    padding: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+  }
+  
+  .mobile-tables-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+  
+  .mobile-actions-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mobile-tables-container" x-data="mobileTables()">
+  <!-- Tables Header -->
+  <div class="mobile-tables-header">
+    <h1 class="mobile-tables-title">Table Management</h1>
+    <div class="mobile-tables-summary">
+      <span class="mobile-table-count" x-text="tables.length"></span>
+      <span>tables</span>
+    </div>
+  </div>
+
+  <!-- Table Status Summary -->
+  <div class="mobile-tables-header" style="margin-bottom: var(--spacing-md);">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: var(--spacing-lg);">
+        <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+          <div style="width: 12px; height: 12px; background: var(--color-success); border-radius: 50%;"></div>
+          <span style="font-size: var(--font-size-sm);">Available: <strong x-text="getTableCountByStatus('available')"></strong></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+          <div style="width: 12px; height: 12px; background: var(--color-warning); border-radius: 50%;"></div>
+          <span style="font-size: var(--font-size-sm);">Occupied: <strong x-text="getTableCountByStatus('occupied')"></strong></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+          <div style="width: 12px; height: 12px; background: var(--color-info); border-radius: 50%;"></div>
+          <span style="font-size: var(--font-size-sm);">Reserved: <strong x-text="getTableCountByStatus('reserved')"></strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Filters -->
+  <div class="mobile-tables-filters">
+    <button class="mobile-table-filter" 
+            :class="{ 'active': selectedFilter === 'all' }"
+            @click="selectedFilter = 'all'">
+      All (<span x-text="tables.length"></span>)
+    </button>
+    <button class="mobile-table-filter" 
+            :class="{ 'active': selectedFilter === 'available' }"
+            @click="selectedFilter = 'available'">
+      Available (<span x-text="getTableCountByStatus('available')"></span>)
+    </button>
+    <button class="mobile-table-filter" 
+            :class="{ 'active': selectedFilter === 'occupied' }"
+            @click="selectedFilter = 'occupied'">
+      Occupied (<span x-text="getTableCountByStatus('occupied')"></span>)
+    </button>
+    <button class="mobile-table-filter" 
+            :class="{ 'active': selectedFilter === 'reserved' }"
+            @click="selectedFilter = 'reserved'">
+      Reserved (<span x-text="getTableCountByStatus('reserved')"></span>)
+    </button>
+  </div>
+
+  <!-- Tables Grid -->
+  <div class="mobile-tables-grid">
+    <template x-for="table in getFilteredTables()" :key="table.id">
+      <div class="mobile-table-card" 
+           :class="table.status"
+           @click="selectTable(table)">
+        
+        <button class="mobile-table-action-btn" 
+                @click.stop="showTableActions(table)"
+                :title="'Actions for Table ' + table.number">
+          <i class="bi bi-three-dots-vertical"></i>
+        </button>
+        
+        <div class="mobile-table-number" x-text="table.number"></div>
+        <div class="mobile-table-capacity" x-text="table.capacity + ' seats'"></div>
+        <div class="mobile-table-status-indicator"></div>
+        
+        <div class="mobile-table-occupant-info" x-show="table.current_order">
+          <span x-text="table.current_order.customer_name"></span>
+          <span x-text="'₹' + (table.current_order.total || 0).toFixed(2)"></span>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="mobile-tables-actions">
+    <h3 class="mobile-tables-actions-title">Quick Actions</h3>
+    <div class="mobile-actions-grid">
+      <button class="mobile-action-btn primary" @click="addNewTable()">
+        <i class="bi bi-plus-circle mobile-action-icon"></i>
+        <span class="mobile-action-label">Add Table</span>
+      </button>
+      
+      <button class="mobile-action-btn success" @click="markAllAvailable()">
+        <i class="bi bi-check-circle mobile-action-icon"></i>
+        <span class="mobile-action-label">Mark All Free</span>
+      </button>
+      
+      <button class="mobile-action-btn info" @click="viewFloorPlan()">
+        <i class="bi bi-grid-3x3 mobile-action-icon"></i>
+        <span class="mobile-action-label">Floor Plan</span>
+      </button>
+      
+      <button class="mobile-action-btn warning" @click="generateReport()">
+        <i class="bi bi-file-earmark-text mobile-action-icon"></i>
+        <span class="mobile-action-label">Table Report</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Table Details Modal -->
+<div class="mobile-table-modal" x-show="selectedTable" 
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+  <div class="mobile-table-modal-content"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 transform scale-95"
+       x-transition:enter-end="opacity-100 transform scale-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 transform scale-100"
+       x-transition:leave-end="opacity-0 transform scale-95">
+    
+    <div class="mobile-table-modal-header">
+      <div class="mobile-table-modal-icon" :class="selectedTable?.status">
+        <i class="bi" :class="getTableIcon(selectedTable?.status)"></i>
+      </div>
+      <h2 class="mobile-table-modal-title" x-text="'Table ' + selectedTable?.number"></h2>
+      <p class="mobile-table-modal-subtitle" x-text="selectedTable?.capacity + ' seats available'"></p>
+    </div>
+    
+    <div class="mobile-table-info-grid">
+      <div class="mobile-table-info-item">
+        <div class="mobile-table-info-label">Status</div>
+        <div class="mobile-table-info-value">
+          <span class="mobile-table-status-badge" :class="selectedTable?.status" x-text="selectedTable?.status"></span>
+        </div>
+      </div>
+      
+      <div class="mobile-table-info-item">
+        <div class="mobile-table-info-label">Capacity</div>
+        <div class="mobile-table-info-value" x-text="selectedTable?.capacity"></div>
+      </div>
+      
+      <div class="mobile-table-info-item" x-show="selectedTable?.current_order">
+        <div class="mobile-table-info-label">Customer</div>
+        <div class="mobile-table-info-value" x-text="selectedTable?.current_order?.customer_name || 'N/A'"></div>
+      </div>
+      
+      <div class="mobile-table-info-item" x-show="selectedTable?.current_order">
+        <div class="mobile-table-info-label">Order Total</div>
+        <div class="mobile-table-info-value" x-text="'₹' + (selectedTable?.current_order?.total || 0).toFixed(2)"></div>
+      </div>
+    </div>
+    
+    <div class="mobile-table-modal-actions">
+      <template x-if="selectedTable?.status === 'available'">
+        <button class="mobile-action-btn primary" @click="seatCustomers()">
+          <i class="bi bi-person-plus mobile-action-icon"></i>
+          <span class="mobile-action-label">Seat Customers</span>
+        </button>
+      </template>
+      
+      <template x-if="selectedTable?.status === 'occupied'">
+        <button class="mobile-action-btn success" @click="markAvailable()">
+          <i class="bi bi-check-circle mobile-action-icon"></i>
+          <span class="mobile-action-label">Mark Available</span>
+        </button>
+      </template>
+      
+      <template x-if="selectedTable?.status === 'reserved'">
+        <button class="mobile-action-btn info" @click="seatReserved()">
+          <i class="bi bi-clock mobile-action-icon"></i>
+          <span class="mobile-action-label">Seat Reserved</span>
+        </button>
+      </template>
+      
+      <button class="mobile-action-btn warning" style="grid-column: 1 / -1;" @click="editTable()">
+        <i class="bi bi-pencil mobile-action-icon"></i>
+        <span class="mobile-action-label">Edit Table</span>
+      </button>
+      
+      <button class="mobile-action-btn" style="background: var(--color-secondary); grid-column: 1 / -1;" @click="selectedTable = null">
+        <i class="bi bi-x mobile-action-icon"></i>
+        <span class="mobile-action-label">Close</span>
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function mobileTables() {
+  return {
+    tables: [],
+    selectedTable: null,
+    selectedFilter: 'all',
+    isLoading: false,
+
+    init() {
+      this.loadTables();
+      this.setupWebSocket();
+      this.setupHapticFeedback();
+    },
+
+    async loadTables() {
+      try {
+        this.isLoading = true;
+        const response = await fetch('/api/tables');
+        if (response.ok) {
+          this.tables = await response.json();
+        }
+      } catch (error) {
+        console.error('Failed to load tables:', error);
+        this.showToast('Failed to load tables', 'error');
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    getFilteredTables() {
+      if (this.selectedFilter === 'all') {
+        return this.tables;
+      }
+      return this.tables.filter(table => table.status === this.selectedFilter);
+    },
+
+    getTableCountByStatus(status) {
+      return this.tables.filter(table => table.status === status).length;
+    },
+
+    getTableIcon(status) {
+      const icons = {
+        'available': 'bi-check-circle',
+        'occupied': 'bi-person-circle',
+        'reserved': 'bi-clock',
+        'cleaning': 'bi-brush'
+      };
+      return icons[status] || 'bi-circle';
+    },
+
+    selectTable(table) {
+      this.selectedTable = table;
+      this.addHapticFeedback();
+    },
+
+    showTableActions(table) {
+      this.selectedTable = table;
+    },
+
+    async seatCustomers() {
+      if (!this.selectedTable) return;
+
+      try {
+        const response = await fetch(`/api/tables/${this.selectedTable.id}/seat`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          this.selectedTable.status = 'occupied';
+          this.showToast('Customers seated successfully', 'success');
+          this.addHapticFeedback([100, 50, 100]);
+        }
+      } catch (error) {
+        console.error('Failed to seat customers:', error);
+        this.showToast('Failed to seat customers', 'error');
+      }
+    },
+
+    async markAvailable() {
+      if (!this.selectedTable) return;
+
+      try {
+        const response = await fetch(`/api/tables/${this.selectedTable.id}/available`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          this.selectedTable.status = 'available';
+          this.selectedTable.current_order = null;
+          this.showToast('Table marked as available', 'success');
+          this.addHapticFeedback();
+        }
+      } catch (error) {
+        console.error('Failed to mark table available:', error);
+        this.showToast('Failed to update table status', 'error');
+      }
+    },
+
+    async seatReserved() {
+      if (!this.selectedTable) return;
+
+      try {
+        const response = await fetch(`/api/tables/${this.selectedTable.id}/seat-reserved`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          this.selectedTable.status = 'occupied';
+          this.showToast('Reserved customers seated', 'success');
+          this.addHapticFeedback();
+        }
+      } catch (error) {
+        console.error('Failed to seat reserved customers:', error);
+        this.showToast('Failed to seat customers', 'error');
+      }
+    },
+
+    async markAllAvailable() {
+      if (confirm('Mark all tables as available?')) {
+        try {
+          const response = await fetch('/api/tables/mark-all-available', {
+            method: 'POST'
+          });
+
+          if (response.ok) {
+            this.tables.forEach(table => {
+              table.status = 'available';
+              table.current_order = null;
+            });
+            this.showToast('All tables marked as available', 'success');
+            this.addHapticFeedback();
+          }
+        } catch (error) {
+          console.error('Failed to mark all tables available:', error);
+          this.showToast('Failed to update tables', 'error');
+        }
+      }
+    },
+
+    addNewTable() {
+      // Navigate to add table form or show modal
+      window.location.href = '/tables/new';
+    },
+
+    editTable() {
+      if (!this.selectedTable) return;
+      window.location.href = `/tables/${this.selectedTable.id}/edit`;
+    },
+
+    viewFloorPlan() {
+      window.location.href = '/tables/floor-plan';
+    },
+
+    generateReport() {
+      window.location.href = '/reports/tables';
+    },
+
+    setupWebSocket() {
+      if (typeof WebSocket !== 'undefined') {
+        try {
+          const ws = new WebSocket(`ws://${window.location.host}/ws/tables`);
+          
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'table_update') {
+              this.updateTableInList(data.table);
+            } else if (data.type === 'new_order') {
+              this.handleNewOrder(data.order);
+            }
+          };
+          
+          ws.onerror = (error) => {
+            console.log('Tables WebSocket error:', error);
+          };
+        } catch (error) {
+          console.log('Tables WebSocket not available');
+        }
+      }
+    },
+
+    updateTableInList(updatedTable) {
+      const index = this.tables.findIndex(table => table.id === updatedTable.id);
+      if (index > -1) {
+        this.tables[index] = updatedTable;
+      }
+    },
+
+    handleNewOrder(order) {
+      if (order.table_id) {
+        const table = this.tables.find(t => t.id === order.table_id);
+        if (table) {
+          table.status = 'occupied';
+          table.current_order = order;
+          this.addHapticFeedback([100, 50, 100]);
+          this.showToast(`New order for Table ${table.number}`, 'info');
+        }
+      }
+    },
+
+    setupHapticFeedback() {
+      // Add haptic feedback to table cards
+      const tableCards = document.querySelectorAll('.mobile-table-card');
+      tableCards.forEach(card => {
+        card.addEventListener('touchstart', () => {
+          if ('vibrate' in navigator) {
+            navigator.vibrate(30);
+          }
+        });
+      });
+    },
+
+    addHapticFeedback(pattern = [50]) {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(pattern);
+      }
+    },
+
+    showToast(message, type = 'info') {
+      if (window.MobileOptimizer && window.MobileOptimizer.api) {
+        window.MobileOptimizer.api.toast(message, type);
+      } else {
+        console.log(`${type.toUpperCase()}: ${message}`);
+      }
+    }
+  };
+}
+</script>
+{% endblock %}

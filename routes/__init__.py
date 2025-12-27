@@ -1,5 +1,5 @@
 from flask import Flask
-from . import auth, dashboard, orders, menu, tables, inventory, kot, reports, api
+from . import auth, dashboard, orders, menu, tables, inventory, kot, reports, api, payment, payment_gateway_config
 
 def init_app(app: Flask):
     """Initialize all routes"""
@@ -11,4 +11,6 @@ def init_app(app: Flask):
     app.register_blueprint(inventory.inventory_bp, url_prefix='/inventory')
     app.register_blueprint(kot.kot_bp, url_prefix='/kot')
     app.register_blueprint(reports.reports_bp, url_prefix='/reports')
+    app.register_blueprint(payment.payment_bp, url_prefix='/payment')
+    app.register_blueprint(payment_gateway_config.payment_config_bp, url_prefix='/payment-config')
     app.register_blueprint(api.api_bp, url_prefix='/api')

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modify Order - {{ order.order_number }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/modern-pos.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .modification-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .modification-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .modification-card.pending {
+            border-left: 4px solid #ffc107;
+            background-color: #fffef7;
+        }
+        
+        .modification-card.approved {
+            border-left: 4px solid #28a745;
+            background-color: #f8fff9;
+        }
+        
+        .modification-card.rejected {
+            border-left: 4px solid #dc3545;
+            background-color: #fef8f8;
+        }
+        
+        .modification-card.completed {
+            border-left: 4px solid #007bff;
+            background-color: #f8fbff;
+        }
+        
+        .price-impact-positive {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .price-impact-negative {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .price-impact-neutral {
+            color: #6c757d;
+            font-weight: bold;
+        }
+        
+        .item-change-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .modification-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .status-timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+        
+        .status-timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.75rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #dee2e6;
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -1.5rem;
+            top: 0.25rem;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #007bff;
+        }
+        
+        .approval-dashboard {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .pending-request-card {
+            border: 2px dashed #ffc107;
+            background-color: #fffef7;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .quick-action-btn {
+            margin: 0.25rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .modification-form {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .item-search-results {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .search-result-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .search-result-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2><i class="fas fa-edit me-2"></i>Modify Order</h2>
+                        <p class="text-muted mb-0">Order #{{ order.order_number }} - {{ order.customer_name_decrypted or 'Walk-in Customer' }}</p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('orders.order_detail', order_id=order.id) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Order
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Approval Dashboard (for managers/admins) -->
+                {% if current_user.is_manager() %}
+                <div class="approval-dashboard">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h5><i class="fas fa-clock me-2"></i>Pending Requests</h5>
+                            <h3 id="pending-count">{{ pending_modifications|length }}</h3>
+                        </div>
+                        <div class="col-md-3">
+                            <h5><i class="fas fa-check-circle me-2"></i>Approved Today</h5>
+                            <h3 id="approved-count">{{ approved_modifications|length }}</h3>
+                        </div>
+                        <div class="col-md-3">
+                            <h5><i class="fas fa-rupee-sign me-2"></i>Total Impact</h5>
+                            <h3 id="total-impact">₹{{ "%.2f"|format(total_price_impact) }}</h3>
+                        </div>
+                        <div class="col-md-3">
+                            <h5><i class="fas fa-chart-line me-2"></i>Approval Rate</h5>
+                            <h3 id="approval-rate">{{ "%.1f"|format(approval_rate) }}%</h3>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    <!-- Order Details -->
+                    <div class="col-lg-8">
+                        <!-- Current Order Items -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-shopping-cart me-2"></i>Current Order Items</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Item</th>
+                                                <th>Quantity</th>
+                                                <th>Price</th>
+                                                <th>Total</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in order_items %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ item.menu_item.name }}</strong>
+                                                    {% if item.special_instructions %}
+                                                    <br><small class="text-muted">{{ item.special_instructions }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ item.quantity }}</td>
+                                                <td>{{ item.formatted_price }}</td>
+                                                <td>{{ item.formatted_total }}</td>
+                                                <td>
+                                                    <span class="badge bg-{{ 'success' if item.status == 'Completed' else 'warning' if item.status == 'Ready' else 'info' if item.status == 'In Progress' else 'secondary' }}">
+                                                        {{ item.status }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <button type="button" class="btn btn-outline-primary quick-modify-btn" 
+                                                                data-order-item-id="{{ item.id }}" 
+                                                                data-item-name="{{ item.menu_item.name }}">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-danger remove-item-btn" 
+                                                                data-order-item-id="{{ item.id }}" 
+                                                                data-item-name="{{ item.menu_item.name }}">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-info">
+                                                <th colspan="3">Subtotal:</th>
+                                                <th>{{ order.formatted_subtotal }}</th>
+                                                <th colspan="2"></th>
+                                            </tr>
+                                            <tr class="table-info">
+                                                <th colspan="3">Tax (5% GST):</th>
+                                                <th>{{ order.formatted_total_tax }}</th>
+                                                <th colspan="2"></th>
+                                            </tr>
+                                            <tr class="table-info">
+                                                <th colspan="3">Total:</th>
+                                                <th><strong>{{ order.formatted_grand_total }}</strong></th>
+                                                <th colspan="2"></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-primary w-100 quick-action-btn" id="add-item-btn">
+                                            <i class="fas fa-plus me-1"></i>Add Item
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-warning w-100 quick-action-btn" id="change-quantity-btn">
+                                            <i class="fas fa-edit me-1"></i>Change Quantity
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-info w-100 quick-action-btn" id="change-item-btn">
+                                            <i class="fas fa-exchange-alt me-1"></i>Substitute Item
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-danger w-100 quick-action-btn" id="cancel-order-btn">
+                                            <i class="fas fa-times me-1"></i>Cancel Order
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modification History -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5><i class="fas fa-history me-2"></i>Modification History</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if modifications %}
+                                    {% for modification in modifications %}
+                                    <div class="modification-card {{ modification.status.lower() }}">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        <i class="fas fa-tag me-1"></i>{{ modification.modification_type.title() }}
+                                                        <span class="badge bg-{{ 'warning' if modification.status == 'Pending' else 'success' if modification.status == 'Approved' else 'danger' if modification.status == 'Rejected' else 'primary' }}">
+                                                            {{ modification.status }}
+                                                        </span>
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        Requested by {{ modification.requested_by_username }} on {{ modification.requested_at.strftime('%Y-%m-%d %H:%M') }}
+                                                    </small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="price-impact-{{ 'positive' if modification.price_difference > 0 else 'negative' if modification.price_difference < 0 else 'neutral' }}">
+                                                        {{ modification.price_impact }}
+                                                    </div>
+                                                    <small class="text-muted">ID: {{ modification.modification_id }}</small>
+                                                </div>
+                                            </div>
+                                            
+                                            {% if modification.reason %}
+                                            <p class="mb-2"><strong>Reason:</strong> {{ modification.reason }}</p>
+                                            {% endif %}
+                                            
+                                            {% if modification.item_modifications %}
+                                            <div class="mb-2">
+                                                <strong>Item Changes:</strong>
+                                                {% for item_mod in modification.item_modifications %}
+                                                <div class="ms-2">
+                                                    <span class="badge bg-secondary item-change-badge">{{ item_mod.modification_type }}</span>
+                                                    {{ item_mod.item_name }}
+                                                    {% if item_mod.modification_type == 'change_quantity' %}
+                                                        ({{ item_mod.original_quantity }} → {{ item_mod.new_quantity }})
+                                                    {% elif item_mod.modification_type == 'remove_item' %}
+                                                        (Removed)
+                                                    {% elif item_mod.modification_type == 'add_item' %}
+                                                        (Added {{ item_mod.new_quantity }})
+                                                    {% endif %}
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            <!-- Status Timeline -->
+                                            <div class="status-timeline">
+                                                <div class="timeline-item">
+                                                    <strong>Requested:</strong> {{ modification.requested_at.strftime('%Y-%m-%d %H:%M') }}
+                                                </div>
+                                                {% if modification.approved_at %}
+                                                <div class="timeline-item">
+                                                    <strong>Approved:</strong> {{ modification.approved_at.strftime('%Y-%m-%d %H:%M') }} by {{ modification.approved_by_username }}
+                                                    {% if modification.approval_notes %}
+                                                    <br><small>{{ modification.approval_notes }}</small>
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                                {% if modification.implemented_at %}
+                                                <div class="timeline-item">
+                                                    <strong>Implemented:</strong> {{ modification.implemented_at.strftime('%Y-%m-%d %H:%M') }} by {{ modification.implemented_by_username }}
+                                                    {% if modification.implementation_notes %}
+                                                    <br><small>{{ modification.implementation_notes }}</small>
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <!-- Actions for pending modifications -->
+                                            {% if modification.status == 'Pending' and (current_user.is_admin() or current_user.is_manager() or current_user.is_head_chef()) %}
+                                            <div class="modification-actions mt-2">
+                                                <button type="button" class="btn btn-success btn-sm approve-modification-btn" 
+                                                        data-modification-id="{{ modification.id }}">
+                                                    <i class="fas fa-check me-1"></i>Approve
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm reject-modification-btn" 
+                                                        data-modification-id="{{ modification.id }}">
+                                                    <i class="fas fa-times me-1"></i>Reject
+                                                </button>
+                                                {% if modification.requested_by_user_id == current_user.id %}
+                                                <button type="button" class="btn btn-secondary btn-sm cancel-modification-btn" 
+                                                        data-modification-id="{{ modification.id }}">
+                                                    <i class="fas fa-ban me-1"></i>Cancel Request
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if modification.status == 'Approved' and current_user.is_kitchen_staff() %}
+                                            <div class="modification-actions mt-2">
+                                                <button type="button" class="btn btn-primary btn-sm implement-modification-btn" 
+                                                        data-modification-id="{{ modification.id }}">
+                                                    <i class="fas fa-play me-1"></i>Implement
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-history fa-2x mb-2"></i>
+                                        <p>No modifications have been made to this order yet.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modification Form Panel -->
+                    <div class="col-lg-4">
+                        <div class="card sticky-top" style="top: 1rem;">
+                            <div class="card-header">
+                                <h5><i class="fas fa-edit me-2"></i>Create Modification</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="modification-form">
+                                    <input type="hidden" id="order-id" value="{{ order.id }}">
+                                    <input type="hidden" id="modification-id" value="">
+                                    
+                                    <div class="mb-3">
+                                        <label for="modification-type" class="form-label">Modification Type</label>
+                                        <select class="form-select" id="modification-type" required>
+                                            <option value="">Select modification type...</option>
+                                            <option value="add_items">Add Items</option>
+                                            <option value="remove_items">Remove Items</option>
+                                            <option value="modify_items">Modify Items</option>
+                                            <option value="cancel_order">Cancel Order</option>
+                                            <option value="partial_cancel">Partial Cancel</option>
+                                            <option value="kitchen_hold">Kitchen Hold</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="modification-reason" class="form-label">Reason</label>
+                                        <textarea class="form-control" id="modification-reason" rows="3" 
+                                                  placeholder="Provide reason for modification..." required></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="customer-reason" class="form-label">Customer Reason (Optional)</label>
+                                        <textarea class="form-control" id="customer-reason" rows="2" 
+                                                  placeholder="Customer's reason for the modification..."></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="modification-priority" class="form-label">Priority</label>
+                                        <select class="form-select" id="modification-priority">
+                                            <option value="normal">Normal</option>
+                                            <option value="high">High</option>
+                                            <option value="critical">Critical</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Item Modifications Container -->
+                                    <div id="item-modifications-container" style="display: none;">
+                                        <hr>
+                                        <h6>Item Modifications</h6>
+                                        <div id="item-modifications-list"></div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="add-item-modification">
+                                            <i class="fas fa-plus me-1"></i>Add Item Change
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Price Impact Display -->
+                                    <div id="price-impact-display" class="alert alert-info" style="display: none;">
+                                        <strong>Price Impact:</strong> <span id="price-impact-amount"></span>
+                                        <br><small id="price-impact-details"></small>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-primary" id="submit-modification">
+                                            <i class="fas fa-paper-plane me-1"></i>Submit Modification Request
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" id="clear-form">
+                                            <i class="fas fa-eraser me-1"></i>Clear Form
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div class="modal fade" id="addItemModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Item to Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="item-search" class="form-label">Search Items</label>
+                            <input type="text" class="form-control" id="item-search" placeholder="Search menu items...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="item-category" class="form-label">Category</label>
+                            <select class="form-select" id="item-category">
+                                <option value="">All Categories</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="item-search-results mt-3" id="item-search-results">
+                        <!-- Search results will be populated here -->
+                    </div>
+                    <div id="selected-item-details" class="mt-3" style="display: none;">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 id="selected-item-name"></h6>
+                                <p id="selected-item-description" class="text-muted"></p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="selected-item-quantity" class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" id="selected-item-quantity" min="1" value="1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="selected-item-price" class="form-label">Price</label>
+                                        <input type="number" class="form-control" id="selected-item-price" step="0.01" min="0">
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label for="selected-item-instructions" class="form-label">Special Instructions</label>
+                                    <textarea class="form-control" id="selected-item-instructions" rows="2" 
+                                              placeholder="Any special instructions..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-add-item">Add Item</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve/Reject Modal -->
+    <div class="modal fade" id="approvalModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approval-modal-title">Approval Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="approval-form">
+                        <input type="hidden" id="approval-modification-id">
+                        <input type="hidden" id="approval-action">
+                        
+                        <div class="mb-3">
+                            <label for="approval-notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" id="approval-notes" rows="3" 
+                                      placeholder="Add any notes about this decision..."></textarea>
+                        </div>
+                        
+                        <div id="rejection-reason-container" class="mb-3" style="display: none;">
+                            <label for="rejection-reason" class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="rejection-reason" rows="2" 
+                                      placeholder="Please provide a reason for rejection..." required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-approval">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Order Modal -->
+    <div class="modal fade" id="cancelOrderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancel Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This will cancel the entire order and process refunds for all payments.
+                    </div>
+                    
+                    <form id="cancel-order-form">
+                        <div class="mb-3">
+                            <label for="cancel-reason" class="form-label">Cancellation Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="cancel-reason" rows="3" 
+                                      placeholder="Please provide a reason for cancellation..." required></textarea>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirm-cancellation">
+                            <label class="form-check-label" for="confirm-cancellation">
+                                I confirm that I want to cancel this entire order
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger" id="confirm-cancel-order" disabled>
+                        <i class="fas fa-times me-1"></i>Cancel Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/order-modification.js') }}"></script>
+    
+    <script>
+        // Initialize modification interface
+        document.addEventListener('DOMContentLoaded', function() {
+            OrderModification.init();
+        });
+    </script>
+</body>
+</html>

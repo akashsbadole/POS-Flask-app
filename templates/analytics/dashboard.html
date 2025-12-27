@@ -1,0 +1,793 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+    
+    .analytics-header {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .metric-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .trend-up {
+        color: #27ae60;
+    }
+    
+    .trend-down {
+        color: #e74c3c;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .prediction-card {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .alert-card {
+        background: linear-gradient(45deg, #e74c3c, #c0392b);
+        color: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .insight-card {
+        background: linear-gradient(45deg, #f39c12, #e67e22);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    .nav-tabs {
+        display: flex;
+        background: white;
+        border-radius: 10px 10px 0 0;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .nav-tab {
+        padding: 15px 20px;
+        background: #ecf0f1;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .nav-tab:hover {
+        background: #bdc3c7;
+    }
+    
+    .nav-tab.active {
+        background: #3498db;
+        color: white;
+    }
+    
+    .refresh-btn {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-left: 10px;
+    }
+    
+    .refresh-btn:hover {
+        background: #2980b9;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+    
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <div class="analytics-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 mb-0">Analytics Dashboard</h1>
+                <p class="text-muted mb-0">Real-time insights and predictive analytics</p>
+            </div>
+            <div>
+                <button class="refresh-btn" onclick="refreshAllData()">
+                    <i class="fas fa-sync-alt"></i> Refresh All
+                </button>
+                <span class="text-muted" id="lastUpdate">Last updated: Never</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Metrics -->
+    <div class="dashboard-grid" id="realtimeMetrics">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading real-time metrics...</p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Tabs -->
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showTab('overview')">Overview</button>
+        <button class="nav-tab" onclick="showTab('sales')">Sales Trends</button>
+        <button class="nav-tab" onclick="showTab('customers')">Customer Insights</button>
+        <button class="nav-tab" onclick="showTab('menu')">Menu Analytics</button>
+        <button class="nav-tab" onclick="showTab('predictions')">Predictions</button>
+        <button class="nav-tab" onclick="showTab('staff')">Staff Performance</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+        <div class="chart-container">
+            <h3>Sales Overview</h3>
+            <canvas id="salesChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="prediction-card">
+                <h4>Sales Forecast</h4>
+                <p class="mb-2">Next 7 days predicted revenue</p>
+                <div class="h3" id="forecastRevenue">₹0</div>
+            </div>
+            
+            <div class="insight-card">
+                <h4>Key Insights</h4>
+                <ul id="keyInsights" class="mb-0">
+                    <li>Loading insights...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Trends Tab -->
+    <div id="sales" class="tab-content">
+        <div class="chart-container">
+            <h3>Sales Trend Analysis</h3>
+            <canvas id="trendsChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="metric-card">
+                <h5>Total Revenue</h5>
+                <div class="metric-value" id="totalRevenue">₹0</div>
+                <div class="trend-up" id="revenueTrend">↑ 0%</div>
+            </div>
+            
+            <div class="metric-card">
+                <h5>Average Daily Sales</h5>
+                <div class="metric-value" id="avgDaily">₹0</div>
+                <div class="metric-label">Last 30 days</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Insights Tab -->
+    <div id="customers" class="tab-content">
+        <div class="chart-container">
+            <h3>Customer Segmentation</h3>
+            <canvas id="customerChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="metric-card">
+                <h5>Total Customers</h5>
+                <div class="metric-value" id="totalCustomers">0</div>
+                <div class="metric-label">Registered customers</div>
+            </div>
+            
+            <div class="metric-card">
+                <h5>Customer Lifetime Value</h5>
+                <div class="metric-value" id="avgCLV">₹0</div>
+                <div class="metric-label">Average CLV</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Analytics Tab -->
+    <div id="menu" class="tab-content">
+        <div class="chart-container">
+            <h3>Top Performing Menu Items</h3>
+            <canvas id="menuChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="metric-card">
+            <h5>Menu Performance Summary</h5>
+            <div id="menuSummary">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Predictions Tab -->
+    <div id="predictions" class="tab-content">
+        <div class="dashboard-grid">
+            <div class="prediction-card">
+                <h4>Sales Forecast</h4>
+                <div id="salesPredictions">Loading predictions...</div>
+            </div>
+            
+            <div class="prediction-card">
+                <h4>Demand Forecast</h4>
+                <div id="demandPredictions">Loading predictions...</div>
+            </div>
+        </div>
+        
+        <div class="insight-card">
+            <h4>Staffing Optimization</h4>
+            <div id="staffingRecommendations">Loading recommendations...</div>
+        </div>
+    </div>
+
+    <!-- Staff Performance Tab -->
+    <div id="staff" class="tab-content">
+        <div class="chart-container">
+            <h3>Staff Performance Overview</h3>
+            <canvas id="staffChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="metric-card">
+            <h5>Staff Performance Summary</h5>
+            <div id="staffSummary">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Alerts Section -->
+    <div id="alertsSection" style="display: none;">
+        <h3 class="text-white mb-3">System Alerts</h3>
+        <div id="alertsContainer">
+            <!-- Alerts will be populated here -->
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Global variables
+let charts = {};
+let socket;
+let lastUpdateTime = null;
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    initializeWebSocket();
+    loadAllData();
+    setupAutoRefresh();
+});
+
+function initializeWebSocket() {
+    // Initialize WebSocket for real-time updates
+    socket = io();
+    
+    socket.on('connect', function() {
+        console.log('Connected to analytics websocket');
+    });
+    
+    socket.on('analytics_update', function(data) {
+        updateRealTimeMetrics(data);
+    });
+    
+    socket.on('disconnect', function() {
+        console.log('Disconnected from analytics websocket');
+    });
+}
+
+function setupAutoRefresh() {
+    // Refresh data every 30 seconds
+    setInterval(function() {
+        loadRealTimeData();
+    }, 30000);
+}
+
+function loadAllData() {
+    loadRealTimeData();
+    loadSalesTrends();
+    loadCustomerInsights();
+    loadMenuAnalytics();
+    loadPredictions();
+    loadStaffPerformance();
+    loadBusinessMetrics();
+}
+
+function loadRealTimeData() {
+    fetch('/analytics/api/realtime-data')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateRealTimeMetrics(data.data);
+                lastUpdateTime = new Date();
+                updateLastUpdateTime();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading real-time data:', error);
+        });
+}
+
+function updateRealTimeMetrics(data) {
+    const container = document.getElementById('realtimeMetrics');
+    
+    container.innerHTML = `
+        <div class="metric-card">
+            <h5>Today's Revenue</h5>
+            <div class="metric-value">₹${data.today_revenue.toLocaleString()}</div>
+            <div class="metric-label">Current day</div>
+        </div>
+        
+        <div class="metric-card">
+            <h5>Today's Orders</h5>
+            <div class="metric-value">${data.today_orders}</div>
+            <div class="metric-label">Orders completed</div>
+        </div>
+        
+        <div class="metric-card">
+            <h5>Active Orders</h5>
+            <div class="metric-value">${data.active_orders}</div>
+            <div class="metric-label">In progress</div>
+        </div>
+        
+        <div class="metric-card">
+            <h5>Peak Hour</h5>
+            <div class="metric-value">${getPeakHour(data.hourly_sales)}</div>
+            <div class="metric-label">Highest revenue hour</div>
+        </div>
+    `;
+    
+    updateSalesChart(data.hourly_sales);
+}
+
+function getPeakHour(hourlySales) {
+    if (!hourlySales || hourlySales.length === 0) return 'N/A';
+    
+    const peak = hourlySales.reduce((max, current) => 
+        current.revenue > max.revenue ? current : max
+    );
+    
+    return `${peak.hour}:00`;
+}
+
+function loadSalesTrends() {
+    fetch('/analytics/api/sales-trends?period=30')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateSalesTrends(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading sales trends:', error);
+        });
+}
+
+function updateSalesTrends(data) {
+    // Update summary metrics
+    document.getElementById('totalRevenue').textContent = `₹${data.summary.total_revenue.toLocaleString()}`;
+    document.getElementById('avgDaily').textContent = `₹${Math.round(data.summary.average_daily).toLocaleString()}`;
+    
+    // Update trend indicator
+    const trendElement = document.getElementById('revenueTrend');
+    if (data.summary.trend_summary) {
+        const direction = data.summary.trend_summary.trend_direction;
+        const strength = Math.round(data.summary.trend_summary.trend_strength * 100);
+        trendElement.textContent = `${direction === 'increasing' ? '↑' : direction === 'decreasing' ? '↓' : '→'} ${strength}%`;
+        trendElement.className = direction === 'increasing' ? 'trend-up' : 'trend-down';
+    }
+    
+    // Update sales chart
+    updateTrendsChart(data.chart_data);
+}
+
+function loadCustomerInsights() {
+    fetch('/analytics/api/customer-insights')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateCustomerInsights(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading customer insights:', error);
+        });
+}
+
+function updateCustomerInsights(data) {
+    document.getElementById('totalCustomers').textContent = data.total_customers.toLocaleString();
+    document.getElementById('avgCLV').textContent = `₹${Math.round(data.customer_metrics.avg_clv).toLocaleString()}`;
+    
+    updateCustomerChart(data.segments);
+}
+
+function loadMenuAnalytics() {
+    fetch('/analytics/api/menu-analytics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateMenuAnalytics(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading menu analytics:', error);
+        });
+}
+
+function updateMenuAnalytics(data) {
+    updateMenuChart(data.top_performing_items);
+    document.getElementById('menuSummary').innerHTML = `
+        <p>Total items analyzed: ${data.total_items_analyzed}</p>
+        <p>Top performer: ${data.top_performing_items[0] ? data.top_performing_items[0].name : 'N/A'}</p>
+    `;
+}
+
+function loadPredictions() {
+    fetch('/analytics/api/predictive-analytics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updatePredictions(data.insights);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading predictions:', error);
+        });
+}
+
+function updatePredictions(insights) {
+    // Update forecast revenue
+    if (insights.sales_forecast && insights.sales_forecast.length > 0) {
+        const totalForecast = insights.sales_forecast.reduce((sum, day) => sum + day.predicted_revenue, 0);
+        document.getElementById('forecastRevenue').textContent = `₹${Math.round(totalForecast).toLocaleString()}`;
+    }
+    
+    // Update sales predictions
+    const salesPred = document.getElementById('salesPredictions');
+    if (insights.sales_forecast) {
+        salesPred.innerHTML = insights.sales_forecast.slice(0, 3).map(day => 
+            `<p>${day.date}: ₹${Math.round(day.predicted_revenue).toLocaleString()}</p>`
+        ).join('');
+    }
+    
+    // Update demand predictions
+    const demandPred = document.getElementById('demandPredictions');
+    if (insights.demand_forecast) {
+        demandPred.innerHTML = insights.demand_forecast.slice(0, 3).map(day => 
+            `<p>${day.date}: ${day.predicted_quantity_int} orders</p>`
+        ).join('');
+    }
+    
+    // Update staffing recommendations
+    const staffing = document.getElementById('staffingRecommendations');
+    if (insights.staff_optimization && insights.staff_optimization.staffing_recommendations) {
+        staffing.innerHTML = insights.staff_optimization.staffing_recommendations.slice(0, 2).map(rec => 
+            `<p>${rec.date}: ${rec.total_staff_needed} staff recommended</p>`
+        ).join('');
+    }
+    
+    // Update key insights
+    const insightsList = document.getElementById('keyInsights');
+    const keyInsights = [];
+    
+    if (insights.customer_analysis && insights.customer_analysis.predicted_new_customer_clv) {
+        keyInsights.push(`New customer CLV: ₹${Math.round(insights.customer_analysis.predicted_new_customer_clv).toLocaleString()}`);
+    }
+    
+    if (insights.anomalies && insights.anomalies.sales) {
+        keyInsights.push(`${insights.anomalies.sales.length} sales anomalies detected`);
+    }
+    
+    insightsList.innerHTML = keyInsights.length > 0 ? 
+        keyInsights.map(insight => `<li>${insight}</li>`).join('') : 
+        '<li>No key insights available</li>';
+}
+
+function loadStaffPerformance() {
+    fetch('/analytics/api/staff-performance')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateStaffPerformance(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading staff performance:', error);
+        });
+}
+
+function updateStaffPerformance(data) {
+    updateStaffChart(data.staff_performance);
+    
+    document.getElementById('staffSummary').innerHTML = `
+        <p>Total staff: ${data.summary.total_staff}</p>
+        <p>Average performance score: ${data.summary.avg_performance.toFixed(2)}</p>
+        <p>Top performer: ${data.staff_performance[0] ? data.staff_performance[0].name : 'N/A'}</p>
+    `;
+}
+
+function loadBusinessMetrics() {
+    fetch('/analytics/api/business-metrics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateBusinessMetrics(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading business metrics:', error);
+        });
+}
+
+function updateBusinessMetrics(data) {
+    if (data.alerts && data.alerts.length > 0) {
+        document.getElementById('alertsSection').style.display = 'block';
+        
+        const alertsContainer = document.getElementById('alertsContainer');
+        alertsContainer.innerHTML = data.alerts.map(alert => `
+            <div class="alert-card">
+                <h6>${alert.metric_name}</h6>
+                <p>${alert.status.toUpperCase()}: ${alert.current_value} 
+                   (Target: ${alert.target_value || 'N/A'})</p>
+                <small>Period: ${alert.period}</small>
+            </div>
+        `).join('');
+    }
+}
+
+// Chart functions
+function updateSalesChart(hourlySales) {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    
+    if (charts.sales) {
+        charts.sales.destroy();
+    }
+    
+    charts.sales = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: hourlySales.map(s => `${s.hour}:00`),
+            datasets: [{
+                label: 'Hourly Revenue',
+                data: hourlySales.map(s => s.revenue),
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function updateTrendsChart(chartData) {
+    const ctx = document.getElementById('trendsChart').getContext('2d');
+    
+    if (charts.trends) {
+        charts.trends.destroy();
+    }
+    
+    charts.trends = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartData.map(d => d.date),
+            datasets: [{
+                label: 'Daily Revenue',
+                data: chartData.map(d => d.revenue),
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function updateCustomerChart(segments) {
+    const ctx = document.getElementById('customerChart').getContext('2d');
+    
+    if (charts.customer) {
+        charts.customer.destroy();
+    }
+    
+    const labels = Object.keys(segments);
+    const data = Object.values(segments).map(s => s.count);
+    
+    charts.customer = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    '#3498db',
+                    '#e74c3c',
+                    '#f39c12',
+                    '#27ae60',
+                    '#9b59b6'
+                ]
+            }]
+        },
+        options: {
+            responsive: true
+        }
+    });
+}
+
+function updateMenuChart(items) {
+    const ctx = document.getElementById('menuChart').getContext('2d');
+    
+    if (charts.menu) {
+        charts.menu.destroy();
+    }
+    
+    charts.menu = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: items.slice(0, 10).map(item => item.name),
+            datasets: [{
+                label: 'Revenue',
+                data: items.slice(0, 10).map(item => item.total_revenue),
+                backgroundColor: '#27ae60'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function updateStaffChart(staff) {
+    const ctx = document.getElementById('staffChart').getContext('2d');
+    
+    if (charts.staff) {
+        charts.staff.destroy();
+    }
+    
+    charts.staff = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: staff.slice(0, 10).map(s => s.name),
+            datasets: [{
+                label: 'Performance Score',
+                data: staff.slice(0, 10).map(s => s.performance_score),
+                backgroundColor: '#9b59b6'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Utility functions
+function showTab(tabName) {
+    // Hide all tabs
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all nav tabs
+    const navTabs = document.querySelectorAll('.nav-tab');
+    navTabs.forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+}
+
+function refreshAllData() {
+    location.reload();
+}
+
+function updateLastUpdateTime() {
+    if (lastUpdateTime) {
+        document.getElementById('lastUpdate').textContent = 
+            `Last updated: ${lastUpdateTime.toLocaleTimeString()}`;
+    }
+}
+</script>
+{% endblock %}

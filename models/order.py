@@ -32,6 +32,16 @@ class Order(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
+    # WebSocket and real-time fields
+    realtime_enabled = db.Column(db.Boolean, default=True)
+    websocket_broadcast = db.Column(db.Boolean, default=True)
+    priority_level = db.Column(db.Integer, default=0)
+    estimated_prep_time = db.Column(db.Integer, nullable=True)  # minutes
+    actual_prep_time = db.Column(db.Integer, nullable=True)  # minutes
+    kitchen_station = db.Column(db.String(50), nullable=True)
+    last_websocket_update = db.Column(db.DateTime, nullable=True)
+    realtime_subscribers = db.Column(db.Integer, default=0)
+    
     # Relationships
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='order', lazy=True, cascade='all, delete-orphan')

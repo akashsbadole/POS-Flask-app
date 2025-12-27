@@ -48,6 +48,9 @@ from routes.analytics import analytics_bp
 # Import backup system
 from routes.backup import backup_bp
 
+# Import template context processors
+from utils.template_context import inject_white_label_settings, inject_app_config
+
 # Import backup system utilities
 from utils.backup_scheduler import init_backup_scheduler
 from utils.backup_monitor import BackupMonitor
@@ -128,6 +131,10 @@ def init_extensions(app):
     app.extensions['migrate'] = migrate
     app.extensions['compress'] = compress
     app.extensions['limiter'] = limiter
+    
+    # Register template context processors
+    app.context_processor(inject_white_label_settings)
+    app.context_processor(inject_app_config)
 
 def register_blueprints(app):
     """Register all application blueprints"""
@@ -230,7 +237,7 @@ def init_database(app):
         create_default_admin(app)
         
         # Initialize encryption if not exists
-        init_encryption_system(app)
+        init_encryption_system()
         
         return True
         
@@ -246,11 +253,11 @@ def create_default_admin(app):
         if not admin_user:
             admin_user = User(
                 username='admin',
+                password='admin123',
                 email='admin@example.com',
                 role='admin',
                 is_active=True
             )
-            admin_user.set_password('admin123')  # Default password - should be changed
             
             db.session.add(admin_user)
             db.session.commit()
@@ -260,15 +267,15 @@ def create_default_admin(app):
     except Exception as e:
         app.logger.error(f"Failed to create default admin: {str(e)}")
 
-def init_encryption_system(app):
+def init_encryption_system():
     """Initialize encryption system"""
     
     try:
-        encryption_manager = get_encryption_manager(app)
-        app.logger.info("Encryption system initialized")
+        encryption_manager = get_encryption_manager()
+        print("Encryption system initialized")
         
     except Exception as e:
-        app.logger.error(f"Failed to initialize encryption: {str(e)}")
+        print(f"Failed to initialize encryption: {str(e)}")
 
 # Application factory
 app = create_app()
@@ -286,7 +293,8 @@ if __name__ == '__main__':
     # Start backup scheduler if not already running
     if hasattr(app, 'backup_scheduler') and not app.backup_scheduler.is_running:
         app.backup_scheduler.start_scheduler()
-        app.backup_scheduler.reschedule_all_jobs()
+        with app.app_context():
+            app.backup_scheduler.reschedule_all_jobs()
         app.logger.info("Backup scheduler started")
     
     # Run the application

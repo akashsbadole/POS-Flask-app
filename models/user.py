@@ -107,10 +107,11 @@ class User(UserMixin, db.Model):
     # Relationships
     orders = db.relationship('Order', backref='created_by_user', lazy=True)
     
-    def __init__(self, username, password, role='cashier', email=None):
+    def __init__(self, username, password, role='cashier', email=None, is_active=True):
         self.username = username
         self.email = self._encrypt_email(email) if email else None
         self.role = role
+        self.is_active = is_active
         self.set_password(password)
     
     def set_password(self, password):

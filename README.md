@@ -2,6 +2,11 @@
 
 A modern, web-based Point of Sale (POS) system for restaurants with GST compliance, built using Flask, Alpine.js, and Bootstrap.
 
+## Screenshot
+
+![Dashboard](screenshot-pos.png "Dashboard")
+
+
 ## 🚀 Features
 
 ### Core Features

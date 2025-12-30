@@ -10,7 +10,7 @@
     const MobileOptimizer = {
         // Configuration
         config: {
-            touchThreshold: 44, // Minimum touch target size (WCAG 2.1)
+            touchThreshold: 22, // Minimum touch target size (WCAG 2.1)
             swipeThreshold: 50, // Minimum swipe distance
             tapDelay: 300, // Delay to distinguish tap from double-tap
             animationDuration: 300,

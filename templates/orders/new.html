@@ -905,6 +905,23 @@ function posBillingManager() {
     
     // Computed Properties
     get currentOrder() {
+      if (!this.currentOrderId || !this.activeOrders[this.currentOrderId]) {
+        return {
+          id: null,
+          orderNumber: '',
+          orderType: 'Dine-in',
+          tableId: null,
+          customerName: '',
+          customerMobile: '',
+          specialInstructions: '',
+          items: [],
+          subtotal: 0,
+          cgst: 0,
+          sgst: 0,
+          discount: 0,
+          grandTotal: 0
+        };
+      }
       return this.activeOrders[this.currentOrderId];
     },
     

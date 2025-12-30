@@ -262,15 +262,54 @@ def enhance_order_model():
     """Add real-time fields to Order model"""
     from .order import Order
     
-    # Add real-time specific fields to Order model
-    Order.realtime_enabled = db.Column(db.Boolean, default=True)
-    Order.websocket_broadcast = db.Column(db.Boolean, default=True)
-    Order.priority_level = db.Column(db.String(20), default='normal')  # low, normal, high, critical
-    Order.estimated_prep_time = db.Column(db.Integer, nullable=True)  # minutes
-    Order.actual_prep_time = db.Column(db.Integer, nullable=True)  # minutes
-    Order.kitchen_station = db.Column(db.String(50), nullable=True)  # grill, fry, salad, dessert
-    Order.last_websocket_update = db.Column(db.DateTime, nullable=True)
-    Order.realtime_subscribers = db.Column(db.Integer, default=0)
+    # Add real-time specific fields to Order model using try-catch to avoid duplicate errors
+    try:
+        if not hasattr(Order, 'realtime_enabled'):
+            Order.realtime_enabled = db.Column(db.Boolean, default=True)
+    except Exception:
+        pass
+    
+    try:
+        if not hasattr(Order, 'websocket_broadcast'):
+            Order.websocket_broadcast = db.Column(db.Boolean, default=True)
+    except Exception:
+        pass
+    
+    try:
+        if not hasattr(Order, 'priority_level'):
+            Order.priority_level = db.Column(db.String(20), default='normal')  # low, normal, high, critical
+    except Exception:
+        pass
+    
+    try:
+        if not hasattr(Order, 'estimated_prep_time'):
+            Order.estimated_prep_time = db.Column(db.Integer, nullable=True)  # minutes
+    except Exception:
+        pass
+    
+    try:
+        if not hasattr(Order, 'actual_prep_time'):
+            Order.actual_prep_time = db.Column(db.Integer, nullable=True)  # minutes
+    except Exception:
+        pass
+    
+    try:
+        if not hasattr(Order, 'kitchen_station'):
+            Order.kitchen_station = db.Column(db.String(50), nullable=True)  # grill, fry, salad, dessert
+    except Exception:
+        pass
+    
+    try:
+        if not hasattr(Order, 'last_websocket_update'):
+            Order.last_websocket_update = db.Column(db.DateTime, nullable=True)
+    except Exception:
+        pass
+    
+    try:
+        if not hasattr(Order, 'realtime_subscribers'):
+            Order.realtime_subscribers = db.Column(db.Integer, default=0)
+    except Exception:
+        pass
     
     # Add method to Order class for real-time updates
     def broadcast_status_change(self, old_status, new_status, user_id, user_role):

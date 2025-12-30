@@ -6,6 +6,7 @@ from models.otp import OTP, OTPRateLimit
 from models import db, User
 from utils.twilio_sms import get_twilio_service, send_otp_sms
 from utils.email_service import EmailService
+from flask import current_app
 
 class OTPManager:
     """Manager class for OTP operations"""
@@ -651,7 +652,9 @@ class EmailOTPLoginManager:
         if not email_service.validate_email_address(email):
             return None
         
-        return User.get_by_email_encrypted(email)
+        # Use Flask application context for database operations
+        with current_app.app_context():
+            return User.get_by_email_encrypted(email)
 
 class EmailVerificationManager:
     """Manager for email verification functionality"""

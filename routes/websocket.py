@@ -73,16 +73,21 @@ def broadcast_order_event(event_type, order_data, target_rooms=None):
             'data': order_data
         }
         
-        # Broadcast to all relevant rooms
-        for room in target_rooms:
-            socketio.emit('order_event', event_payload, room=room)
-        
-        # Broadcast to individual order subscribers
-        if order_data.get('order_id'):
-            order_id = str(order_data['order_id'])
-            if order_id in order_subscribers:
-                for socket_id in order_subscribers[order_id]:
-                    socketio.emit('order_event', event_payload, room=socket_id)
+        # Use the global_socketio if available, otherwise skip broadcasting
+        if 'global_socketio' in globals() and global_socketio:
+            # Broadcast to all relevant rooms
+            for room in target_rooms:
+                global_socketio.emit('order_event', event_payload, room=room)
+            
+            # Broadcast to individual order subscribers
+            if order_data.get('order_id'):
+                order_id = str(order_data['order_id'])
+                if order_id in order_subscribers:
+                    for socket_id in order_subscribers[order_id]:
+                        global_socketio.emit('order_event', event_payload, room=socket_id)
+        else:
+            # SocketIO not initialized yet, skip broadcasting
+            print("Skipping order event broadcast - SocketIO not initialized")
         
         return True
         
@@ -90,7 +95,7 @@ def broadcast_order_event(event_type, order_data, target_rooms=None):
         current_app.logger.error(f"Failed to broadcast order event: {str(e)}")
         return False
 
-def broadcast_analytics_update(data):
+def broadcast_analytics_update(data, app=None):
     """Broadcast analytics updates to connected clients"""
     try:
         # Get real-time analytics data
@@ -103,16 +108,24 @@ def broadcast_analytics_update(data):
             'timestamp': datetime.utcnow().isoformat()
         }
         
-        # Broadcast to all connected clients
-        socketio.emit('analytics_update', analytics_data)
-        
-        # Also broadcast to analytics dashboard room if it exists
-        socketio.emit('analytics_update', analytics_data, room='analytics_dashboard')
+        # Use the global_socketio if available, otherwise skip broadcasting
+        if 'global_socketio' in globals() and global_socketio:
+            # Broadcast to all connected clients
+            global_socketio.emit('analytics_update', analytics_data)
+            
+            # Also broadcast to analytics dashboard room if it exists
+            global_socketio.emit('analytics_update', analytics_data, room='analytics_dashboard')
+        else:
+            # SocketIO not initialized yet, skip broadcasting
+            print("Skipping analytics broadcast - SocketIO not initialized")
         
         return True
         
     except Exception as e:
-        current_app.logger.error(f"Failed to broadcast analytics update: {str(e)}")
+        if app:
+            app.logger.error(f"Failed to broadcast analytics update: {str(e)}")
+        else:
+            print(f"Failed to broadcast analytics update: {str(e)}")
         return False
 
 def calculate_order_priority(order):
@@ -630,7 +643,7 @@ def handle_get_display_status():
         emit('error', {'message': f'Failed to get display status: {str(e)}'})
 
 # Background tasks for real-time updates
-def start_background_tasks():
+def start_background_tasks(app):
     """Start background tasks for real-time system"""
     def cleanup_inactive_displays():
         """Clean up inactive display connections"""
@@ -664,65 +677,66 @@ def start_background_tasks():
                 current_app.logger.error(f"Error in cleanup task: {str(e)}")
                 time.sleep(60)
     
-    def update_real_time_metrics():
+    def update_real_time_metrics(app):
         """Update real-time performance metrics"""
-        while True:
-            try:
-                # Calculate current metrics
-                current_time = datetime.utcnow()
-                
-                # Active orders count
-                active_orders = Order.query.filter(
-                    Order.status.in_(['New', 'In Progress', 'Ready'])
-                ).count()
-                
-                # Connected displays count
-                connected_displays_count = len([d for d in connected_displays.values() if d['display'].is_active])
-                
-                # Average order age
-                recent_orders = Order.query.filter(
-                    Order.created_at >= current_time - timedelta(hours=1)
-                ).all()
-                
-                if recent_orders:
-                    total_age = sum([(current_time - order.created_at).total_seconds() / 60 
-                                   for order in recent_orders])
-                    avg_order_age = total_age / len(recent_orders)
-                else:
-                    avg_order_age = 0
-                
-                        # Store metrics
-                metrics_data = [
-                    ('active_orders', active_orders, 'count'),
-                    ('connected_displays', connected_displays_count, 'count'),
-                    ('average_order_age', avg_order_age, 'minutes')
-                ]
-                
-                for metric_name, metric_value, unit in metrics_data:
-                    metric = RealTimeMetrics(
-                        metric_type='kitchen_performance',
-                        metric_name=metric_name,
-                        metric_value=metric_value,
-                        metric_unit=unit,
-                        data_source='websocket_system'
-                    )
-                    db.session.add(metric)
-                
-                db.session.commit()
-                
-                # Broadcast analytics updates to connected clients
-                broadcast_analytics_update({
-                    'active_orders': active_orders,
-                    'connected_displays': connected_displays_count,
-                    'average_order_age': avg_order_age,
-                    'timestamp': current_time.isoformat()
-                })
-                
-                time.sleep(30)  # Update every 30 seconds
-                
-            except Exception as e:
-                current_app.logger.error(f"Error updating metrics: {str(e)}")
-                time.sleep(30)
+        with app.app_context():
+            while True:
+                try:
+                    # Calculate current metrics
+                    current_time = datetime.utcnow()
+                    
+                    # Active orders count
+                    active_orders = Order.query.filter(
+                        Order.status.in_(['New', 'In Progress', 'Ready'])
+                    ).count()
+                    
+                    # Connected displays count
+                    connected_displays_count = len([d for d in connected_displays.values() if d['display'].is_active])
+                    
+                    # Average order age
+                    recent_orders = Order.query.filter(
+                        Order.created_at >= current_time - timedelta(hours=1)
+                    ).all()
+                    
+                    if recent_orders:
+                        total_age = sum([(current_time - order.created_at).total_seconds() / 60 
+                                       for order in recent_orders])
+                        avg_order_age = total_age / len(recent_orders)
+                    else:
+                        avg_order_age = 0
+                    
+                            # Store metrics
+                    metrics_data = [
+                        ('active_orders', active_orders, 'count'),
+                        ('connected_displays', connected_displays_count, 'count'),
+                        ('average_order_age', avg_order_age, 'minutes')
+                    ]
+                    
+                    for metric_name, metric_value, unit in metrics_data:
+                        metric = RealTimeMetrics(
+                            metric_type='kitchen_performance',
+                            metric_name=metric_name,
+                            metric_value=metric_value,
+                            metric_unit=unit,
+                            data_source='websocket_system'
+                        )
+                        db.session.add(metric)
+                    
+                    db.session.commit()
+                    
+                    # Broadcast analytics updates to connected clients
+                    broadcast_analytics_update({
+                        'active_orders': active_orders,
+                        'connected_displays': connected_displays_count,
+                        'average_order_age': avg_order_age,
+                        'timestamp': current_time.isoformat()
+                    }, app)
+                    
+                    time.sleep(30)  # Update every 30 seconds
+                    
+                except Exception as e:
+                    app.logger.error(f"Error updating metrics: {str(e)}")
+                    time.sleep(30)
     
     # Start background threads (in production, use proper task queue)
     import threading
@@ -730,19 +744,19 @@ def start_background_tasks():
     cleanup_thread = threading.Thread(target=cleanup_inactive_displays, daemon=True)
     cleanup_thread.start()
     
-    metrics_thread = threading.Thread(target=update_real_time_metrics, daemon=True)
+    metrics_thread = threading.Thread(target=update_real_time_metrics, args=(app,), daemon=True)
     metrics_thread.start()
 
 def init_websocket(app, socketio):
     """Initialize WebSocket with Flask app"""
-    global socketio as global_socketio
+    global global_socketio
     global_socketio = socketio
     
     # Initialize real-time models
     enhance_order_model()
     
     # Start background tasks
-    start_background_tasks()
+    start_background_tasks(app)
     
     # Register SocketIO event handlers
     socketio.init_app(app)

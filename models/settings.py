@@ -58,6 +58,11 @@ class Settings(db.Model):
         return {setting.key: setting._decrypt_value_if_needed(setting.key, setting.value) for setting in settings}
     
     @staticmethod
+    def get_public_settings():
+        """Get all public settings as dictionary (alias for get_public)"""
+        return Settings.get_public()
+    
+    @staticmethod
     def set(key, value, description=None, is_public=None):
         """Set setting value"""
         setting = Settings.query.filter_by(key=key).first()

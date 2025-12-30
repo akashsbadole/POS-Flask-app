@@ -9,7 +9,7 @@
     </title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <!-- <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}"> -->
     
     <!-- Dynamic Favicon -->
     {% set favicon_path = white_label_settings.get('logo_favicon_path', 'images/favicon.ico') %}
@@ -24,7 +24,7 @@
     <meta name="apple-mobile-web-app-title" content="Restaurant POS">
     
     <!-- Microsoft Tiles -->
-    <meta name="msapplication-config" content="{{ url_for('static', filename='browserconfig.xml') }}">
+    <!-- <meta name="msapplication-config" content="{{ url_for('static', filename='browserconfig.xml') }}"> -->
     <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/android-chrome-144x144.png') }}">
     
     <!-- Mobile Specific Meta Tags -->
@@ -64,10 +64,10 @@
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     
     <!-- Mobile-First Responsive CSS Framework -->
-    <link
+    <!-- <link
       href="{{ url_for('static', filename='css/mobile-responsive.css') }}"
       rel="stylesheet"
-    />
+    /> -->
     
     <!-- Modern POS CSS Framework -->
     <link
@@ -87,11 +87,11 @@
       rel="stylesheet"
     />
     
-    <!-- PWA-Specific Styles -->
+    <!-- PWA-Specific Styles
     <link
       href="{{ url_for('static', filename='css/pwa-styles.css') }}"
       rel="stylesheet"
-    />
+    /> -->
 
     {% block extra_css %}{% endblock %}
     
@@ -105,7 +105,7 @@
   </head>
   <body x-data="posApp()" x-init="init()" class="modern-pos-container mobile-responsive">
     <!-- Skip Navigation Link for Accessibility -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <!-- <a href="#main-content" class="skip-link">Skip to main content</a> -->
     
     <!-- Mobile PWA Install Prompt -->
     <div id="pwa-install-prompt" class="pwa-install-prompt" style="display: none;">
@@ -135,7 +135,7 @@
           <div class="modern-logo">
             {% if white_label_settings.get('logo_show_in_header', 'true') == 'true' and white_label_settings.get('logo_header_path') %}
               {% set logo_height = white_label_settings.get('logo_height_header', '40px') %}
-              <img src="{{ url_for('static', filename=white_label_settings.logo_header_path) }}" alt="{{ white_label_settings.get('company_name', 'Restaurant POS') }}" style="height: {{ logo_height }}; margin-right: 10px;" loading="lazy">
+              <img src="{{ url_for('static', filename=white_label_settings.logo_header_path) }}" alt="{{ white_label_settings.get('company_name', 'Restaurant POS') }}" style="height:100px; margin-right: 10px;" loading="lazy">
             {% else %}
               <i class="bi bi-shop"></i>
             {% endif %}
@@ -422,11 +422,10 @@
               <a href="{{ url_for('orders.new_order') }}" class="modern-btn modern-btn-primary">
                 <i class="bi bi-plus-circle"></i> New Order
               </a>
-              <button onclick="window.open('{{ url_for('kot.kot_window') }}', 'kot_window', 'width=1400,height=800,scrollbars=yes,resizable=yes');" class="modern-btn modern-btn-warning" aria-label="Open KOT window">
+              <button onclick="window.open('{{ url_for('kot.kot_window') }}', 'kot_window', 'width=1400,height=800');" 
+                    class="modern-btn modern-btn-warning">
                 <i class="bi bi-window"></i> KOT Window
-              </button>
-                <i class="bi bi-window"></i> KOT Window
-              </button>
+            </button>
               <a href="{{ url_for('dashboard.index') }}" class="modern-btn modern-btn-info">
                 <i class="bi bi-speedometer2"></i> Dashboard
               </a>
@@ -532,7 +531,28 @@
           isLoading: false,
           activeOrders: {},
           currentOrderId: null,
-          currentOrder: {},
+          
+          // Computed property to ensure currentOrder is always defined
+          get currentOrder() {
+            if (!this.currentOrderId || !this.activeOrders[this.currentOrderId]) {
+              return {
+                orderNumber: '',
+                orderType: 'Dine-in',
+                customerName: '',
+                customerMobile: '',
+                tableId: null,
+                items: [],
+                subtotal: 0,
+                cgst: 0,
+                sgst: 0,
+                discount: 0,
+                total: 0,
+                status: 'New',
+                createdAt: null
+              };
+            }
+            return this.activeOrders[this.currentOrderId];
+          },
 
           init() {
             // Load orders from session storage

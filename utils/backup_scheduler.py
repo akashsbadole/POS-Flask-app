@@ -2,7 +2,6 @@
 Backup Scheduler - Automated backup scheduling and execution
 """
 import os
-import schedule
 import time
 import threading
 import json
@@ -10,6 +9,20 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from flask import current_app
 import logging
+
+# Try to import schedule, if not available use alternative
+try:
+    import schedule as schedule_module
+    # Check if the module has the expected methods
+    if hasattr(schedule_module, 'clear') and hasattr(schedule_module, 'run_pending'):
+        schedule = schedule_module
+        HAS_SCHEDULE = True
+    else:
+        HAS_SCHEDULE = False
+        print("Warning: schedule module found but missing expected methods, using alternative scheduling")
+except ImportError:
+    HAS_SCHEDULE = False
+    print("Warning: schedule module not available, using alternative scheduling")
 
 from models.backup import BackupJob, BackupRun, BackupStatus, BackupType
 from models import db
@@ -51,7 +64,8 @@ class BackupScheduler:
         """Main scheduler loop"""
         while self.is_running:
             try:
-                schedule.run_pending()
+                if HAS_SCHEDULE:
+                    schedule.run_pending()
                 time.sleep(60)  # Check every minute
             except Exception as e:
                 self.logger.error(f"Error in backup scheduler loop: {str(e)}")
@@ -61,6 +75,10 @@ class BackupScheduler:
         """Schedule a backup job"""
         try:
             if not job.enabled or not job.schedule_cron:
+                return False
+            
+            if not HAS_SCHEDULE:
+                self.logger.warning("Schedule module not available, skipping job scheduling")
                 return False
             
             # Parse cron expression and create schedule
@@ -80,7 +98,8 @@ class BackupScheduler:
         """Unschedule a backup job"""
         try:
             # Clear existing schedules for this job
-            schedule.clear(f"job_{job.id}")
+            if HAS_SCHEDULE:
+                schedule.clear(f"job_{job.id}")
             self.logger.info(f"Unscheduled backup job: {job.name}")
         except Exception as e:
             self.logger.error(f"Failed to unschedule job {job.name}: {str(e)}")
@@ -88,7 +107,8 @@ class BackupScheduler:
     def reschedule_all_jobs(self):
         """Reschedule all enabled backup jobs"""
         # Clear all existing schedules
-        schedule.clear()
+        if HAS_SCHEDULE:
+            schedule.clear()
         
         # Get all enabled backup jobs
         jobs = BackupJob.query.filter_by(enabled=True).all()
@@ -100,6 +120,9 @@ class BackupScheduler:
     
     def _parse_cron_expression(self, cron_expression: str):
         """Parse cron expression and return appropriate schedule function"""
+        if not HAS_SCHEDULE:
+            return None
+            
         # Simple cron parser - for production, consider using python-crontab or similar
         try:
             parts = cron_expression.strip().split()
@@ -293,10 +316,11 @@ class BackupScheduler:
     
     def get_scheduler_status(self) -> Dict:
         """Get scheduler status information"""
+        scheduled_jobs = len(schedule.jobs) if HAS_SCHEDULE and hasattr(schedule, 'jobs') else 0
         return {
             'is_running': self.is_running,
             'total_jobs': BackupJob.query.filter_by(enabled=True).count(),
-            'scheduled_jobs': len(schedule.jobs),
+            'scheduled_jobs': scheduled_jobs,
             'next_runs': self.get_next_scheduled_backups(5)
         }
 
